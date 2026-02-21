@@ -5,6 +5,8 @@ const connectDB = require('./config/db');
 const requestLogger = require('./middleware/requestLogger');
 const errorHandler = require('./middleware/errorHandler');
 
+
+
 // Load environment variables
 dotenv.config();
 
@@ -22,6 +24,9 @@ app.use(requestLogger);
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
+// Story Library Routes
+app.use('/api/stories', require('./routes/storyLibrary/storyRoutes'));
+
 
 // Welcome Route
 app.get('/', (req, res) => {
