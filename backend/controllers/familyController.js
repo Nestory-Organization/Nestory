@@ -1,4 +1,5 @@
-const Family = require("../models/Family");require('../models/Child'); // Register Child model so populate('children') works
+const Family = require("../models/Family");
+require("../models/Child"); // Register Child model so populate('children') works
 // @desc    Create a new family group
 // @route   POST /api/family
 // @access  Private (Parent only)
