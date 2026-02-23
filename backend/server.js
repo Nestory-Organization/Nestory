@@ -1,11 +1,9 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const cors = require('cors');
-const connectDB = require('./config/db');
-const requestLogger = require('./middleware/requestLogger');
-const errorHandler = require('./middleware/errorHandler');
-
-
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const connectDB = require("./config/db");
+const requestLogger = require("./middleware/requestLogger");
+const errorHandler = require("./middleware/errorHandler");
 
 // Load environment variables
 dotenv.config();
@@ -23,17 +21,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
 // Routes
-app.use('/api/auth', require('./routes/authRoutes'));
+app.use("/api/auth", require("./routes/authRoutes"));
 // Story Library Routes
-app.use('/api/stories', require('./routes/storyLibrary/storyRoutes'));
-
+app.use("/api/stories", require("./routes/storyLibrary/storyRoutes"));
+// Family Management Routes
+app.use("/api/family", require("./routes/familyRoutes"));
 
 // Welcome Route
-app.get('/', (req, res) => {
-  res.json({ 
+app.get("/", (req, res) => {
+  res.json({
     success: true,
-    message: 'Welcome to Nestory API',
-    version: '1.0.0'
+    message: "Welcome to Nestory API",
+    version: "1.0.0",
   });
 });
 
@@ -41,7 +40,7 @@ app.get('/', (req, res) => {
 app.use((req, res, next) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: "Route not found",
   });
 });
 
