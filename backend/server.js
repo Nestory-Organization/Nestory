@@ -25,8 +25,8 @@ app.use("/api/auth", require("./routes/authRoutes"));
 // Story Library Routes
 app.use("/api/stories", require("./routes/storyLibrary/storyRoutes"));
 // Family Management Routes
-app.use("/api/family", require("./routes/familyRoutes"));
-
+app.use("/api/family", require("./routes/familyRoutes")); // Child Management Routes
+app.use("/api/children", require("./routes/childRoutes"));
 // Welcome Route
 app.get("/", (req, res) => {
   res.json({
