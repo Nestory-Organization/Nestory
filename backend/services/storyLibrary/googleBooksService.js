@@ -14,7 +14,7 @@ exports.searchGoogleBooks = async (q) => {
     const items = res.data.items || [];
 
     return items.map((item) => ({
-        googleBookID: item.id,
+        googleBookId: item.id,
         title: item.volumeInfo.title || 'Unknown',
         author: item.volumeInfo.authors?.[0] || 'Unknown',
         description: item.volumeInfo.description || '',
