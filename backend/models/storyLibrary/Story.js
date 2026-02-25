@@ -48,7 +48,6 @@ const storySchema = new mongoose.Schema(
         googleBookId: {
             type: String,
             default: '',
-            index: true,
         },
         previewLink: {
             type: String,
