@@ -42,13 +42,12 @@ const storySchema = new mongoose.Schema(
         //Google Books intergration fields
         source: {
             type: String,
-            ennum: ['internal', 'google'],
+            enum: ['internal', 'google'],
             default: 'internal',
         },
         googleBookId: {
             type: String,
             default: '',
-            index: true,
         },
         previewLink: {
             type: String,
