@@ -1,11 +1,25 @@
 const Story = require('../../models/storyLibrary/Story');
+const Child = require('../../models/Child');
 const { getGoogleBookById } = require('./googleBooksService');
+const { getStoriesWithQuery } = require("./storyQueryService");
 
-exports.listStories = async (query) => {
+const mapAgeToGroup = (age) => {
+    if (age <= 3) return 'toddler';
+    if (age <= 7) return 'early-reader';
+    if (age <= 12) return 'middle-grade';
+    return 'young-adult';
+};
+
+exports.listStories = async (query, user) => {
     const { page = 1, limit = 10, search, ageGroup, genre, readingLevel } = query;
 
     const filter = {};
-    if (ageGroup) filter.ageGroup = ageGroup;
+    if (user && user.ageGroup) {
+        filter.ageGroup = user.ageGroup;
+    } else if (ageGroup) { 
+        filter.ageGroup = ageGroup;
+    }
+    
     if (readingLevel) filter.readingLevel = readingLevel;
     if (genre) filter.genres = { $in: [genre] };
 
@@ -110,4 +124,7 @@ exports.syncGoogleMetadata = async (storyId) => {
 
     const updated = await story.save();
     return updated;
+};
+exports.listStories = async (query) => {
+    return getStoriesWithQuery(query);
 };

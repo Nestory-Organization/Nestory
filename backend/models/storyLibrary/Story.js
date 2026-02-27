@@ -39,6 +39,12 @@ const storySchema = new mongoose.Schema(
             default: '',
         },
 
+        // Optional: total number of pages, used by reading sessions
+        pageCount: {
+            type: Number,
+            min: 1,
+        },
+
         //Google Books intergration fields
         source: {
             type: String,
@@ -64,8 +70,15 @@ const storySchema = new mongoose.Schema(
 );
 
 //Prevent duplicate imports from Google
-storySchema.index({ googleBookId: 1 }, { unique: true, sparse: true });
-
+storySchema.index(
+  { googleBookId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      googleBookId: { $type: "string", $ne: "" }
+    }
+  }
+);
 //Search Support
 storySchema.index({ title: 'text', author: 'text', description: 'text' });
 

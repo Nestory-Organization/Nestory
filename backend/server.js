@@ -21,9 +21,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
 // Routes
+app.use('/api/sessions', require('./routes/readingRoutes'));
+
 app.use("/api/auth", require("./routes/authRoutes"));
 // Story Library Routes
 app.use("/api/stories", require("./routes/storyLibrary/storyRoutes"));
+
 // Family Management Routes
 app.use("/api/family", require("./routes/familyRoutes"));
 // Child Management Routes
@@ -32,6 +35,8 @@ app.use("/api/children", require("./routes/childRoutes"));
 app.use("/api/assignments", require("./routes/assignmentRoutes"));
 // Family Dashboard Routes
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
+// Gamification Routes
+app.use("/api/gamification", require("./routes/gamification/gamificationRoutes"));
 // Welcome Route
 app.get("/", (req, res) => {
   res.json({
