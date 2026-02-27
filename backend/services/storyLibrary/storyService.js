@@ -1,5 +1,6 @@
 const Story = require('../../models/storyLibrary/Story');
 const Child = require('../../models/Child');
+const { getGoogleBookById } = require('./googleBooksService');
 
 const mapAgeToGroup = (age) => {
     if (age <= 3) return 'toddler';
@@ -64,4 +65,62 @@ exports.updateStory = async (id, payload) => {
 
 exports.deleteStory = async (id) => {
     return Story.findByIdAndDelete(id);
+};
+
+//import Google Book into DB (Admin)
+exports.importGoogleBook = async (googleBookId, defaults, userId) => {
+    //fetch metadata from Google
+    const meta = await getGoogleBookById(googleBookId);
+
+    //Prevent duplicate import
+    const exists = await Story.findOne({ googleBookId });
+    if (exists) {
+        const err = new Error('This Google book has already been imported');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    //create internal story 
+    const story = await Story.create({
+        title: meta.title,
+        author: meta.author,
+        description: meta.description,
+        coverImage: meta.coverImage,
+        previewLink: meta.previewLink,
+        googleBookId: meta.googleBookId,
+        source: 'google',
+
+        //defaults from admin input
+        ageGroup: defaults.ageGroup,
+        genres: defaults.genres,
+        readingLevel: defaults.readingLevel || 'intermediate',
+
+        createdBy: userId
+    });
+    return story;
+};
+
+//Sync Google metadata for an imported story (Admin)
+exports.syncGoogleMetadata = async (storyId) => {
+    const story = await Story.findById(storyId);
+    if (!story) {
+        const err = new Error('Story not found');
+        err.statusCode = 404;
+        throw err;
+    }
+    if (!story.googleBookId) {
+        const err = new Error('This story has no GoogleBookID to sync');
+        err.statusCode = 400;
+        throw err;
+    }
+    const meta = await getGoogleBookById(story.googleBookId);
+
+    story.title = meta.title;
+    story.author = meta.author;
+    story.description = meta.description;
+    story.coverImage = meta.coverImage;
+    story.previewLink = meta.previewLink;
+
+    const updated = await story.save();
+    return updated;
 };

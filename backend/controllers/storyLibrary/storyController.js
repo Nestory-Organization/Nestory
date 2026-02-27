@@ -76,3 +76,37 @@ exports.deleteStory = async (req, res, next) => {
         next(err);
     }
 };
+
+//POST /api/stories/import/:googleBookId (admin)
+exports.importGoogleBook = async (req, res, next) => {
+    try {
+        const { googleBookId } = req.params;
+        const { ageGroup, genres, readingLevel } = req.body;
+
+        if (!ageGroup || !genres || !Array.isArray(genres) || genres.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'ageGroup and genres[] are required for import'
+            });
+        }
+        const story = await storyService.importGoogleBook(
+            googleBookId,
+            { ageGroup, genres, readingLevel },
+            req.user._id
+        );
+        
+        return successResponse(res, 201, 'Google book imported successfully', story);
+    } catch (err) {
+        next(err);
+    }
+};
+
+//PUT /api/stories/google/sync/:id (admin)
+exports.syncGoogleStory = async (req, res, next) => {
+    try {
+        const updated = await storyService.syncGoogleMetadata(req.params.id);
+        return successResponse(res, 200, 'Google metadata synced successfully', updated);
+    } catch (err) {
+        next(err);
+    }
+};

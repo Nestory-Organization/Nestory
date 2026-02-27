@@ -1,14 +1,20 @@
 const express = require('express');
 const router = express.Router();
 
-const { searchExternalBooks } = require('../../controllers/storyLibrary/storyController');
 const { protect, admin } = require('../../middleware/authMiddleware');
 const storyController = require('../../controllers/storyLibrary/storyController');
 const { checkStoryAccess } = require('../../controllers/storyLibrary/storyAccessController');
 
-//Public: Google Books Search
+//Public: Google 
 // GET /api/stories/search?q=harry%20potter
-router.get('/google/search', searchExternalBooks);
+router.get('/google/search', storyController.searchExternalBooks);
+
+//Google (admin)
+//POST /api/stories/google/import/:googleBookId
+router.post('/google/import/:googleBookId', protect, admin, storyController.importGoogleBook);
+
+//PUT /api/stories/google/sync/:id
+router.put('/google/sync/:id', protect, admin, storyController.syncGoogleStory);
 
 //Public
 router.get('/', protect, storyController.getStories);
