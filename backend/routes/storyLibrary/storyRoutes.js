@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { protect, admin } = require('../../middleware/authMiddleware');
 const storyController = require('../../controllers/storyLibrary/storyController');
+const storyQueryController = require("../../controllers/storyLibrary/storyQueryController");
 const { checkStoryAccess } = require('../../controllers/storyLibrary/storyAccessController');
 
 //Public: Google 
