@@ -1,5 +1,6 @@
 const Story = require('../../models/storyLibrary/Story');
 const { getGoogleBookById } = require('./googleBooksService');
+const { getStoriesWithQuery } = require("./storyQueryService");
 
 exports.listStories = async (query) => {
     const { page = 1, limit = 10, search, ageGroup, genre, readingLevel } = query;
@@ -110,4 +111,7 @@ exports.syncGoogleMetadata = async (storyId) => {
 
     const updated = await story.save();
     return updated;
+};
+exports.listStories = async (query) => {
+    return getStoriesWithQuery(query);
 };

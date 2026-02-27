@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { protect, admin } = require('../../middleware/authMiddleware');
 const storyController = require('../../controllers/storyLibrary/storyController');
+const storyQueryController = require("../../controllers/storyLibrary/storyQueryController");
 
 //Public: Google 
 // GET /api/stories/search?q=harry%20potter
@@ -16,7 +17,7 @@ router.post('/google/import/:googleBookId', protect, admin, storyController.impo
 router.put('/google/sync/:id', protect, admin, storyController.syncGoogleStory);
 
 //Public
-router.get('/', storyController.getStories);
+router.get('/', storyQueryController.getStories);
 router.get('/:id', storyController.getStoryById);
 
 //Admin
