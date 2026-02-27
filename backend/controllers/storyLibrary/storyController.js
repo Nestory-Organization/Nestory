@@ -24,7 +24,7 @@ exports.searchExternalBooks = async (req, res, next) => {
 //GET /api/stories
 exports.getStories = async (req, res, next) => {
     try {
-        const result = await storyService.listStories(req.query);
+        const result = await storyService.listStories(req.query, req.user);
         return successResponse(res, 200, 'Stories fetched successfully', result);
     } catch (err) {
         next(err);

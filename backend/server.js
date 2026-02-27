@@ -4,6 +4,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 const requestLogger = require("./middleware/requestLogger");
 const errorHandler = require("./middleware/errorHandler");
+const storyExportRoutes = require("./routes/storyLibrary/storyExportRoutes");
 
 // Load environment variables
 dotenv.config();
@@ -24,6 +25,7 @@ app.use(requestLogger);
 app.use("/api/auth", require("./routes/authRoutes"));
 // Story Library Routes
 app.use("/api/stories", require("./routes/storyLibrary/storyRoutes"));
+app.use("/api/stories", storyExportRoutes);
 // Family Management Routes
 app.use("/api/family", require("./routes/familyRoutes"));
 // Child Management Routes
