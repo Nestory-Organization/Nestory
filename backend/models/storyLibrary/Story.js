@@ -39,6 +39,12 @@ const storySchema = new mongoose.Schema(
             default: '',
         },
 
+        // Optional: total number of pages, used by reading sessions
+        pageCount: {
+            type: Number,
+            min: 1,
+        },
+
         //Google Books intergration fields
         source: {
             type: String,
