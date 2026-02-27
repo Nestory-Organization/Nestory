@@ -21,9 +21,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
 // Routes
+app.use('/api/sessions', require('./routes/readingRoutes'));
+
 app.use("/api/auth", require("./routes/authRoutes"));
 // Story Library Routes
 app.use("/api/stories", require("./routes/storyLibrary/storyRoutes"));
+
 // Family Management Routes
 app.use("/api/family", require("./routes/familyRoutes"));
 // Child Management Routes
