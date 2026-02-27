@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { protect, admin } = require('../../middleware/authMiddleware');
 const storyController = require('../../controllers/storyLibrary/storyController');
+const storySyncController = require('../../controllers/storyLibrary/storySyncController');
 const storyQueryController = require("../../controllers/storyLibrary/storyQueryController");
 const { checkStoryAccess } = require('../../controllers/storyLibrary/storyAccessController');
 
@@ -15,7 +16,8 @@ router.get('/google/search', storyController.searchExternalBooks);
 router.post('/google/import/:googleBookId', protect, admin, storyController.importGoogleBook);
 
 //PUT /api/stories/google/sync/:id
-router.put('/google/sync/:id', protect, admin, storyController.syncGoogleStory);
+// PUT /api/stories/google/sync/:storyId
+router.put('/google/sync/:storyId', protect, admin, storySyncController.syncStoryMetadata);
 
 //Public
 router.get('/', protect, storyController.getStories);
