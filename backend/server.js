@@ -35,6 +35,8 @@ app.use("/api/children", require("./routes/childRoutes"));
 app.use("/api/assignments", require("./routes/assignmentRoutes"));
 // Family Dashboard Routes
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
+// Gamification Routes
+app.use("/api/gamification", require("./routes/gamification/gamificationRoutes"));
 // Welcome Route
 app.get("/", (req, res) => {
   res.json({
