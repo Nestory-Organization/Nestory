@@ -36,3 +36,29 @@ exports.getGoogleBookById = async (googleBookId) => {
         previewLink: v.previewLink || ''
     };
 };
+
+exports.getBookById = async (googleBookId) => {
+    const params = {};
+
+    if (process.env.GOOGLE_BOOKS_API_KEY) {
+        params.key = process.env.GOOGLE_BOOKS_API_KEY;
+    }
+
+    const response = await axios.get(
+        `${GOOGLE_BOOKS_URL}/${googleBookId}`,
+        { params }
+    );
+
+    const volume = response.data?.volumeInfo || {};
+
+    return {
+        googleBookId,
+        title: volume.title || "Unknown",
+        author: volume.authors
+            ? volume.authors.join(", ")
+            : "Unknown",
+        description: volume.description || "",
+        coverImage: volume.imageLinks?.thumbnail || "",
+        previewLink: volume.previewLink || "",
+    };
+};

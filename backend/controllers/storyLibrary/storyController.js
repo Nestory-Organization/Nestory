@@ -69,7 +69,7 @@ exports.updateStory = async (req, res, next) => {
 exports.deleteStory = async (req, res, next) => {
     try {
         const story = await storyService.deleteStory(req.params.id);
-        if (!story) return res.status(404),json({ success:false, message: 'Story not found' });
+        if (!story) return res.status(404).json({ success:false, message: 'Story not found' });
 
         return successResponse(res, 200, 'Story deleted successfully');
     } catch (err) {
