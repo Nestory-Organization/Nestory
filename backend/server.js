@@ -30,6 +30,8 @@ app.use("/api/family", require("./routes/familyRoutes"));
 app.use("/api/children", require("./routes/childRoutes"));
 // Assignment Management Routes
 app.use("/api/assignments", require("./routes/assignmentRoutes"));
+// Family Dashboard Routes
+app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 // Welcome Route
 app.get("/", (req, res) => {
   res.json({
