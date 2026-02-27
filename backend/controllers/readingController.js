@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const ReadingSession = require('../models/ReadingSession');
+const Story = require('../models/storyLibrary/Story');
 
 // Normalize date to start of day (for streak: unique days with reading)
 const getDateKey = (date) => {
@@ -10,22 +11,51 @@ const getDateKey = (date) => {
 
 // @desc    Start a new reading session
 // @route   POST /api/sessions/start
-// @access  Public (TODO: protect with auth, use req.user for childId)
+// @access  Private (uses auth; ties to logged-in user by default)
 exports.startSession = async (req, res) => {
   try {
     const { childId, bookId, totalPages } = req.body;
 
-    if (!childId || !bookId || !totalPages) {
+    if (!bookId) {
       return res.status(400).json({
         success: false,
-        message: 'childId, bookId and totalPages are required'
+        message: 'bookId is required'
+      });
+    }
+
+    // If childId is not provided, default to the authenticated user
+    // This will later be replaced by an actual child profile ID once that model exists
+    const effectiveChildId = childId || req.user?._id;
+
+    if (!effectiveChildId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Unable to determine reader (child/user). Make sure you are authenticated.'
+      });
+    }
+
+    // Prefer total pages from the Story document; fall back to body.totalPages for backward compatibility
+    let effectiveTotalPages = null;
+
+    const story = await Story.findById(bookId);
+
+    if (story && typeof story.pageCount === 'number' && story.pageCount > 0) {
+      effectiveTotalPages = story.pageCount;
+    } else if (totalPages) {
+      effectiveTotalPages = Number(totalPages);
+    }
+
+    if (!effectiveTotalPages || Number.isNaN(effectiveTotalPages)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Total pages could not be determined. Provide totalPages in the request or set pageCount on the Story.'
       });
     }
 
     const session = await ReadingSession.create({
-      childId: new mongoose.Types.ObjectId(childId),
+      childId: new mongoose.Types.ObjectId(effectiveChildId),
       bookId: new mongoose.Types.ObjectId(bookId),
-      totalPages,
+      totalPages: effectiveTotalPages,
       pagesRead: 0,
       timeSpent: 0,
       completed: false
