@@ -48,13 +48,12 @@ const storySchema = new mongoose.Schema(
         //Google Books intergration fields
         source: {
             type: String,
-            ennum: ['internal', 'google'],
+            enum: ['internal', 'google'],
             default: 'internal',
         },
         googleBookId: {
             type: String,
             default: '',
-            index: true,
         },
         previewLink: {
             type: String,
@@ -71,8 +70,15 @@ const storySchema = new mongoose.Schema(
 );
 
 //Prevent duplicate imports from Google
-storySchema.index({ googleBookId: 1 }, { unique: true, sparse: true });
-
+storySchema.index(
+  { googleBookId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      googleBookId: { $type: "string", $ne: "" }
+    }
+  }
+);
 //Search Support
 storySchema.index({ title: 'text', author: 'text', description: 'text' });
 
