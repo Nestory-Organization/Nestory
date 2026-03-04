@@ -4,7 +4,13 @@ const {
   startSession,
   updateSession,
   getWeeklyReadingTime,
-  getReadingStreak
+  getReadingStreak,
+  getMySessions,
+  getProgressByBook,
+  deleteSession,
+  getMonthlyAnalytics,
+  getTopBooks,
+  getAchievements
 } = require('../controllers/readingController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -22,5 +28,23 @@ router.get('/weekly/:childId', protect, getWeeklyReadingTime);
 
 // GET /api/sessions/streak/:childId — consecutive days with reading
 router.get('/streak/:childId', protect, getReadingStreak);
+
+// GET /api/sessions/my-sessions — all sessions for logged-in user (?status=active|completed)
+router.get('/my-sessions', protect, getMySessions);
+
+// GET /api/sessions/progress/:bookId — progress for a specific book (resume reading)
+router.get('/progress/:bookId', protect, getProgressByBook);
+
+// DELETE /api/sessions/:sessionId — delete / reset a session
+router.delete('/:sessionId', protect, deleteSession);
+
+// GET /api/sessions/monthly/:childId — monthly reading analytics
+router.get('/monthly/:childId', protect, getMonthlyAnalytics);
+
+// GET /api/sessions/top-books/:childId — top 5 most read books by time
+router.get('/top-books/:childId', protect, getTopBooks);
+
+// GET /api/sessions/achievements/:childId — achievements (gamification)
+router.get('/achievements/:childId', protect, getAchievements);
 
 module.exports = router;
