@@ -64,7 +64,17 @@ const RegisterPage: React.FC = () => {
         role: formData.role,
       });
       toast.success('Registration successful! Welcome to Nestory!');
-      navigate('/dashboard');
+
+      const rawUser = localStorage.getItem('user');
+      let parsedUser: { role?: string } | null = null;
+      if (rawUser && rawUser !== 'undefined' && rawUser !== 'null') {
+        try {
+          parsedUser = JSON.parse(rawUser);
+        } catch {
+          parsedUser = null;
+        }
+      }
+      navigate(parsedUser?.role === 'admin' ? '/admin' : '/dashboard');
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || 'Registration failed. Please try again.';
       toast.error(errorMessage);

@@ -62,8 +62,22 @@ const AppContent: React.FC = () => {
       <Route path="/" element={isAuthenticated ? <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace /> : <Navigate to="/login" replace />} />
       
       {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/login"
+        element={
+          isAuthenticated
+            ? <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />
+            : <LoginPage />
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          isAuthenticated
+            ? <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />
+            : <RegisterPage />
+        }
+      />
 
       {/* Authenticated routes based on role */}
       {isAuthenticated && user?.role === 'user' && (
