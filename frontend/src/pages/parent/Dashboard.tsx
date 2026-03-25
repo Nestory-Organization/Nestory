@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
 import ChildCard from '../../components/common/ChildCard';
@@ -9,7 +8,6 @@ import InputField from '../../components/common/InputField';
 import SelectField from '../../components/common/SelectField';
 import FamilyService from '../../services/familyService';
 import ChildService from '../../services/childService';
-import DashboardService from '../../services/dashboardService';
 import toast from 'react-hot-toast';
 import {
   Book,
@@ -17,14 +15,11 @@ import {
   TrendingUp,
   Clock,
   Plus,
-  Settings,
-  Calendar,
 } from 'lucide-react';
 import { Family, Child } from '../../types';
 
 const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [children, setChildren] = useState<Child[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -156,10 +151,10 @@ const ParentDashboard: React.FC = () => {
 
       <div className="container-responsive py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 animate-fade-in">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8 animate-fade-in">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome back! 👋</h1>
-            <p className="text-gray-600">{family?.familyName || 'Your Family'} - {children.length} children</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Parent Dashboard</h1>
+            <p className="text-gray-600">{family?.familyName || 'Your Family'} • {children.length} children</p>
           </div>
           <button
             onClick={() => navigate('/stories')}
@@ -206,9 +201,7 @@ const ParentDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                👨‍👩‍👧‍👦 Family Members ({children.length})
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-900">Family Members ({children.length})</h2>
               <button
                 onClick={() => setShowAddChildModal(true)}
                 className="btn-primary flex items-center gap-2"
@@ -245,25 +238,25 @@ const ParentDashboard: React.FC = () => {
 
           {/* Quick Actions */}
           <div className="card h-fit">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              ⚡ Quick Actions
-            </h3>
+            <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <button className="btn-outline w-full text-left flex items-center gap-2 py-3">
-                <Calendar size={18} />
-                Create Assignment
+              <button
+                onClick={() => setShowAddChildModal(true)}
+                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+              >
+                <Plus size={18} />
+                Add Child
               </button>
-              <button className="btn-outline w-full text-left flex items-center gap-2 py-3">
+              <button
+                onClick={() => navigate('/stories')}
+                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+              >
                 <Book size={18} />
                 View Story Library
               </button>
-              <button className="btn-outline w-full text-left flex items-center gap-2 py-3">
+              <button className="btn-outline w-full text-left flex items-center gap-2 py-3" disabled>
                 <TrendingUp size={18} />
-                View Analytics
-              </button>
-              <button className="btn-outline w-full text-left flex items-center gap-2 py-3">
-                <Settings size={18} />
-                Family Settings
+                Analytics (Soon)
               </button>
             </div>
           </div>
@@ -271,18 +264,9 @@ const ParentDashboard: React.FC = () => {
 
         {/* Recent Activity */}
         <div className="card">
-          <h3 className="text-xl font-bold mb-4">📊 Recent Activity</h3>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-gradient-to-br from-nestory-200 to-blue-200 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">Activity {i}</p>
-                  <p className="text-sm text-gray-600">No activities yet</p>
-                </div>
-                <span className="text-xs text-gray-500">Just now</span>
-              </div>
-            ))}
+          <h3 className="text-xl font-bold mb-4">Recent Activity</h3>
+          <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center">
+            <p className="text-gray-600">No activity yet. Start by assigning a story to your child.</p>
           </div>
         </div>
       </div>

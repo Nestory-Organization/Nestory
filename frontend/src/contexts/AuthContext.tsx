@@ -20,15 +20,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const parseStoredUser = (value: string | null): User | null => {
+    if (!value || value === 'undefined' || value === 'null') {
+      return null;
+    }
+
+    try {
+      return JSON.parse(value) as User;
+    } catch {
+      return null;
+    }
+  };
+
   // Initialize from localStorage
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
+    const parsedUser = parseStoredUser(storedUser);
 
-    if (storedToken && storedUser) {
+    if (storedToken && parsedUser) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      authService.setToken(storedToken, JSON.parse(storedUser));
+      setUser(parsedUser);
+      authService.setToken(storedToken, parsedUser);
+    } else if (storedToken || storedUser) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      authService.logout();
     }
 
     setIsLoading(false);

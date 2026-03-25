@@ -9,6 +9,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ParentDashboard from './pages/parent/Dashboard';
 import StoriesPage from './pages/parent/StoriesPage';
+import StoryDetailPage from './pages/parent/StoryDetailPage';
+import ChildDetailPage from './pages/parent/ChildDetailPage';
 import ChildDashboard from './pages/child/Dashboard';
 import AdminDashboard from './pages/admin/Dashboard';
 
@@ -68,6 +70,8 @@ const AppContent: React.FC = () => {
         <>
           <Route path="/dashboard" element={<ParentDashboard />} />
           <Route path="/stories" element={<StoriesPage />} />
+          <Route path="/story/:storyId" element={<StoryDetailPage />} />
+          <Route path="/child/:childId" element={<ChildDetailPage />} />
         </>
       )}
 

@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/common/Navbar';
 import StoryCard from '../../components/common/StoryCard';
-import InputField from '../../components/common/InputField';
 import SelectField from '../../components/common/SelectField';
 import StoryService from '../../services/storyService';
 import toast from 'react-hot-toast';
-import { Search, Filter } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Story } from '../../types';
 
 const StoriesPage: React.FC = () => {
@@ -70,14 +69,17 @@ const StoriesPage: React.FC = () => {
 
       <div className="container-responsive py-8">
         {/* Header */}
-        <div className="mb-8 animate-fade-in">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">📚 Story Library</h1>
-          <p className="text-gray-600">Discover amazing stories for your family</p>
+        <div className="mb-8 animate-fade-in flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">Story Library</h1>
+            <p className="text-gray-600">Discover stories for your family by age and reading level</p>
+          </div>
+          <p className="text-sm text-gray-500">{filteredStories.length} results</p>
         </div>
 
         {/* Search & Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="card mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 text-gray-400" size={20} />
               <input
@@ -103,16 +105,6 @@ const StoriesPage: React.FC = () => {
               options={levelOptions}
             />
           </div>
-
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Showing {filteredStories.length} stories
-            </p>
-            <button className="btn-secondary flex items-center gap-2 text-sm">
-              <Filter size={16} />
-              More Filters
-            </button>
-          </div>
         </div>
 
         {/* Stories Grid */}
@@ -136,7 +128,7 @@ const StoriesPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 mb-8">
             {filteredStories.map((story, index) => (
               <div
                 key={story.id}
@@ -159,11 +151,11 @@ const StoriesPage: React.FC = () => {
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="btn-secondary disabled:opacity-50"
+              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
-            <span className="text-gray-600">Page {currentPage}</span>
+            <span className="text-gray-600 px-2">Page {currentPage}</span>
             <button
               onClick={() => setCurrentPage(p => p + 1)}
               className="btn-secondary"
