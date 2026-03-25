@@ -51,6 +51,12 @@ const LoadingScreen: React.FC = () => (
 // Main App Component
 const AppContent: React.FC = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const hasValidRole = user?.role === 'user' || user?.role === 'admin' || user?.role === 'child';
+
+  const getDefaultRoute = () => {
+    if (!isAuthenticated || !hasValidRole) return '/login';
+    return user?.role === 'admin' ? '/admin' : '/dashboard';
+  };
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -59,38 +65,37 @@ const AppContent: React.FC = () => {
   return (
     <Routes>
       {/* Home page redirect */}
-      <Route path="/" element={isAuthenticated ? <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace /> : <Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       
       {/* Public routes */}
       <Route
         path="/login"
         element={
-          isAuthenticated
-            ? <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />
+          isAuthenticated && hasValidRole
+            ? <Navigate to={getDefaultRoute()} replace />
             : <LoginPage />
         }
       />
       <Route
         path="/register"
         element={
-          isAuthenticated
-            ? <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />
+          isAuthenticated && hasValidRole
+            ? <Navigate to={getDefaultRoute()} replace />
             : <RegisterPage />
         }
       />
 
       {/* Authenticated routes based on role */}
+      {isAuthenticated && user?.role !== 'admin' && (
+        <Route path="/dashboard" element={user?.role === 'child' ? <ChildDashboard /> : <ParentDashboard />} />
+      )}
+
       {isAuthenticated && user?.role === 'user' && (
         <>
-          <Route path="/dashboard" element={<ParentDashboard />} />
           <Route path="/stories" element={<StoriesPage />} />
           <Route path="/story/:storyId" element={<StoryDetailPage />} />
           <Route path="/child/:childId" element={<ChildDetailPage />} />
         </>
-      )}
-
-      {isAuthenticated && user?.role === 'child' && (
-        <Route path="/dashboard" element={<ChildDashboard />} />
       )}
 
       {isAuthenticated && user?.role === 'admin' && (
@@ -98,7 +103,7 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Catch-all route */}
-      <Route path="*" element={<Navigate to={isAuthenticated ? (user?.role === 'admin' ? '/admin' : '/dashboard') : '/login'} replace />} />
+      <Route path="*" element={<Navigate to={getDefaultRoute()} replace />} />
     </Routes>
   );
 };

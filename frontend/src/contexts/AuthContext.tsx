@@ -26,7 +26,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      return JSON.parse(value) as User;
+      const parsed = JSON.parse(value) as Partial<User>;
+      if (!parsed || !parsed.role || !['user', 'admin', 'child'].includes(parsed.role)) {
+        return null;
+      }
+      return parsed as User;
     } catch {
       return null;
     }

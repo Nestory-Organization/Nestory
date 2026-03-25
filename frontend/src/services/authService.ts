@@ -19,9 +19,9 @@ class AuthService {
   private normalizeUser(payload: BackendAuthPayload): User {
     return {
       id: payload.id || payload._id || '',
-      name: payload.name,
-      email: payload.email,
-      role: payload.role,
+      name: payload.name || '',
+      email: payload.email || '',
+      role: payload.role || 'user',
       profilePicture: payload.profilePicture,
       phoneNumber: payload.phoneNumber,
       isActive: payload.isActive ?? true,

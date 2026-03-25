@@ -32,6 +32,22 @@ const ParentDashboard: React.FC = () => {
     avatar: '👧',
     readingLevel: 'beginner' as const,
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const validateChildForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Child name is required';
+    }
+
+    if (!Number.isInteger(formData.age) || formData.age < 1 || formData.age > 18) {
+      newErrors.age = 'Age must be a whole number between 1 and 18';
+    }
+
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   // Fetch data on mount
   useEffect(() => {
@@ -55,13 +71,8 @@ const ParentDashboard: React.FC = () => {
   }, []);
 
   const handleAddChild = async () => {
-    if (!formData.name.trim()) {
-      toast.error('Please enter child name');
-      return;
-    }
-
-    if (formData.age < 1 || formData.age > 18) {
-      toast.error('Age must be between 1 and 18');
+    if (!validateChildForm()) {
+      toast.error('Please correct the highlighted fields');
       return;
     }
 
@@ -93,12 +104,26 @@ const ParentDashboard: React.FC = () => {
       setShowAddChildModal(false);
       setEditingChild(null);
     } catch (error: any) {
+      const backendErrors = error?.response?.data?.errors;
+      if (Array.isArray(backendErrors)) {
+        const mapped: Record<string, string> = {};
+        backendErrors.forEach((item: any) => {
+          if (item?.field && item?.message) {
+            mapped[item.field] = item.message;
+          }
+        });
+        if (Object.keys(mapped).length > 0) {
+          setFormErrors((prev) => ({ ...prev, ...mapped }));
+        }
+      }
+
       toast.error(error?.response?.data?.message || 'Failed to save child');
     }
   };
 
   const handleEditChild = (child: Child) => {
     setEditingChild(child);
+    setFormErrors({});
     setFormData({
       name: child.name,
       age: child.age,
@@ -123,6 +148,7 @@ const ParentDashboard: React.FC = () => {
   const handleCloseModal = () => {
     setShowAddChildModal(false);
     setEditingChild(null);
+    setFormErrors({});
     setFormData({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner' });
   };
 
@@ -308,8 +334,14 @@ const ParentDashboard: React.FC = () => {
             label="Child's Name"
             name="name"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, name: e.target.value });
+              if (formErrors.name) {
+                setFormErrors((prev) => ({ ...prev, name: '' }));
+              }
+            }}
             placeholder="e.g., Emma"
+            error={formErrors.name}
             required
           />
 
@@ -319,9 +351,16 @@ const ParentDashboard: React.FC = () => {
             name="age"
             type="number"
             value={formData.age}
-            onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) })}
+            onChange={(e) => {
+              const value = parseInt(e.target.value, 10);
+              setFormData({ ...formData, age: Number.isNaN(value) ? 0 : value });
+              if (formErrors.age) {
+                setFormErrors((prev) => ({ ...prev, age: '' }));
+              }
+            }}
             min="1"
             max="18"
+            error={formErrors.age}
             required
           />
 
