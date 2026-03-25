@@ -20,18 +20,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize from localStorage
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      authService.setToken(storedToken, JSON.parse(storedUser));
+  const parseStoredUser = (value: string | null): User | null => {
+    if (!value || value === 'undefined' || value === 'null') {
+      return null;
     }
 
-    setIsLoading(false);
+    try {
+      const parsed = JSON.parse(value) as Record<string, unknown>;
+      const roleValue = typeof parsed.role === 'string' ? parsed.role : '';
+      if (!parsed || !roleValue) {
+        return null;
+      }
+
+      const normalizedRole = roleValue === 'user' ? 'parent' : roleValue;
+      if (!['admin', 'parent', 'child'].includes(normalizedRole)) {
+        return null;
+      }
+
+      return {
+        ...(parsed as Partial<User>),
+        role: normalizedRole as User['role'],
+      } as User;
+    } catch {
+      return null;
+    }
+  };
+
+  // Initialize from localStorage
+  useEffect(() => {
+    const hydrateAuth = async () => {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      const parsedUser = parseStoredUser(storedUser);
+
+      if (storedToken && parsedUser) {
+        try {
+          authService.setToken(storedToken, parsedUser);
+          const freshUser = await authService.getCurrentUser();
+
+          if (!freshUser?.role || !['admin', 'parent', 'child'].includes(freshUser.role)) {
+            throw new Error('Invalid role');
+          }
+
+          setToken(storedToken);
+          setUser(freshUser);
+          localStorage.setItem('user', JSON.stringify(freshUser));
+        } catch {
+          authService.logout();
+          setToken(null);
+          setUser(null);
+        }
+      } else if (storedToken || storedUser) {
+        authService.logout();
+        setToken(null);
+        setUser(null);
+      }
+
+      setIsLoading(false);
+    };
+
+    hydrateAuth();
   }, []);
 
   const login = async (data: LoginRequest) => {
@@ -39,8 +87,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response: AuthResponse = await authService.login(data);
       authService.setToken(response.token, response.user);
+
+      let finalUser = response.user;
+      try {
+        finalUser = await authService.getCurrentUser();
+        localStorage.setItem('user', JSON.stringify(finalUser));
+      } catch {
+        finalUser = response.user;
+      }
+
       setToken(response.token);
-      setUser(response.user);
+      setUser(finalUser);
     } finally {
       setIsLoading(false);
     }
@@ -51,8 +108,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response: AuthResponse = await authService.register(data);
       authService.setToken(response.token, response.user);
+
+      let finalUser = response.user;
+      try {
+        finalUser = await authService.getCurrentUser();
+        localStorage.setItem('user', JSON.stringify(finalUser));
+      } catch {
+        finalUser = response.user;
+      }
+
       setToken(response.token);
-      setUser(response.user);
+      setUser(finalUser);
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     token,
     isLoading,
-    isAuthenticated: !!token,
+    isAuthenticated: !!token && !!user,
     login,
     register,
     logout,

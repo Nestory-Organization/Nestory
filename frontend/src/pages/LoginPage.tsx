@@ -12,9 +12,11 @@ const LoginPage: React.FC = () => {
     password: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState('');
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+    setFormError('');
 
     if (!formData.email) {
       newErrors.email = 'Email is required';
@@ -35,6 +37,7 @@ const LoginPage: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (formError) setFormError('');
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -48,9 +51,23 @@ const LoginPage: React.FC = () => {
     try {
       await login(formData);
       toast.success('Login successful!');
-      navigate('/dashboard');
+      navigate('/');
     } catch (error: any) {
+      const backendErrors = error?.response?.data?.errors;
+      if (Array.isArray(backendErrors)) {
+        const fieldErrors: Record<string, string> = {};
+        backendErrors.forEach((item: any) => {
+          if (item?.field && item?.message) {
+            fieldErrors[item.field] = item.message;
+          }
+        });
+        if (Object.keys(fieldErrors).length > 0) {
+          setErrors((prev) => ({ ...prev, ...fieldErrors }));
+        }
+      }
+
       const errorMessage = error?.response?.data?.message || 'Login failed. Please try again.';
+      setFormError(errorMessage);
       toast.error(errorMessage);
     }
   };
@@ -113,6 +130,12 @@ const LoginPage: React.FC = () => {
               {errors.password && <p className="text-red-600 text-sm mt-1">{errors.password}</p>}
             </div>
 
+            {formError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {formError}
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
@@ -136,7 +159,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-white/50 rounded-lg backdrop-blur-sm border border-gray-200">
+        <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
           <p className="text-xs text-gray-600 font-semibold mb-2">Demo Credentials:</p>
           <p className="text-xs text-gray-600">Email: parent@example.com</p>
           <p className="text-xs text-gray-600">Password: password123</p>

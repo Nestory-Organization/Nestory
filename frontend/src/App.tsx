@@ -9,8 +9,12 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ParentDashboard from './pages/parent/Dashboard';
 import StoriesPage from './pages/parent/StoriesPage';
-import ChildDashboard from './pages/child/Dashboard';
+import StoryDetailPage from './pages/parent/StoryDetailPage';
+import ChildDetailPage from './pages/parent/ChildDetailPage';
+import AssignmentsPage from './pages/parent/AssignmentsPage';
+import FamilySettingsPage from './pages/parent/FamilySettingsPage';
 import AdminDashboard from './pages/admin/Dashboard';
+import StoryManagementPage from './pages/admin/StoryManagementPage';
 
 // Loading component
 const LoadingScreen: React.FC = () => (
@@ -49,6 +53,14 @@ const LoadingScreen: React.FC = () => (
 // Main App Component
 const AppContent: React.FC = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const isParentRole = user?.role === 'parent';
+  const hasValidRole = isParentRole || user?.role === 'admin' || user?.role === 'child';
+
+  const getDefaultRoute = () => {
+    if (!isAuthenticated || !hasValidRole) return '/login';
+    if (user?.role === 'admin') return '/admin';
+    return '/dashboard';
+  };
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -57,30 +69,50 @@ const AppContent: React.FC = () => {
   return (
     <Routes>
       {/* Home page redirect */}
-      <Route path="/" element={isAuthenticated ? <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace /> : <Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       
       {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/login"
+        element={
+          isAuthenticated && hasValidRole
+            ? <Navigate to={getDefaultRoute()} replace />
+            : <LoginPage />
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          isAuthenticated && hasValidRole
+            ? <Navigate to={getDefaultRoute()} replace />
+            : <RegisterPage />
+        }
+      />
 
       {/* Authenticated routes based on role */}
-      {isAuthenticated && user?.role === 'user' && (
+      {isAuthenticated && isParentRole && (
+        <Route path="/dashboard" element={<ParentDashboard />} />
+      )}
+
+      {isAuthenticated && isParentRole && (
         <>
-          <Route path="/dashboard" element={<ParentDashboard />} />
           <Route path="/stories" element={<StoriesPage />} />
+          <Route path="/story/:storyId" element={<StoryDetailPage />} />
+          <Route path="/child/:childId" element={<ChildDetailPage />} />
+          <Route path="/assignments" element={<AssignmentsPage />} />
+          <Route path="/family-settings" element={<FamilySettingsPage />} />
         </>
       )}
 
-      {isAuthenticated && user?.role === 'child' && (
-        <Route path="/dashboard" element={<ChildDashboard />} />
-      )}
-
       {isAuthenticated && user?.role === 'admin' && (
-        <Route path="/admin" element={<AdminDashboard />} />
+        <>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/stories" element={<StoryManagementPage />} />
+        </>
       )}
 
       {/* Catch-all route */}
-      <Route path="*" element={<Navigate to={isAuthenticated ? (user?.role === 'admin' ? '/admin' : '/dashboard') : '/login'} replace />} />
+      <Route path="*" element={<Navigate to={getDefaultRoute()} replace />} />
     </Routes>
   );
 };

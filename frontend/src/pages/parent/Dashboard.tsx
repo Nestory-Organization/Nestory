@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
 import ChildCard from '../../components/common/ChildCard';
@@ -9,7 +8,6 @@ import InputField from '../../components/common/InputField';
 import SelectField from '../../components/common/SelectField';
 import FamilyService from '../../services/familyService';
 import ChildService from '../../services/childService';
-import DashboardService from '../../services/dashboardService';
 import toast from 'react-hot-toast';
 import {
   Book,
@@ -17,14 +15,11 @@ import {
   TrendingUp,
   Clock,
   Plus,
-  Settings,
-  Calendar,
 } from 'lucide-react';
 import { Family, Child } from '../../types';
 
 const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [children, setChildren] = useState<Child[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +32,22 @@ const ParentDashboard: React.FC = () => {
     avatar: '👧',
     readingLevel: 'beginner' as const,
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const validateChildForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Child name is required';
+    }
+
+    if (!Number.isInteger(formData.age) || formData.age < 1 || formData.age > 18) {
+      newErrors.age = 'Age must be a whole number between 1 and 18';
+    }
+
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   // Fetch data on mount
   useEffect(() => {
@@ -60,13 +71,8 @@ const ParentDashboard: React.FC = () => {
   }, []);
 
   const handleAddChild = async () => {
-    if (!formData.name.trim()) {
-      toast.error('Please enter child name');
-      return;
-    }
-
-    if (formData.age < 1 || formData.age > 18) {
-      toast.error('Age must be between 1 and 18');
+    if (!validateChildForm()) {
+      toast.error('Please correct the highlighted fields');
       return;
     }
 
@@ -98,12 +104,26 @@ const ParentDashboard: React.FC = () => {
       setShowAddChildModal(false);
       setEditingChild(null);
     } catch (error: any) {
+      const backendErrors = error?.response?.data?.errors;
+      if (Array.isArray(backendErrors)) {
+        const mapped: Record<string, string> = {};
+        backendErrors.forEach((item: any) => {
+          if (item?.field && item?.message) {
+            mapped[item.field] = item.message;
+          }
+        });
+        if (Object.keys(mapped).length > 0) {
+          setFormErrors((prev) => ({ ...prev, ...mapped }));
+        }
+      }
+
       toast.error(error?.response?.data?.message || 'Failed to save child');
     }
   };
 
   const handleEditChild = (child: Child) => {
     setEditingChild(child);
+    setFormErrors({});
     setFormData({
       name: child.name,
       age: child.age,
@@ -128,6 +148,7 @@ const ParentDashboard: React.FC = () => {
   const handleCloseModal = () => {
     setShowAddChildModal(false);
     setEditingChild(null);
+    setFormErrors({});
     setFormData({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner' });
   };
 
@@ -156,10 +177,10 @@ const ParentDashboard: React.FC = () => {
 
       <div className="container-responsive py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 animate-fade-in">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8 animate-fade-in">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome back! 👋</h1>
-            <p className="text-gray-600">{family?.familyName || 'Your Family'} - {children.length} children</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Parent Dashboard</h1>
+            <p className="text-gray-600">{family?.familyName || 'Your Family'} • {children.length} children</p>
           </div>
           <button
             onClick={() => navigate('/stories')}
@@ -206,9 +227,7 @@ const ParentDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                👨‍👩‍👧‍👦 Family Members ({children.length})
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-900">Family Members ({children.length})</h2>
               <button
                 onClick={() => setShowAddChildModal(true)}
                 className="btn-primary flex items-center gap-2"
@@ -245,24 +264,34 @@ const ParentDashboard: React.FC = () => {
 
           {/* Quick Actions */}
           <div className="card h-fit">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              ⚡ Quick Actions
-            </h3>
+            <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
             <div className="space-y-3">
-              <button className="btn-outline w-full text-left flex items-center gap-2 py-3">
-                <Calendar size={18} />
-                Create Assignment
+              <button
+                onClick={() => setShowAddChildModal(true)}
+                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+              >
+                <Plus size={18} />
+                Add Child
               </button>
-              <button className="btn-outline w-full text-left flex items-center gap-2 py-3">
+              <button
+                onClick={() => navigate('/stories')}
+                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+              >
                 <Book size={18} />
                 View Story Library
               </button>
-              <button className="btn-outline w-full text-left flex items-center gap-2 py-3">
+              <button
+                onClick={() => navigate('/assignments')}
+                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+              >
                 <TrendingUp size={18} />
-                View Analytics
+                Manage Assignments
               </button>
-              <button className="btn-outline w-full text-left flex items-center gap-2 py-3">
-                <Settings size={18} />
+              <button
+                onClick={() => navigate('/family-settings')}
+                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+              >
+                <Users size={18} />
                 Family Settings
               </button>
             </div>
@@ -271,18 +300,9 @@ const ParentDashboard: React.FC = () => {
 
         {/* Recent Activity */}
         <div className="card">
-          <h3 className="text-xl font-bold mb-4">📊 Recent Activity</h3>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-gradient-to-br from-nestory-200 to-blue-200 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">Activity {i}</p>
-                  <p className="text-sm text-gray-600">No activities yet</p>
-                </div>
-                <span className="text-xs text-gray-500">Just now</span>
-              </div>
-            ))}
+          <h3 className="text-xl font-bold mb-4">Recent Activity</h3>
+          <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center">
+            <p className="text-gray-600">No activity yet. Start by assigning a story to your child.</p>
           </div>
         </div>
       </div>
@@ -324,8 +344,14 @@ const ParentDashboard: React.FC = () => {
             label="Child's Name"
             name="name"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, name: e.target.value });
+              if (formErrors.name) {
+                setFormErrors((prev) => ({ ...prev, name: '' }));
+              }
+            }}
             placeholder="e.g., Emma"
+            error={formErrors.name}
             required
           />
 
@@ -335,9 +361,16 @@ const ParentDashboard: React.FC = () => {
             name="age"
             type="number"
             value={formData.age}
-            onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) })}
+            onChange={(e) => {
+              const value = parseInt(e.target.value, 10);
+              setFormData({ ...formData, age: Number.isNaN(value) ? 0 : value });
+              if (formErrors.age) {
+                setFormErrors((prev) => ({ ...prev, age: '' }));
+              }
+            }}
             min="1"
             max="18"
+            error={formErrors.age}
             required
           />
 
