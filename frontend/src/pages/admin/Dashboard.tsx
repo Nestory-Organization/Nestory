@@ -1,10 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
 import { Users, Settings, BookOpen, Activity } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   return (
@@ -44,7 +46,7 @@ const AdminDashboard: React.FC = () => {
               <h2 className="text-xl font-bold text-gray-900">Story Management</h2>
             </div>
             <div className="space-y-3">
-              <button className="btn-primary w-full">Browse Stories</button>
+              <button className="btn-primary w-full" onClick={() => navigate('/admin/stories')}>Browse Stories</button>
               <button className="btn-outline w-full">Import from Google Books</button>
               <button className="btn-outline w-full">Manage Categories</button>
             </div>

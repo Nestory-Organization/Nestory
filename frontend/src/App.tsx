@@ -11,8 +11,11 @@ import ParentDashboard from './pages/parent/Dashboard';
 import StoriesPage from './pages/parent/StoriesPage';
 import StoryDetailPage from './pages/parent/StoryDetailPage';
 import ChildDetailPage from './pages/parent/ChildDetailPage';
+import AssignmentsPage from './pages/parent/AssignmentsPage';
+import FamilySettingsPage from './pages/parent/FamilySettingsPage';
 import ChildDashboard from './pages/child/Dashboard';
 import AdminDashboard from './pages/admin/Dashboard';
+import StoryManagementPage from './pages/admin/StoryManagementPage';
 
 // Loading component
 const LoadingScreen: React.FC = () => (
@@ -95,11 +98,16 @@ const AppContent: React.FC = () => {
           <Route path="/stories" element={<StoriesPage />} />
           <Route path="/story/:storyId" element={<StoryDetailPage />} />
           <Route path="/child/:childId" element={<ChildDetailPage />} />
+          <Route path="/assignments" element={<AssignmentsPage />} />
+          <Route path="/family-settings" element={<FamilySettingsPage />} />
         </>
       )}
 
       {isAuthenticated && user?.role === 'admin' && (
-        <Route path="/admin" element={<AdminDashboard />} />
+        <>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/stories" element={<StoryManagementPage />} />
+        </>
       )}
 
       {/* Catch-all route */}

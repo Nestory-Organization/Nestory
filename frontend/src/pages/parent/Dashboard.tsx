@@ -280,9 +280,19 @@ const ParentDashboard: React.FC = () => {
                 <Book size={18} />
                 View Story Library
               </button>
-              <button className="btn-outline w-full text-left flex items-center gap-2 py-3" disabled>
+              <button
+                onClick={() => navigate('/assignments')}
+                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+              >
                 <TrendingUp size={18} />
-                Analytics (Soon)
+                Manage Assignments
+              </button>
+              <button
+                onClick={() => navigate('/family-settings')}
+                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+              >
+                <Users size={18} />
+                Family Settings
               </button>
             </div>
           </div>
