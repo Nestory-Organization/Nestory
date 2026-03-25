@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import toast from 'react-hot-toast';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -26,12 +27,21 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {
-        if (error.response?.status === 401) {
-          // Token expired or invalid - clear storage and redirect to login
+        const status = error.response?.status;
+        const requestUrl = error.config?.url || '';
+        const isAuthEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+        if (status === 401 && !isAuthEndpoint && localStorage.getItem('token')) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           window.location.href = '/login';
         }
+
+        if (status === 403) {
+          const apiMessage = (error.response?.data as any)?.message;
+          toast.error(apiMessage || 'You are not allowed to perform this action');
+        }
+
         return Promise.reject(error);
       }
     );

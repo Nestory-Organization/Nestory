@@ -12,7 +12,7 @@ const RegisterPage: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'user' as 'user' | 'admin',
+    role: 'parent' as 'parent' | 'admin',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
@@ -67,17 +67,7 @@ const RegisterPage: React.FC = () => {
         role: formData.role,
       });
       toast.success('Registration successful! Welcome to Nestory!');
-
-      const rawUser = localStorage.getItem('user');
-      let parsedUser: { role?: string } | null = null;
-      if (rawUser && rawUser !== 'undefined' && rawUser !== 'null') {
-        try {
-          parsedUser = JSON.parse(rawUser);
-        } catch {
-          parsedUser = null;
-        }
-      }
-      navigate(parsedUser?.role === 'admin' ? '/admin' : '/dashboard');
+      navigate('/');
     } catch (error: any) {
       const backendErrors = error?.response?.data?.errors;
       if (Array.isArray(backendErrors)) {
@@ -169,7 +159,7 @@ const RegisterPage: React.FC = () => {
                 disabled={isLoading}
                 title="Select account role"
               >
-                <option value="user">Parent/Guardian</option>
+                <option value="parent">Parent/Guardian</option>
                 <option value="admin">Administrator</option>
               </select>
             </div>

@@ -3,7 +3,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'user' | 'admin' | 'child';
+  role: 'parent' | 'admin' | 'child';
   profilePicture?: string;
   phoneNumber?: string;
   isActive: boolean;
@@ -25,7 +25,7 @@ export interface RegisterRequest {
   name: string;
   email: string;
   password: string;
-  role: 'user' | 'admin';
+  role: 'parent' | 'admin';
 }
 
 // Family & Child Types

@@ -51,17 +51,7 @@ const LoginPage: React.FC = () => {
     try {
       await login(formData);
       toast.success('Login successful!');
-
-      const rawUser = localStorage.getItem('user');
-      let parsedUser: { role?: string } | null = null;
-      if (rawUser && rawUser !== 'undefined' && rawUser !== 'null') {
-        try {
-          parsedUser = JSON.parse(rawUser);
-        } catch {
-          parsedUser = null;
-        }
-      }
-      navigate(parsedUser?.role === 'admin' ? '/admin' : '/dashboard');
+      navigate('/');
     } catch (error: any) {
       const backendErrors = error?.response?.data?.errors;
       if (Array.isArray(backendErrors)) {

@@ -6,7 +6,7 @@ interface BackendAuthPayload {
   id?: string;
   name: string;
   email: string;
-  role: 'user' | 'admin' | 'child';
+  role: 'user' | 'parent' | 'admin' | 'child';
   profilePicture?: string;
   phoneNumber?: string;
   isActive?: boolean;
@@ -16,12 +16,22 @@ interface BackendAuthPayload {
 }
 
 class AuthService {
+  private normalizeRole(role?: string): User['role'] {
+    if (role === 'user' || role === 'parent') return 'parent';
+    if (role === 'admin' || role === 'child') return role;
+    return 'parent';
+  }
+
+  private mapRegisterRoleForBackend(role: RegisterRequest['role']): 'user' | 'admin' {
+    return role === 'parent' ? 'user' : 'admin';
+  }
+
   private normalizeUser(payload: BackendAuthPayload): User {
     return {
       id: payload.id || payload._id || '',
       name: payload.name || '',
       email: payload.email || '',
-      role: payload.role || 'user',
+      role: this.normalizeRole(payload.role),
       profilePicture: payload.profilePicture,
       phoneNumber: payload.phoneNumber,
       isActive: payload.isActive ?? true,
@@ -33,7 +43,10 @@ class AuthService {
   async register(data: RegisterRequest): Promise<AuthResponse> {
     const response = await apiClient.getInstance().post<ApiResponse<BackendAuthPayload>>(
       '/auth/register',
-      data
+      {
+        ...data,
+        role: this.mapRegisterRoleForBackend(data.role),
+      }
     );
 
     const payload = response.data.data!;

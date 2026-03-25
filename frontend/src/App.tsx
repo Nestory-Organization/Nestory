@@ -13,7 +13,6 @@ import StoryDetailPage from './pages/parent/StoryDetailPage';
 import ChildDetailPage from './pages/parent/ChildDetailPage';
 import AssignmentsPage from './pages/parent/AssignmentsPage';
 import FamilySettingsPage from './pages/parent/FamilySettingsPage';
-import ChildDashboard from './pages/child/Dashboard';
 import AdminDashboard from './pages/admin/Dashboard';
 import StoryManagementPage from './pages/admin/StoryManagementPage';
 
@@ -54,11 +53,13 @@ const LoadingScreen: React.FC = () => (
 // Main App Component
 const AppContent: React.FC = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
-  const hasValidRole = user?.role === 'user' || user?.role === 'admin' || user?.role === 'child';
+  const isParentRole = user?.role === 'parent';
+  const hasValidRole = isParentRole || user?.role === 'admin' || user?.role === 'child';
 
   const getDefaultRoute = () => {
     if (!isAuthenticated || !hasValidRole) return '/login';
-    return user?.role === 'admin' ? '/admin' : '/dashboard';
+    if (user?.role === 'admin') return '/admin';
+    return '/dashboard';
   };
 
   if (isLoading) {
@@ -89,11 +90,11 @@ const AppContent: React.FC = () => {
       />
 
       {/* Authenticated routes based on role */}
-      {isAuthenticated && user?.role !== 'admin' && (
-        <Route path="/dashboard" element={user?.role === 'child' ? <ChildDashboard /> : <ParentDashboard />} />
+      {isAuthenticated && isParentRole && (
+        <Route path="/dashboard" element={<ParentDashboard />} />
       )}
 
-      {isAuthenticated && user?.role === 'user' && (
+      {isAuthenticated && isParentRole && (
         <>
           <Route path="/stories" element={<StoriesPage />} />
           <Route path="/story/:storyId" element={<StoryDetailPage />} />
