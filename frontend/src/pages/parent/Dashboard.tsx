@@ -8,6 +8,8 @@ import InputField from '../../components/common/InputField';
 import SelectField from '../../components/common/SelectField';
 import FamilyService from '../../services/familyService';
 import ChildService from '../../services/childService';
+import DashboardService from '../../services/dashboardService';
+import ReadingService from '../../services/readingService';
 import toast from 'react-hot-toast';
 import {
   Book,
@@ -25,6 +27,21 @@ const ParentDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddChildModal, setShowAddChildModal] = useState(false);
   const [editingChild, setEditingChild] = useState<Child | null>(null);
+  const [summaryStats, setSummaryStats] = useState({
+    totalAssignments: 0,
+    inProgress: 0,
+    completed: 0,
+  });
+  const [readingStats, setReadingStats] = useState({
+    weeklyMinutes: 0,
+    topStreak: 0,
+  });
+  const [recentAssignments, setRecentAssignments] = useState<Array<{
+    id: string;
+    childName: string;
+    storyTitle: string;
+    status: string;
+  }>>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -59,6 +76,52 @@ const ParentDashboard: React.FC = () => {
 
         const childrenData = await ChildService.getChildren();
         setChildren(childrenData);
+
+        const [summaryData, familyDashboardData] = await Promise.all([
+          DashboardService.getFamilySummary().catch(() => null),
+          DashboardService.getFamilyDashboard().catch(() => null),
+        ]);
+
+        if (summaryData) {
+          setSummaryStats({
+            totalAssignments: Number(summaryData.totalAssignments) || 0,
+            inProgress: Number(summaryData.in_progress) || 0,
+            completed: Number(summaryData.completed) || 0,
+          });
+        }
+
+        const rawRecent = Array.isArray((familyDashboardData as any)?.recentAssignments)
+          ? (familyDashboardData as any).recentAssignments
+          : [];
+
+        setRecentAssignments(
+          rawRecent.map((item: any) => ({
+            id: String(item?._id || item?.id || Math.random()),
+            childName: item?.child?.name || 'Unknown child',
+            storyTitle: item?.story?.title || 'Untitled story',
+            status: item?.status || 'assigned',
+          }))
+        );
+
+        if (childrenData.length > 0) {
+          const readingData = await Promise.all(
+            childrenData.map(async (child: Child) => {
+              const [weekly, streak] = await Promise.all([
+                ReadingService.getWeeklyReadingTime(child.id).catch(() => ({ totalTime: 0 })),
+                ReadingService.getReadingStreak(child.id).catch(() => ({ streak: 0 })),
+              ]);
+
+              return {
+                weeklyMinutes: Number(weekly?.totalTime) || 0,
+                streak: Number(streak?.streak) || 0,
+              };
+            })
+          );
+
+          const totalWeekly = readingData.reduce((sum, item) => sum + item.weeklyMinutes, 0);
+          const topStreak = readingData.reduce((max, item) => Math.max(max, item.streak), 0);
+          setReadingStats({ weeklyMinutes: totalWeekly, topStreak });
+        }
       } catch (error: any) {
         toast.error('Failed to load family data');
         console.error(error);
@@ -195,10 +258,10 @@ const ParentDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="Total Books Read"
-            value="0"
+            value={summaryStats.completed}
             icon={Book}
             color="blue"
-            subtext="This month"
+            subtext="Completed assignments"
           />
           <StatCard
             title="Active Children"
@@ -209,17 +272,17 @@ const ParentDashboard: React.FC = () => {
           />
           <StatCard
             title="Reading Streak"
-            value="0"
+            value={readingStats.topStreak}
             icon={TrendingUp}
             color="purple"
             subtext="Days"
           />
           <StatCard
             title="Total Hours"
-            value="0"
+            value={(readingStats.weeklyMinutes / 60).toFixed(1)}
             icon={Clock}
             color="orange"
-            subtext="This month"
+            subtext="Family this week"
           />
         </div>
 
@@ -301,9 +364,23 @@ const ParentDashboard: React.FC = () => {
         {/* Recent Activity */}
         <div className="card">
           <h3 className="text-xl font-bold mb-4">Recent Activity</h3>
-          <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center">
-            <p className="text-gray-600">No activity yet. Start by assigning a story to your child.</p>
-          </div>
+          {recentAssignments.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center">
+              <p className="text-gray-600">No activity yet. Start by assigning a story to your child.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentAssignments.map((activity) => (
+                <div key={activity.id} className="rounded-lg border border-gray-200 p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-gray-900">{activity.childName} • {activity.storyTitle}</p>
+                    <p className="text-sm text-gray-600 capitalize">Status: {activity.status.replace('_', ' ')}</p>
+                  </div>
+                  <span className="badge bg-nestory-100 text-nestory-800 capitalize">{activity.status.replace('_', ' ')}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

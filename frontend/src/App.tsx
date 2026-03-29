@@ -15,6 +15,7 @@ import AssignmentsPage from './pages/parent/AssignmentsPage';
 import FamilySettingsPage from './pages/parent/FamilySettingsPage';
 import AdminDashboard from './pages/admin/Dashboard';
 import StoryManagementPage from './pages/admin/StoryManagementPage';
+import ChildDashboard from './pages/child/Dashboard';
 
 // Loading component
 const LoadingScreen: React.FC = () => (
@@ -59,6 +60,7 @@ const AppContent: React.FC = () => {
   const getDefaultRoute = () => {
     if (!isAuthenticated || !hasValidRole) return '/login';
     if (user?.role === 'admin') return '/admin';
+    if (user?.role === 'child') return '/child';
     return '/dashboard';
   };
 
@@ -109,6 +111,10 @@ const AppContent: React.FC = () => {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/stories" element={<StoryManagementPage />} />
         </>
+      )}
+
+      {isAuthenticated && user?.role === 'child' && (
+        <Route path="/child" element={<ChildDashboard />} />
       )}
 
       {/* Catch-all route */}
