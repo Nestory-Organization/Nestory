@@ -221,6 +221,8 @@ const StoryManagementPage: React.FC = () => {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
             <textarea
+              title="Story description"
+              placeholder="Write a short summary of the story"
               className="input-base min-h-24"
               value={formData.description}
               onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}

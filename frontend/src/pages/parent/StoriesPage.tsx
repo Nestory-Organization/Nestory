@@ -129,11 +129,10 @@ const StoriesPage: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 mb-8">
-            {filteredStories.map((story, index) => (
+            {filteredStories.map((story) => (
               <div
                 key={story.id}
                 className="animate-slide-up"
-                style={{ animationDelay: `${index * 50}ms` }}
               >
                 <StoryCard
                   story={story}
