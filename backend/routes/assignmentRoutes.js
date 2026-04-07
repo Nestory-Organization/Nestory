@@ -7,6 +7,7 @@ const {
   getAssignmentsByChild,
   getFamilyDashboard,
   getAssignmentById,
+  updateAssignmentDetails,
   updateAssignmentStatus,
   deleteAssignment,
 } = require("../controllers/assignmentController");
@@ -19,6 +20,7 @@ const {
   listAssignmentsQueryValidation,
   updateStatusValidation,
   bulkUpdateStatusValidation,
+  updateAssignmentDetailsValidation,
   assignmentIdParamValidation,
   childIdParamValidation,
 } = require("../validators/assignmentValidator");
@@ -64,6 +66,15 @@ router.get(
   assignmentIdParamValidation,
   handleValidationErrors,
   getAssignmentById,
+);
+router.put(
+  "/:id",
+  protect,
+  parentOnly,
+  assignmentIdParamValidation,
+  updateAssignmentDetailsValidation,
+  handleValidationErrors,
+  updateAssignmentDetails,
 );
 router.put(
   "/:id/status",

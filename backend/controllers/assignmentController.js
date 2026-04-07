@@ -457,6 +457,73 @@ exports.getAssignmentById = async (req, res) => {
   }
 };
 
+// @desc    Update assignment details (due date, notes)
+// @route   PUT /api/assignments/:id
+// @access  Private
+exports.updateAssignmentDetails = async (req, res) => {
+  try {
+    const { dueDate, notes } = req.body;
+
+    const assignment = await Assignment.findById(req.params.id);
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment not found",
+      });
+    }
+
+    if (assignment.assignedBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update this assignment",
+      });
+    }
+
+    const parentOwnsFamily = await ensureParentOwnsFamily(
+      assignment.family,
+      req.user._id,
+    );
+    if (!parentOwnsFamily) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update this assignment",
+      });
+    }
+
+    if (typeof dueDate !== "undefined") {
+      assignment.dueDate = dueDate ? new Date(dueDate) : null;
+    }
+
+    if (typeof notes !== "undefined") {
+      assignment.notes = notes || "";
+    }
+
+    await assignment.save();
+
+    await assignment.populate([
+      { path: "child", select: "name age" },
+      {
+        path: "story",
+        select: "title author ageGroup coverImage readingLevel",
+      },
+      { path: "assignedBy", select: "name email" },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Assignment details updated successfully",
+      data: withDueMetadata(assignment),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 // @desc    Update assignment status
 // @route   PUT /api/assignments/:id/status
 // @access  Private

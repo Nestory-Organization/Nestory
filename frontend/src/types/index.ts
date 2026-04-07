@@ -102,6 +102,17 @@ export interface Assignment {
   dueDate?: string;
   completedAt?: string;
   notes?: string;
+  dueState?: 'none' | 'overdue' | 'due_soon' | 'upcoming';
+  isOverdue?: boolean;
+  isDueSoon?: boolean;
+  daysUntilDue?: number | null;
+  dueMeta?: {
+    hasDueDate: boolean;
+    isOverdue: boolean;
+    isDueSoon: boolean;
+    daysUntilDue: number | null;
+    dueState: 'none' | 'overdue' | 'due_soon' | 'upcoming';
+  };
   createdAt: string;
   updatedAt: string;
   child?: {
@@ -123,6 +134,28 @@ export interface Assignment {
 }
 
 export type AssignmentStatus = 'assigned' | 'in_progress' | 'completed';
+
+export type AssignmentDueState = 'all' | 'overdue' | 'due_soon' | 'upcoming' | 'none';
+
+export interface AssignmentPagination {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface AssignmentListMetadata {
+  overdueCount: number;
+  dueSoonCount: number;
+}
+
+export interface AssignmentListResult {
+  data: Assignment[];
+  pagination: AssignmentPagination;
+  metadata: AssignmentListMetadata;
+}
 
 export interface AssignmentStats {
   total: number;

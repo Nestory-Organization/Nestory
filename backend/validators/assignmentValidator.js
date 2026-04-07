@@ -41,6 +41,24 @@ exports.updateStatusValidation = [
     .withMessage("Status must be one of: assigned, in_progress, completed"),
 ];
 
+exports.updateAssignmentDetailsValidation = [
+  body("dueDate")
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601()
+    .withMessage("Due date must be a valid date (YYYY-MM-DD)")
+    .custom((value) => {
+      if (value && new Date(value) < new Date()) {
+        throw new Error("Due date cannot be in the past");
+      }
+      return true;
+    }),
+  body("notes")
+    .optional()
+    .trim()
+    .isLength({ max: 300 })
+    .withMessage("Notes cannot exceed 300 characters"),
+];
+
 exports.assignmentIdParamValidation = [
   param("id").isMongoId().withMessage("Invalid assignment ID format"),
 ];
