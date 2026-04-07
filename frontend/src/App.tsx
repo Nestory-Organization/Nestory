@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AssignmentDetailProvider } from './contexts/AssignmentDetailContext';
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -101,7 +102,14 @@ const AppContent: React.FC = () => {
           <Route path="/stories" element={<StoriesPage />} />
           <Route path="/story/:storyId" element={<StoryDetailPage />} />
           <Route path="/child/:childId" element={<ChildDetailPage />} />
-          <Route path="/assignments" element={<AssignmentsPage />} />
+          <Route
+            path="/assignments"
+            element={
+              <AssignmentDetailProvider>
+                <AssignmentsPage />
+              </AssignmentDetailProvider>
+            }
+          />
           <Route path="/family-settings" element={<FamilySettingsPage />} />
         </>
       )}
