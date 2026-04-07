@@ -3,6 +3,8 @@ import toast from 'react-hot-toast';
 import Navbar from '../../components/common/Navbar';
 import SelectField from '../../components/common/SelectField';
 import InputField from '../../components/common/InputField';
+import { ArrowRight, Library, RotateCcw, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import AssignmentService from '../../services/assignmentService';
 import ChildService from '../../services/childService';
 import StoryService from '../../services/storyService';
@@ -64,6 +66,7 @@ const getDueTone = (assignment: Assignment): { label: string; classes: string } 
 };
 
 const AssignmentsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [children, setChildren] = useState<Child[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [selectedChildId, setSelectedChildId] = useState('');
@@ -148,6 +151,16 @@ const AssignmentsPage: React.FC = () => {
   const selectedAssignmentPreview = useMemo(() => {
     return assignments.find((item) => item.id === selectedAssignmentId) || null;
   }, [assignments, selectedAssignmentId]);
+
+  const statusCounts = useMemo(() => {
+    const base = { assigned: 0, inProgress: 0, completed: 0 };
+    for (const assignment of assignments) {
+      if (assignment.status === 'assigned') base.assigned += 1;
+      if (assignment.status === 'in_progress') base.inProgress += 1;
+      if (assignment.status === 'completed') base.completed += 1;
+    }
+    return base;
+  }, [assignments]);
 
   const detailToRender = assignmentDetail || selectedAssignmentPreview;
 
@@ -354,6 +367,22 @@ const AssignmentsPage: React.FC = () => {
     }
   };
 
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setDueStateFilter('all');
+    setSortBy('createdAt');
+    setSortOrder('desc');
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters =
+    searchTerm.trim().length > 0 ||
+    statusFilter !== 'all' ||
+    dueStateFilter !== 'all' ||
+    sortBy !== 'createdAt' ||
+    sortOrder !== 'desc';
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -370,13 +399,23 @@ const AssignmentsPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar title="Assignments" />
       <div className="container-responsive py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">Manage Assignments</h1>
-          <p className="text-gray-600">Create, search, filter, and manage child assignments with live updates.</p>
+        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">Manage Assignments</h1>
+            <p className="text-gray-600">Create, search, filter, and manage child assignments with live updates.</p>
+          </div>
+          <button
+            className="btn-secondary flex items-center gap-2"
+            onClick={() => navigate('/stories')}
+          >
+            <Library size={16} />
+            View Story Library
+          </button>
         </div>
 
         <div className="card mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Create Assignment</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Create Assignment</h2>
+          <p className="text-sm text-gray-600 mb-4">Assign a story quickly, then track and update progress from one place.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <SelectField
               label="Child"
@@ -427,8 +466,26 @@ const AssignmentsPage: React.FC = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="card xl:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Assigned</p>
+            <p className="text-2xl font-bold text-blue-900 mt-1">{statusCounts.assigned}</p>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">In Progress</p>
+            <p className="text-2xl font-bold text-amber-900 mt-1">{statusCounts.inProgress}</p>
+          </div>
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Completed</p>
+            <p className="text-2xl font-bold text-green-900 mt-1">{statusCounts.completed}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Visible Results</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{filteredAssignments.length}</p>
+          </div>
+        </div>
+
+        <div className="card">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
               <h2 className="text-xl font-bold text-gray-900">Assignments</h2>
               <div className="w-full lg:w-64">
@@ -443,6 +500,19 @@ const AssignmentsPage: React.FC = () => {
                   options={childOptions}
                 />
               </div>
+            </div>
+
+            <div className="mb-4 rounded-lg border border-nestory-200 bg-nestory-50/60 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <p className="text-sm text-nestory-900 flex items-center gap-2">
+                <Sparkles size={16} className="text-nestory-700" />
+                Focused on <span className="font-semibold">{children.find((child) => child.id === selectedChildId)?.name || 'selected child'}</span>
+              </p>
+              <button
+                className="text-sm font-semibold text-nestory-700 hover:text-nestory-800"
+                onClick={() => navigate('/dashboard')}
+              >
+                Go to child dashboards
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 mb-5">
@@ -476,7 +546,7 @@ const AssignmentsPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Due State</label>
-              <SelectField
+                <SelectField
                   name="dueState"
                   value={dueStateFilter}
                   onChange={(e) => {
@@ -502,6 +572,16 @@ const AssignmentsPage: React.FC = () => {
                   <option value={12}>12</option>
                   <option value={20}>20</option>
                 </select>
+              </div>
+              <div className="flex items-end">
+                <button
+                  className="btn-secondary w-full flex items-center justify-center gap-2"
+                  onClick={handleResetFilters}
+                  disabled={!hasActiveFilters}
+                >
+                  <RotateCcw size={14} />
+                  Reset
+                </button>
               </div>
             </div>
 
@@ -543,7 +623,13 @@ const AssignmentsPage: React.FC = () => {
             {isListLoading ? (
               <p className="text-gray-600">Loading assignment list...</p>
             ) : filteredAssignments.length === 0 ? (
-              <p className="text-gray-600">No assignments match your current filters.</p>
+              <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center">
+                <p className="text-gray-700 font-semibold mb-1">No assignments match your current filters.</p>
+                <p className="text-sm text-gray-600 mb-4">Try resetting filters or create a new assignment for this child.</p>
+                <button className="btn-secondary" onClick={handleResetFilters}>
+                  Clear filters
+                </button>
+              </div>
             ) : (
               <div className="space-y-3">
                 {filteredAssignments.map((assignment) => {
@@ -583,10 +669,14 @@ const AssignmentsPage: React.FC = () => {
                             className="btn-secondary"
                             disabled={isDeleting}
                             onClick={() => {
+                              if (selectedAssignmentId === assignment.id) {
+                                clearSelection();
+                                return;
+                              }
                               void selectAssignment(assignment.id);
                             }}
                           >
-                            Details
+                            {selectedAssignmentId === assignment.id ? 'Hide Details' : 'Details'}
                           </button>
                           <button className="btn-danger" disabled={isDeleting} onClick={() => handleDelete(assignment.id)}>
                             {isDeleting ? 'Deleting...' : 'Delete'}
@@ -595,6 +685,103 @@ const AssignmentsPage: React.FC = () => {
                       </div>
 
                       {assignment.notes && <p className="text-sm text-gray-600 mt-2 line-clamp-2">{assignment.notes}</p>}
+
+                      <button
+                        className="mt-3 text-sm font-semibold text-nestory-700 hover:text-nestory-800 inline-flex items-center gap-1"
+                        onClick={() => {
+                          if (selectedAssignmentId === assignment.id) {
+                            clearSelection();
+                            return;
+                          }
+                          void selectAssignment(assignment.id);
+                        }}
+                      >
+                        {selectedAssignmentId === assignment.id ? 'Collapse details' : 'Open assignment details'} <ArrowRight size={14} />
+                      </button>
+
+                      {selectedAssignmentId === assignment.id && (
+                        <div className="mt-4 rounded-lg border border-nestory-200 bg-nestory-50/40 p-4">
+                          {isLoadingDetail ? (
+                            <p className="text-sm text-gray-600">Loading details...</p>
+                          ) : detailError ? (
+                            <div>
+                              <p className="text-sm text-red-600 mb-2">{detailError}</p>
+                              <button
+                                className="btn-secondary"
+                                onClick={() => {
+                                  void refreshSelectedAssignment();
+                                }}
+                              >
+                                Retry
+                              </button>
+                            </div>
+                          ) : detailToRender ? (
+                            <div className="space-y-3 text-sm">
+                              <div>
+                                <p className="text-gray-500">Story</p>
+                                <p className="font-semibold text-gray-900">{detailToRender.story?.title || 'Untitled story'}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Due Date</p>
+                                <p className={`font-semibold ${isOverdueAssignment(detailToRender) ? 'text-red-700' : 'text-gray-900'}`}>
+                                  {formatDueDate(detailToRender.dueDate)}
+                                </p>
+                              </div>
+                              <div>
+                                <label className="block text-gray-500 mb-1">Update Due Date</label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="date"
+                                    className="input-base"
+                                    value={detailDueDateDraft}
+                                    onChange={(e) => setDetailDueDateDraft(e.target.value)}
+                                    title="Update assignment due date"
+                                  />
+                                  <button
+                                    className="btn-primary"
+                                    disabled={isSavingDetail || !selectedAssignmentId}
+                                    onClick={handleSaveDetailDueDate}
+                                  >
+                                    {isSavingDetail ? 'Saving...' : 'Save'}
+                                  </button>
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Status</p>
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    className="input-base"
+                                    value={detailStatusDraft}
+                                    onChange={(e) => setDetailStatusDraft(e.target.value as AssignmentStatus)}
+                                    title="Update assignment status"
+                                  >
+                                    {statusOptions.map((option) => (
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    className="btn-primary"
+                                    disabled={isSavingDetail || !selectedAssignmentId || detailStatusDraft === detailToRender.status}
+                                    onClick={handleSaveDetailStatus}
+                                  >
+                                    {isSavingDetail ? 'Saving...' : 'Save Status'}
+                                  </button>
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Notes</p>
+                                <p className="text-gray-800 whitespace-pre-wrap">
+                                  {detailToRender.notes?.trim() || 'No notes added for this assignment.'}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-600">No details available.</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -622,95 +809,6 @@ const AssignmentsPage: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
-
-          <div className="card h-fit">
-            <h3 className="text-lg font-bold text-gray-900 mb-3">Assignment Details</h3>
-            {!selectedAssignmentId ? (
-              <p className="text-sm text-gray-600">Select an assignment to view notes and due date context.</p>
-            ) : isLoadingDetail ? (
-              <p className="text-sm text-gray-600">Loading details...</p>
-            ) : detailToRender ? (
-              <div className="space-y-3 text-sm">
-                <div>
-                  <p className="text-gray-500">Story</p>
-                  <p className="font-semibold text-gray-900">{detailToRender.story?.title || 'Untitled story'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Due Date</p>
-                  <p className={`font-semibold ${isOverdueAssignment(detailToRender) ? 'text-red-700' : 'text-gray-900'}`}>
-                    {formatDueDate(detailToRender.dueDate)}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-gray-500 mb-1">Update Due Date</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      className="input-base"
-                      value={detailDueDateDraft}
-                      onChange={(e) => setDetailDueDateDraft(e.target.value)}
-                      title="Update assignment due date"
-                    />
-                    <button
-                      className="btn-primary"
-                      disabled={isSavingDetail || !selectedAssignmentId}
-                      onClick={handleSaveDetailDueDate}
-                    >
-                      {isSavingDetail ? 'Saving...' : 'Save'}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-gray-500">Status</p>
-                  <div className="flex items-center gap-2">
-                    <select
-                      className="input-base"
-                      value={detailStatusDraft}
-                      onChange={(e) => setDetailStatusDraft(e.target.value as AssignmentStatus)}
-                      title="Update assignment status"
-                    >
-                      {statusOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="btn-primary"
-                      disabled={isSavingDetail || !selectedAssignmentId || detailStatusDraft === detailToRender.status}
-                      onClick={handleSaveDetailStatus}
-                    >
-                      {isSavingDetail ? 'Saving...' : 'Save Status'}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-gray-500">Notes</p>
-                  <p className="text-gray-800 whitespace-pre-wrap">
-                    {detailToRender.notes?.trim() || 'No notes added for this assignment.'}
-                  </p>
-                </div>
-                <button className="btn-secondary w-full" onClick={() => clearSelection()}>
-                  Close Details
-                </button>
-              </div>
-            ) : detailError ? (
-              <div>
-                <p className="text-sm text-red-600 mb-2">{detailError}</p>
-                <button
-                  className="btn-secondary"
-                  onClick={() => {
-                    void refreshSelectedAssignment();
-                  }}
-                >
-                  Retry
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-600">No details available.</p>
-            )}
-          </div>
         </div>
       </div>
     </div>
