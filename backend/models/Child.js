@@ -17,6 +17,12 @@ const childSchema = new mongoose.Schema(
     avatar: {
       type: String,
       default: "",
+      maxlength: [2048, "Avatar value is too long"],
+    },
+    readingLevel: {
+      type: String,
+      enum: ["beginner", "intermediate", "advanced"],
+      default: "beginner",
     },
     family: {
       type: mongoose.Schema.Types.ObjectId,

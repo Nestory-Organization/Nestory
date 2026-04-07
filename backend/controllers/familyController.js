@@ -1,4 +1,5 @@
 const Family = require("../models/Family");
+const mongoose = require("mongoose");
 require("../models/Child"); // Register Child model so populate('children') works
 const { normalizeFamily } = require("../utils/contractTransformers");
 // @desc    Create a new family group
@@ -45,7 +46,7 @@ exports.getMyFamily = async (req, res) => {
   try {
     const family = await Family.findOne({ parent: req.user._id }).populate(
       "children",
-      "name age avatar isActive",
+      "name age avatar readingLevel isActive",
     );
 
     if (!family) {
@@ -75,9 +76,16 @@ exports.getMyFamily = async (req, res) => {
 // @access  Private
 exports.getFamilyById = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid family ID format",
+      });
+    }
+
     const family = await Family.findById(req.params.id).populate(
       "children",
-      "name age avatar isActive",
+      "name age avatar readingLevel isActive",
     );
 
     if (!family) {
@@ -116,6 +124,13 @@ exports.getFamilyById = async (req, res) => {
 exports.updateFamily = async (req, res) => {
   try {
     const { familyName } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid family ID format",
+      });
+    }
 
     const family = await Family.findById(req.params.id);
 
@@ -157,6 +172,13 @@ exports.updateFamily = async (req, res) => {
 // @access  Private
 exports.deleteFamily = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid family ID format",
+      });
+    }
+
     const family = await Family.findById(req.params.id);
 
     if (!family) {

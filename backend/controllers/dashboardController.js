@@ -1,12 +1,13 @@
-const Family = require('../models/Family');
-const Child = require('../models/Child');
-const Assignment = require('../models/Assignment');
-require('../models/storyLibrary/Story'); // Register Story model for populate
+const Family = require("../models/Family");
+const Child = require("../models/Child");
+const Assignment = require("../models/Assignment");
+const mongoose = require("mongoose");
+require("../models/storyLibrary/Story"); // Register Story model for populate
 const {
   normalizeAssignment,
   normalizeAssignmentStats,
   getId,
-} = require('../utils/contractTransformers');
+} = require("../utils/contractTransformers");
 
 // @desc    Get full family reading dashboard
 // @route   GET /api/dashboard/family
@@ -18,7 +19,7 @@ exports.getFamilyDashboard = async (req, res) => {
     if (!family) {
       return res.status(404).json({
         success: false,
-        message: 'No family group found. Please create a family group first.'
+        message: "No family group found. Please create a family group first.",
       });
     }
 
@@ -30,10 +31,17 @@ exports.getFamilyDashboard = async (req, res) => {
       children.map(async (child) => {
         const assignments = await Assignment.find({ child: child._id });
         const total = assignments.length;
-        const assigned = assignments.filter((a) => a.status === 'assigned').length;
-        const inProgress = assignments.filter((a) => a.status === 'in_progress').length;
-        const completed = assignments.filter((a) => a.status === 'completed').length;
-        const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+        const assigned = assignments.filter(
+          (a) => a.status === "assigned",
+        ).length;
+        const inProgress = assignments.filter(
+          (a) => a.status === "in_progress",
+        ).length;
+        const completed = assignments.filter(
+          (a) => a.status === "completed",
+        ).length;
+        const completionRate =
+          total > 0 ? Math.round((completed / total) * 100) : 0;
 
         return {
           childId: child._id,
@@ -46,43 +54,53 @@ exports.getFamilyDashboard = async (req, res) => {
             assigned,
             in_progress: inProgress,
             completed,
-            completionRate
-          })
+            completionRate,
+          }),
         };
-      })
+      }),
     );
 
     // Overall family totals across all children
     const allAssignments = await Assignment.find({ family: family._id });
     const overallTotal = allAssignments.length;
-    const overallAssigned = allAssignments.filter((a) => a.status === 'assigned').length;
-    const overallInProgress = allAssignments.filter((a) => a.status === 'in_progress').length;
-    const overallCompleted = allAssignments.filter((a) => a.status === 'completed').length;
+    const overallAssigned = allAssignments.filter(
+      (a) => a.status === "assigned",
+    ).length;
+    const overallInProgress = allAssignments.filter(
+      (a) => a.status === "in_progress",
+    ).length;
+    const overallCompleted = allAssignments.filter(
+      (a) => a.status === "completed",
+    ).length;
     const overallCompletionRate =
-      overallTotal > 0 ? Math.round((overallCompleted / overallTotal) * 100) : 0;
+      overallTotal > 0
+        ? Math.round((overallCompleted / overallTotal) * 100)
+        : 0;
 
     // Most active reader (child with most completions)
     const mostActiveReader =
       childStats.length > 0
         ? childStats.reduce((best, child) =>
-            child.assignments.completed > best.assignments.completed ? child : best
+            child.assignments.completed > best.assignments.completed
+              ? child
+              : best,
           )
         : null;
 
     // Recent 5 assignments across the whole family
     const recentAssignmentsRaw = await Assignment.find({ family: family._id })
-      .populate('child', 'name age avatar')
-      .populate('story', 'title author coverImage ageGroup')
+      .populate("child", "name age avatar")
+      .populate("story", "title author coverImage ageGroup")
       .sort({ createdAt: -1 })
       .limit(5);
 
     // Recent 5 completions
     const recentCompletionsRaw = await Assignment.find({
       family: family._id,
-      status: 'completed'
+      status: "completed",
     })
-      .populate('child', 'name age avatar')
-      .populate('story', 'title author coverImage ageGroup')
+      .populate("child", "name age avatar")
+      .populate("story", "title author coverImage ageGroup")
       .sort({ completedAt: -1 })
       .limit(5);
 
@@ -91,40 +109,40 @@ exports.getFamilyDashboard = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Family dashboard retrieved successfully',
+      message: "Family dashboard retrieved successfully",
       data: {
         family: {
           familyId: family._id,
           id: getId(family),
           familyName: family.familyName,
-          totalChildren: children.length
+          totalChildren: children.length,
         },
         overallStats: normalizeAssignmentStats({
           total: overallTotal,
           assigned: overallAssigned,
           in_progress: overallInProgress,
           completed: overallCompleted,
-          completionRate: overallCompletionRate
+          completionRate: overallCompletionRate,
         }),
         mostActiveReader: mostActiveReader
           ? {
               childId: mostActiveReader.childId,
               id: mostActiveReader.id,
               name: mostActiveReader.name,
-              completedStories: mostActiveReader.assignments.completed
+              completedStories: mostActiveReader.assignments.completed,
             }
           : null,
         children: childStats,
         recentAssignments,
-        recentCompletions
-      }
+        recentCompletions,
+      },
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -134,15 +152,22 @@ exports.getFamilyDashboard = async (req, res) => {
 // @access  Private
 exports.getChildDashboard = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.childId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid child ID format",
+      });
+    }
+
     const child = await Child.findById(req.params.childId).populate(
-      'family',
-      'familyName'
+      "family",
+      "familyName",
     );
 
     if (!child) {
       return res.status(404).json({
         success: false,
-        message: 'Child not found'
+        message: "Child not found",
       });
     }
 
@@ -150,40 +175,44 @@ exports.getChildDashboard = async (req, res) => {
     if (child.parent.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to view this child\'s dashboard'
+        message: "Not authorized to view this child's dashboard",
       });
     }
 
     // Get all assignments split by status
-    const [assignedStories, inProgressStories, completedStories] = await Promise.all([
-      Assignment.find({ child: child._id, status: 'assigned' })
-        .populate('story', 'title author coverImage ageGroup readingLevel')
-        .sort({ createdAt: -1 }),
-      Assignment.find({ child: child._id, status: 'in_progress' })
-        .populate('story', 'title author coverImage ageGroup readingLevel')
-        .sort({ createdAt: -1 }),
-      Assignment.find({ child: child._id, status: 'completed' })
-        .populate('story', 'title author coverImage ageGroup readingLevel')
-        .sort({ completedAt: -1 })
-    ]);
+    const [assignedStories, inProgressStories, completedStories] =
+      await Promise.all([
+        Assignment.find({ child: child._id, status: "assigned" })
+          .populate("story", "title author coverImage ageGroup readingLevel")
+          .sort({ createdAt: -1 }),
+        Assignment.find({ child: child._id, status: "in_progress" })
+          .populate("story", "title author coverImage ageGroup readingLevel")
+          .sort({ createdAt: -1 }),
+        Assignment.find({ child: child._id, status: "completed" })
+          .populate("story", "title author coverImage ageGroup readingLevel")
+          .sort({ completedAt: -1 }),
+      ]);
 
-    const total = assignedStories.length + inProgressStories.length + completedStories.length;
+    const total =
+      assignedStories.length +
+      inProgressStories.length +
+      completedStories.length;
     const completionRate =
       total > 0 ? Math.round((completedStories.length / total) * 100) : 0;
 
     // Upcoming due dates (assigned or in_progress with a dueDate set)
     const upcomingDue = await Assignment.find({
       child: child._id,
-      status: { $in: ['assigned', 'in_progress'] },
-      dueDate: { $ne: null }
+      status: { $in: ["assigned", "in_progress"] },
+      dueDate: { $ne: null },
     })
-      .populate('story', 'title author')
+      .populate("story", "title author")
       .sort({ dueDate: 1 })
       .limit(3);
 
     res.status(200).json({
       success: true,
-      message: 'Child dashboard retrieved successfully',
+      message: "Child dashboard retrieved successfully",
       data: {
         child: {
           childId: child._id,
@@ -191,27 +220,27 @@ exports.getChildDashboard = async (req, res) => {
           name: child.name,
           age: child.age,
           avatar: child.avatar,
-          family: child.family
+          family: child.family,
         },
         stats: normalizeAssignmentStats({
           total,
           assigned: assignedStories.length,
           in_progress: inProgressStories.length,
           completed: completedStories.length,
-          completionRate
+          completionRate,
         }),
         upcomingDue: upcomingDue.map(normalizeAssignment),
         assignedStories: assignedStories.map(normalizeAssignment),
         inProgressStories: inProgressStories.map(normalizeAssignment),
-        completedStories: completedStories.map(normalizeAssignment)
-      }
+        completedStories: completedStories.map(normalizeAssignment),
+      },
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -225,25 +254,32 @@ exports.getFamilySummary = async (req, res) => {
     if (!family) {
       return res.status(404).json({
         success: false,
-        message: 'No family group found. Please create a family group first.'
+        message: "No family group found. Please create a family group first.",
       });
     }
 
     const allAssignments = await Assignment.find({ family: family._id });
     const total = allAssignments.length;
-    const assigned = allAssignments.filter((a) => a.status === 'assigned').length;
-    const inProgress = allAssignments.filter((a) => a.status === 'in_progress').length;
-    const completed = allAssignments.filter((a) => a.status === 'completed').length;
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const assigned = allAssignments.filter(
+      (a) => a.status === "assigned",
+    ).length;
+    const inProgress = allAssignments.filter(
+      (a) => a.status === "in_progress",
+    ).length;
+    const completed = allAssignments.filter(
+      (a) => a.status === "completed",
+    ).length;
+    const completionRate =
+      total > 0 ? Math.round((completed / total) * 100) : 0;
 
     const totalChildren = await Child.countDocuments({
       parent: req.user._id,
-      isActive: true
+      isActive: true,
     });
 
     res.status(200).json({
       success: true,
-      message: 'Family summary retrieved successfully',
+      message: "Family summary retrieved successfully",
       data: {
         familyName: family.familyName,
         familyId: getId(family),
@@ -254,15 +290,15 @@ exports.getFamilySummary = async (req, res) => {
         inProgress,
         completed,
         completionRate,
-        completionRateLabel: `${completionRate}%`
-      }
+        completionRateLabel: `${completionRate}%`,
+      },
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };

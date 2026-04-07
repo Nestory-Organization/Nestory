@@ -1,12 +1,17 @@
 const Assignment = require("../models/Assignment");
 const Child = require("../models/Child");
 const Family = require("../models/Family");
-require("../models/storyLibrary/Story"); // Register Story model for populate
+const Story = require("../models/storyLibrary/Story");
 const {
   normalizeAssignment,
   normalizeAssignmentStats,
   getId,
 } = require("../utils/contractTransformers");
+
+const ensureParentOwnsFamily = async (familyId, userId) => {
+  const family = await Family.findById(familyId).select("parent");
+  return !!family && family.parent.toString() === userId.toString();
+};
 
 // @desc    Assign a story to a child
 // @route   POST /api/assignments
@@ -29,6 +34,25 @@ exports.createAssignment = async (req, res) => {
         success: false,
         message:
           "Not authorized. You can only assign stories to your own children.",
+      });
+    }
+
+    const parentOwnsFamily = await ensureParentOwnsFamily(
+      child.family,
+      req.user._id,
+    );
+    if (!parentOwnsFamily) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized. Child does not belong to your family.",
+      });
+    }
+
+    const story = await Story.findById(storyId).select("_id");
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: "Story not found",
       });
     }
 
@@ -207,6 +231,17 @@ exports.getAssignmentById = async (req, res) => {
       });
     }
 
+    const parentOwnsFamily = await ensureParentOwnsFamily(
+      assignment.family,
+      req.user._id,
+    );
+    if (!parentOwnsFamily) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to access this assignment",
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: "Assignment retrieved successfully",
@@ -238,6 +273,17 @@ exports.updateAssignmentStatus = async (req, res) => {
     }
 
     if (assignment.assignedBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update this assignment",
+      });
+    }
+
+    const parentOwnsFamily = await ensureParentOwnsFamily(
+      assignment.family,
+      req.user._id,
+    );
+    if (!parentOwnsFamily) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to update this assignment",
@@ -287,6 +333,17 @@ exports.deleteAssignment = async (req, res) => {
     }
 
     if (assignment.assignedBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete this assignment",
+      });
+    }
+
+    const parentOwnsFamily = await ensureParentOwnsFamily(
+      assignment.family,
+      req.user._id,
+    );
+    if (!parentOwnsFamily) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to delete this assignment",
