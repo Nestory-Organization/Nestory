@@ -44,7 +44,5 @@ router.get('/monthly/:childId', protect, getMonthlyAnalytics);
 // GET /api/sessions/top-books/:childId — top 5 most read books by time
 router.get('/top-books/:childId', protect, getTopBooks);
 
-// GET /api/sessions/achievements/:childId — achievements (gamification)
-router.get('/achievements/:childId', protect, getAchievements);
 
 module.exports = router;
