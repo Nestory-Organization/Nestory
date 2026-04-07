@@ -1,6 +1,23 @@
 import apiClient from './apiClient';
 import { Story, ApiResponse, PaginatedResponse } from '../types';
 
+interface StoryListPayload {
+  data?: Story[];
+  stories?: Story[];
+  pagination?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    pages?: number;
+  };
+  meta?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    pages?: number;
+  };
+}
+
 class StoryService {
   async searchGoogle(query: string): Promise<any[]> {
     const response = await apiClient.getInstance().get(
@@ -37,8 +54,27 @@ class StoryService {
     if (filters?.readingLevel) url += `&readingLevel=${filters.readingLevel}`;
     if (filters?.genre) url += `&genre=${filters.genre}`;
 
-    const response = await apiClient.getInstance().get<ApiResponse<PaginatedResponse<Story>>>(url);
-    return response.data.data!;
+    const response = await apiClient.getInstance().get<ApiResponse<StoryListPayload>>(url);
+    const payload = response.data.data || {};
+
+    const stories = Array.isArray(payload.data)
+      ? payload.data
+      : Array.isArray(payload.stories)
+        ? payload.stories
+        : [];
+
+    const meta = payload.pagination || payload.meta;
+
+    return {
+      success: true,
+      data: stories,
+      pagination: {
+        page: Number(meta?.page) || page,
+        limit: Number(meta?.limit) || limit,
+        total: Number(meta?.total) || stories.length,
+        pages: Number(meta?.pages) || 1,
+      },
+    };
   }
 
   async getStoryById(id: string): Promise<Story> {
