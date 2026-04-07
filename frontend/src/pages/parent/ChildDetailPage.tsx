@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Book, CalendarDays, Flame, Hourglass, UserCircle2 } from 'lucide-react';
+import { ArrowLeft, Book, CalendarDays, CheckCircle2, Flame, Hourglass, UserCircle2 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import ChildService from '../../services/childService';
 import AssignmentService from '../../services/assignmentService';
@@ -17,6 +17,7 @@ const ChildDetailPage: React.FC = () => {
   const [weeklyMinutes, setWeeklyMinutes] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'assigned' | 'in_progress' | 'completed'>('all');
 
   const assignmentStats = useMemo(() => {
     const assigned = assignments.filter((item) => item.status === 'assigned').length;
@@ -29,6 +30,11 @@ const ChildDetailPage: React.FC = () => {
       completed,
     };
   }, [assignments]);
+
+  const filteredAssignments = useMemo(() => {
+    if (statusFilter === 'all') return assignments;
+    return assignments.filter((item) => item.status === statusFilter);
+  }, [assignments, statusFilter]);
 
   useEffect(() => {
     const loadChildData = async () => {
@@ -120,14 +126,18 @@ const ChildDetailPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
           <div className="card">
-            <p className="text-sm text-gray-600 mb-1">Total Assignments</p>
-            <p className="text-2xl font-bold text-gray-900">{assignmentStats.total}</p>
+            <p className="text-sm text-gray-600 mb-1">Assigned</p>
+            <p className="text-2xl font-bold text-blue-700">{assignmentStats.assigned}</p>
           </div>
           <div className="card">
             <p className="text-sm text-gray-600 mb-1">In Progress</p>
             <p className="text-2xl font-bold text-blue-700">{assignmentStats.inProgress}</p>
+          </div>
+          <div className="card">
+            <p className="text-sm text-gray-600 mb-1 flex items-center gap-2"><CheckCircle2 size={16} /> Completed</p>
+            <p className="text-2xl font-bold text-green-700">{assignmentStats.completed}</p>
           </div>
           <div className="card">
             <p className="text-sm text-gray-600 mb-1 flex items-center gap-2"><Flame size={16} /> Streak</p>
@@ -139,17 +149,64 @@ const ChildDetailPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Book size={20} className="text-nestory-600" />
-            Assigned Stories
-          </h2>
+        <p className="text-sm text-gray-600 mb-6">Total assignments tracked: <span className="font-semibold text-gray-900">{assignmentStats.total}</span></p>
 
-          {assignments.length === 0 ? (
+        <div className="card">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Book size={20} className="text-nestory-600" />
+              Assigned Stories
+            </h2>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setStatusFilter('all')}
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
+                  statusFilter === 'all'
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setStatusFilter('assigned')}
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
+                  statusFilter === 'assigned'
+                    ? 'bg-blue-700 text-white border-blue-700'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                Assigned
+              </button>
+              <button
+                onClick={() => setStatusFilter('in_progress')}
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
+                  statusFilter === 'in_progress'
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                In Progress
+              </button>
+              <button
+                onClick={() => setStatusFilter('completed')}
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
+                  statusFilter === 'completed'
+                    ? 'bg-green-700 text-white border-green-700'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                Completed
+              </button>
+            </div>
+          </div>
+
+          {filteredAssignments.length === 0 ? (
             <p className="text-gray-600">No assignments yet.</p>
           ) : (
             <div className="space-y-3">
-              {assignments.map((assignment) => (
+              {filteredAssignments.map((assignment) => (
                 <div key={assignment.id} className="border border-gray-200 rounded-lg p-4 flex items-start justify-between gap-4">
                   <div>
                     <p className="font-semibold text-gray-900">{assignment.story?.title || 'Untitled story'}</p>
