@@ -7,7 +7,7 @@ const {
   updateChild,
   deleteChild,
 } = require("../controllers/childController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, parentOnly } = require("../middleware/authMiddleware");
 const {
   handleValidationErrors,
 } = require("../middleware/validationMiddleware");
@@ -17,16 +17,24 @@ const {
 } = require("../validators/childValidator");
 
 // All routes are protected (must be logged in)
-router.post("/", protect, addChildValidation, handleValidationErrors, addChild);
-router.get("/", protect, getChildren);
-router.get("/:id", protect, getChildById);
+router.post(
+  "/",
+  protect,
+  parentOnly,
+  addChildValidation,
+  handleValidationErrors,
+  addChild,
+);
+router.get("/", protect, parentOnly, getChildren);
+router.get("/:id", protect, parentOnly, getChildById);
 router.put(
   "/:id",
   protect,
+  parentOnly,
   updateChildValidation,
   handleValidationErrors,
   updateChild,
 );
-router.delete("/:id", protect, deleteChild);
+router.delete("/:id", protect, parentOnly, deleteChild);
 
 module.exports = router;
