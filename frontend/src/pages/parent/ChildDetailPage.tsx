@@ -6,30 +6,14 @@ import Navbar from '../../components/common/Navbar';
 import ChildService from '../../services/childService';
 import AssignmentService from '../../services/assignmentService';
 import ReadingService from '../../services/readingService';
-import { Child } from '../../types';
-
-type AssignmentStatus = 'assigned' | 'in_progress' | 'completed';
-
-interface AssignmentWithStory {
-  id: string;
-  status: AssignmentStatus;
-  dueDate?: string;
-  createdAt?: string;
-  story?: {
-    id?: string;
-    _id?: string;
-    title?: string;
-    author?: string;
-    readingLevel?: string;
-  };
-}
+import { Assignment, Child } from '../../types';
 
 const ChildDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { childId } = useParams<{ childId: string }>();
 
   const [child, setChild] = useState<Child | null>(null);
-  const [assignments, setAssignments] = useState<AssignmentWithStory[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [weeklyMinutes, setWeeklyMinutes] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,25 +48,8 @@ const ChildDetailPage: React.FC = () => {
           ReadingService.getReadingStreak(childId).catch(() => ({ streak: 0, longestStreak: 0 })),
         ]);
 
-        const normalizedAssignments = (assignmentData as unknown as Array<Record<string, unknown>>).map((item) => ({
-          id: String(item.id ?? item._id ?? ''),
-          status: (item.status as AssignmentStatus) || 'assigned',
-          dueDate: typeof item.dueDate === 'string' ? item.dueDate : undefined,
-          createdAt: typeof item.createdAt === 'string' ? item.createdAt : undefined,
-          story:
-            typeof item.story === 'object' && item.story !== null
-              ? {
-                  id: String((item.story as Record<string, unknown>).id ?? ''),
-                  _id: String((item.story as Record<string, unknown>)._id ?? ''),
-                  title: ((item.story as Record<string, unknown>).title as string) || 'Untitled story',
-                  author: ((item.story as Record<string, unknown>).author as string) || 'Unknown author',
-                  readingLevel: ((item.story as Record<string, unknown>).readingLevel as string) || 'beginner',
-                }
-              : undefined,
-        }));
-
         setChild(childData);
-        setAssignments(normalizedAssignments);
+        setAssignments(assignmentData);
         setWeeklyMinutes(Number(weeklyData.totalTime) || 0);
         setCurrentStreak(Number(streakData.streak) || 0);
       } catch (error: any) {

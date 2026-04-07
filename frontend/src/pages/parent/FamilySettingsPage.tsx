@@ -15,9 +15,8 @@ const FamilySettingsPage: React.FC = () => {
     try {
       setIsLoading(true);
       const data = await FamilyService.getMyFamily();
-      const normalized = { ...data, id: (data as any).id || (data as any)._id || '' };
-      setFamily(normalized);
-      setFamilyName(normalized.familyName || '');
+      setFamily(data);
+      setFamilyName(data.familyName || '');
     } catch (error: any) {
       if (error?.response?.status === 404) {
         setFamily(null);
@@ -43,8 +42,7 @@ const FamilySettingsPage: React.FC = () => {
     try {
       setIsSaving(true);
       const created = await FamilyService.createFamily({ familyName: familyName.trim() });
-      const normalized = { ...created, id: (created as any).id || (created as any)._id || '' };
-      setFamily(normalized);
+      setFamily(created);
       toast.success('Family created successfully');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to create family');
@@ -63,8 +61,7 @@ const FamilySettingsPage: React.FC = () => {
     try {
       setIsSaving(true);
       const updated = await FamilyService.updateFamily(family.id, { familyName: familyName.trim() });
-      const normalized = { ...updated, id: (updated as any).id || (updated as any)._id || family.id };
-      setFamily(normalized);
+      setFamily(updated);
       toast.success('Family updated successfully');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to update family');

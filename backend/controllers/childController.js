@@ -1,5 +1,6 @@
 const Child = require("../models/Child");
 const Family = require("../models/Family");
+const { normalizeChild } = require("../utils/contractTransformers");
 
 // @desc    Add a child to the parent's family
 // @route   POST /api/children
@@ -33,7 +34,7 @@ exports.addChild = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Child added successfully",
-      data: child,
+      data: normalizeChild(child),
     });
   } catch (error) {
     console.error(error);
@@ -67,7 +68,7 @@ exports.getChildren = async (req, res) => {
       success: true,
       message: "Children retrieved successfully",
       count: children.length,
-      data: children,
+      data: children.map(normalizeChild),
     });
   } catch (error) {
     console.error(error);
@@ -107,7 +108,7 @@ exports.getChildById = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Child retrieved successfully",
-      data: child,
+      data: normalizeChild(child),
     });
   } catch (error) {
     console.error(error);
@@ -151,7 +152,7 @@ exports.updateChild = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Child profile updated successfully",
-      data: child,
+      data: normalizeChild(child),
     });
   } catch (error) {
     console.error(error);

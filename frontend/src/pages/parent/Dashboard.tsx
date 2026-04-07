@@ -85,21 +85,19 @@ const ParentDashboard: React.FC = () => {
         if (summaryData) {
           setSummaryStats({
             totalAssignments: Number(summaryData.totalAssignments) || 0,
-            inProgress: Number(summaryData.in_progress) || 0,
+            inProgress: Number(summaryData.inProgress) || 0,
             completed: Number(summaryData.completed) || 0,
           });
         }
 
-        const rawRecent = Array.isArray((familyDashboardData as any)?.recentAssignments)
-          ? (familyDashboardData as any).recentAssignments
-          : [];
+        const rawRecent = familyDashboardData?.recentAssignments || [];
 
         setRecentAssignments(
-          rawRecent.map((item: any) => ({
-            id: String(item?._id || item?.id || Math.random()),
-            childName: item?.child?.name || 'Unknown child',
-            storyTitle: item?.story?.title || 'Untitled story',
-            status: item?.status || 'assigned',
+          rawRecent.map((item) => ({
+            id: item.id,
+            childName: item.child?.name || 'Unknown child',
+            storyTitle: item.story?.title || 'Untitled story',
+            status: item.status || 'assigned',
           }))
         );
 
@@ -221,6 +219,13 @@ const ParentDashboard: React.FC = () => {
     { value: 'intermediate', label: 'Intermediate' },
     { value: 'advanced', label: 'Advanced' },
   ];
+
+  const parseReadingLevel = (value: string): Child['readingLevel'] => {
+    if (value === 'beginner' || value === 'intermediate' || value === 'advanced') {
+      return value;
+    }
+    return 'beginner';
+  };
 
   if (isLoading) {
     return (
@@ -456,7 +461,7 @@ const ParentDashboard: React.FC = () => {
             label="Reading Level"
             name="readingLevel"
             value={formData.readingLevel}
-            onChange={(e) => setFormData({ ...formData, readingLevel: e.target.value as any })}
+            onChange={(e) => setFormData({ ...formData, readingLevel: parseReadingLevel(e.target.value) })}
             options={readingLevels}
           />
         </div>
