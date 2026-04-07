@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import Navbar from '../../components/common/Navbar';
 import SelectField from '../../components/common/SelectField';
@@ -18,8 +18,18 @@ const DEFAULT_PAGINATION: AssignmentPagination = {
   hasPrevPage: false,
 };
 
-const getErrorMessage = (error: any, fallback: string): string => {
-  return error?.response?.data?.message || error?.message || fallback;
+type ErrorWithResponse = {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+};
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  const normalized = error as ErrorWithResponse;
+  return normalized?.response?.data?.message || normalized?.message || fallback;
 };
 
 const isDuplicateAssignmentError = (message: string): boolean => {
@@ -156,52 +166,64 @@ const AssignmentsPage: React.FC = () => {
         setSelectedChildId(firstChildId);
         setFormData((prev) => ({ ...prev, childId: firstChildId }));
       }
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to load assignment setup data');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to load assignment setup data'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadAssignments = async (childId: string, targetPage = currentPage, keepDetail = true) => {
-    if (!childId) {
-      setAssignments([]);
-      setPagination(DEFAULT_PAGINATION);
-      setListMetadata({ overdueCount: 0, dueSoonCount: 0 });
-      clearSelection();
-      return;
-    }
-
-    try {
-      setIsListLoading(true);
-
-      const response = await AssignmentService.listAssignments({
-        childId,
-        status: statusFilter === 'all' ? undefined : statusFilter,
-        dueState: dueStateFilter,
-        page: targetPage,
-        limit: pageLimit,
-        sortBy,
-        sortOrder,
-      });
-
-      setAssignments(response.data);
-      setPagination(response.pagination);
-      setListMetadata(response.metadata);
-
-      if (!keepDetail && selectedAssignmentId) {
+  const loadAssignments = useCallback(
+    async (childId: string, targetPage = currentPage, keepDetail = true) => {
+      if (!childId) {
+        setAssignments([]);
+        setPagination(DEFAULT_PAGINATION);
+        setListMetadata({ overdueCount: 0, dueSoonCount: 0 });
         clearSelection();
+        return;
       }
 
-      if (selectedAssignmentId && !response.data.some((item) => item.id === selectedAssignmentId)) {
-        clearSelection();
+      try {
+        setIsListLoading(true);
+
+        const response = await AssignmentService.listAssignments({
+          childId,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          dueState: dueStateFilter,
+          page: targetPage,
+          limit: pageLimit,
+          sortBy,
+          sortOrder,
+        });
+
+        setAssignments(response.data);
+        setPagination(response.pagination);
+        setListMetadata(response.metadata);
+
+        if (!keepDetail && selectedAssignmentId) {
+          clearSelection();
+        }
+
+        if (selectedAssignmentId && !response.data.some((item) => item.id === selectedAssignmentId)) {
+          clearSelection();
+        }
+      } catch (error: unknown) {
+        toast.error(getErrorMessage(error, 'Failed to load assignments'));
+      } finally {
+        setIsListLoading(false);
       }
-    } catch (error: any) {
-      toast.error(getErrorMessage(error, 'Failed to load assignments'));
-    } finally {
-      setIsListLoading(false);
-    }
-  };
+    },
+    [
+      clearSelection,
+      currentPage,
+      dueStateFilter,
+      pageLimit,
+      selectedAssignmentId,
+      sortBy,
+      sortOrder,
+      statusFilter,
+    ]
+  );
 
   useEffect(() => {
     loadBaseData();
@@ -209,7 +231,7 @@ const AssignmentsPage: React.FC = () => {
 
   useEffect(() => {
     loadAssignments(selectedChildId, currentPage, false);
-  }, [selectedChildId, currentPage, statusFilter, dueStateFilter, sortBy, sortOrder, pageLimit]);
+  }, [currentPage, loadAssignments, selectedChildId]);
 
   const handleCreate = async () => {
     if (!formData.childId || !formData.storyId) {
@@ -230,7 +252,7 @@ const AssignmentsPage: React.FC = () => {
       setFormData((prev) => ({ ...prev, storyId: '', dueDate: '', notes: '' }));
       setCurrentPage(1);
       await loadAssignments(formData.childId, 1);
-    } catch (error: any) {
+    } catch (error: unknown) {
       const message = getErrorMessage(error, 'Failed to create assignment');
       if (isDuplicateAssignmentError(message)) {
         setDuplicateFeedback('This story is already assigned to this child. Pick a different story or child.');
@@ -254,7 +276,7 @@ const AssignmentsPage: React.FC = () => {
       }
 
       toast.success('Assignment updated');
-    } catch (error: any) {
+    } catch (error: unknown) {
       setAssignments(previousAssignments);
       toast.error(getErrorMessage(error, 'Failed to update assignment'));
     } finally {
@@ -294,7 +316,7 @@ const AssignmentsPage: React.FC = () => {
       } else {
         await loadAssignments(selectedChildId, nextPage);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setAssignments(previousAssignments);
       toast.error(getErrorMessage(error, 'Failed to delete assignment'));
     } finally {

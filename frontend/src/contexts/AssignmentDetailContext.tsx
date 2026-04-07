@@ -14,8 +14,18 @@ interface AssignmentDetailContextType {
 
 const AssignmentDetailContext = createContext<AssignmentDetailContextType | undefined>(undefined);
 
-const getErrorMessage = (error: any, fallback: string): string => {
-  return error?.response?.data?.message || error?.message || fallback;
+type ErrorWithResponse = {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+};
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  const normalized = error as ErrorWithResponse;
+  return normalized?.response?.data?.message || normalized?.message || fallback;
 };
 
 export const AssignmentDetailProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -89,6 +99,7 @@ export const AssignmentDetailProvider: React.FC<{ children: React.ReactNode }> =
   return <AssignmentDetailContext.Provider value={value}>{children}</AssignmentDetailContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAssignmentDetail = (): AssignmentDetailContextType => {
   const context = useContext(AssignmentDetailContext);
   if (context === undefined) {
