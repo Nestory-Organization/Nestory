@@ -1,5 +1,6 @@
 const Child = require("../models/Child");
 const Family = require("../models/Family");
+const mongoose = require("mongoose");
 const { normalizeChild } = require("../utils/contractTransformers");
 
 // @desc    Add a child to the parent's family
@@ -7,7 +8,7 @@ const { normalizeChild } = require("../utils/contractTransformers");
 // @access  Private
 exports.addChild = async (req, res) => {
   try {
-    const { name, age, avatar } = req.body;
+    const { name, age, avatar, readingLevel } = req.body;
 
     // Parent must have a family group first
     const family = await Family.findOne({ parent: req.user._id });
@@ -23,6 +24,7 @@ exports.addChild = async (req, res) => {
       name,
       age,
       avatar: avatar || "",
+      readingLevel: readingLevel || "beginner",
       family: family._id,
       parent: req.user._id,
     });
@@ -85,6 +87,13 @@ exports.getChildren = async (req, res) => {
 // @access  Private
 exports.getChildById = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid child ID format",
+      });
+    }
+
     const child = await Child.findById(req.params.id).populate(
       "family",
       "familyName",
@@ -125,7 +134,14 @@ exports.getChildById = async (req, res) => {
 // @access  Private
 exports.updateChild = async (req, res) => {
   try {
-    const { name, age, avatar } = req.body;
+    const { name, age, avatar, readingLevel } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid child ID format",
+      });
+    }
 
     const child = await Child.findById(req.params.id);
 
@@ -147,6 +163,8 @@ exports.updateChild = async (req, res) => {
     child.name = name || child.name;
     child.age = age !== undefined ? age : child.age;
     child.avatar = avatar !== undefined ? avatar : child.avatar;
+    child.readingLevel =
+      readingLevel !== undefined ? readingLevel : child.readingLevel;
     await child.save();
 
     res.status(200).json({
@@ -169,6 +187,13 @@ exports.updateChild = async (req, res) => {
 // @access  Private
 exports.deleteChild = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid child ID format",
+      });
+    }
+
     const child = await Child.findById(req.params.id);
 
     if (!child) {

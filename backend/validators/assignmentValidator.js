@@ -1,4 +1,4 @@
-const { body } = require("express-validator");
+const { body, param } = require("express-validator");
 
 // Validation for creating an assignment
 exports.createAssignmentValidation = [
@@ -39,4 +39,12 @@ exports.updateStatusValidation = [
     .withMessage("Status is required")
     .isIn(["assigned", "in_progress", "completed"])
     .withMessage("Status must be one of: assigned, in_progress, completed"),
+];
+
+exports.assignmentIdParamValidation = [
+  param("id").isMongoId().withMessage("Invalid assignment ID format"),
+];
+
+exports.childIdParamValidation = [
+  param("childId").isMongoId().withMessage("Invalid child ID format"),
 ];
