@@ -1,59 +1,73 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Please provide a name'],
+      required: [true, "Please provide a name"],
       trim: true,
-      maxlength: [50, 'Name cannot be more than 50 characters']
+      maxlength: [50, "Name cannot be more than 50 characters"],
     },
     email: {
       type: String,
-      required: [true, 'Please provide an email'],
+      required: [true, "Please provide an email"],
       unique: true,
       lowercase: true,
       trim: true,
       match: [
         /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-        'Please provide a valid email'
-      ]
+        "Please provide a valid email",
+      ],
     },
     password: {
       type: String,
-      required: [true, 'Please provide a password'],
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: false
+      required: [true, "Please provide a password"],
+      minlength: [6, "Password must be at least 6 characters"],
+      select: false,
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
-      default: 'user'
+      enum: ["user", "admin", "child"],
+      default: "user",
+    },
+    childProfile: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Child",
+      default: null,
+    },
+    parentAccount: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    mustChangePassword: {
+      type: Boolean,
+      default: false,
     },
     isActive: {
       type: Boolean,
-      default: true
+      default: true,
     },
     profilePicture: {
       type: String,
-      default: ''
+      default: "",
     },
     phoneNumber: {
       type: String,
-      default: ''
+      default: "",
     },
     resetPasswordToken: String,
-    resetPasswordExpire: Date
+    resetPasswordExpire: Date,
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
     next();
   }
 
@@ -66,4 +80,4 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model("User", userSchema);

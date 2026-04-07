@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { Child, ApiResponse } from '../types';
+import { Child, AddChildResponse, ApiResponse } from '../types';
 import { normalizeChild } from './contractNormalizer';
 
 class ChildService {
@@ -8,12 +8,21 @@ class ChildService {
     age: number;
     avatar?: string;
     family?: string;
-  }): Promise<Child> {
-    const response = await apiClient.getInstance().post<ApiResponse<Child>>(
+  }): Promise<AddChildResponse> {
+    const response = await apiClient.getInstance().post<ApiResponse<AddChildResponse>>(
       '/children',
       data
     );
-    return normalizeChild(response.data.data);
+
+    const payload = response.data.data;
+    return {
+      child: normalizeChild(payload?.child),
+      credentials: {
+        email: payload?.credentials?.email || '',
+        temporaryPassword: payload?.credentials?.temporaryPassword || '',
+        mustChangePassword: payload?.credentials?.mustChangePassword ?? true,
+      },
+    };
   }
 
   async getChildren(): Promise<Child[]> {
@@ -40,6 +49,22 @@ class ChildService {
 
   async deleteChild(id: string): Promise<void> {
     await apiClient.getInstance().delete(`/children/${id}`);
+  }
+
+  async resetChildPassword(id: string): Promise<AddChildResponse> {
+    const response = await apiClient.getInstance().post<ApiResponse<AddChildResponse>>(
+      `/children/${id}/reset-password`
+    );
+
+    const payload = response.data.data;
+    return {
+      child: normalizeChild(payload?.child),
+      credentials: {
+        email: payload?.credentials?.email || '',
+        temporaryPassword: payload?.credentials?.temporaryPassword || '',
+        mustChangePassword: payload?.credentials?.mustChangePassword ?? true,
+      },
+    };
   }
 }
 

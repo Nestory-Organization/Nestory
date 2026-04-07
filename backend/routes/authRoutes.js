@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 const {
   register,
@@ -6,26 +6,43 @@ const {
   getMe,
   updateProfile,
   getAllUsers,
-  deleteUser
-} = require('../controllers/authController');
-const { protect, admin } = require('../middleware/authMiddleware');
-const { handleValidationErrors } = require('../middleware/validationMiddleware');
-const { 
-  registerValidation, 
-  loginValidation, 
-  updateProfileValidation 
-} = require('../validators/authValidator');
+  deleteUser,
+  changePassword,
+} = require("../controllers/authController");
+const { protect, admin } = require("../middleware/authMiddleware");
+const {
+  handleValidationErrors,
+} = require("../middleware/validationMiddleware");
+const {
+  registerValidation,
+  loginValidation,
+  updateProfileValidation,
+  changePasswordValidation,
+} = require("../validators/authValidator");
 
 // Public routes
-router.post('/register', registerValidation, handleValidationErrors, register);
-router.post('/login', loginValidation, handleValidationErrors, login);
+router.post("/register", registerValidation, handleValidationErrors, register);
+router.post("/login", loginValidation, handleValidationErrors, login);
 
 // Protected routes
-router.get('/me', protect, getMe);
-router.put('/profile', protect, updateProfileValidation, handleValidationErrors, updateProfile);
+router.get("/me", protect, getMe);
+router.put(
+  "/profile",
+  protect,
+  updateProfileValidation,
+  handleValidationErrors,
+  updateProfile,
+);
+router.put(
+  "/change-password",
+  protect,
+  changePasswordValidation,
+  handleValidationErrors,
+  changePassword,
+);
 
 // Admin routes
-router.get('/users', protect, admin, getAllUsers);
-router.delete('/users/:id', protect, admin, deleteUser);
+router.get("/users", protect, admin, getAllUsers);
+router.delete("/users/:id", protect, admin, deleteUser);
 
 module.exports = router;

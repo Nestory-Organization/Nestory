@@ -17,6 +17,8 @@ import FamilySettingsPage from './pages/parent/FamilySettingsPage';
 import AdminDashboard from './pages/admin/Dashboard';
 import StoryManagementPage from './pages/admin/StoryManagementPage';
 import ChildDashboard from './pages/child/Dashboard';
+import ChildChangePasswordPage from './pages/child/ChangePasswordPage';
+import ChildAssignmentDetailPage from './pages/child/AssignmentDetailPage';
 
 // Loading component
 const LoadingScreen: React.FC = () => (
@@ -61,6 +63,7 @@ const AppContent: React.FC = () => {
   const getDefaultRoute = () => {
     if (!isAuthenticated || !hasValidRole) return '/login';
     if (user?.role === 'admin') return '/admin';
+    if (user?.role === 'child' && user?.mustChangePassword) return '/child/change-password';
     if (user?.role === 'child') return '/child';
     return '/dashboard';
   };
@@ -122,7 +125,18 @@ const AppContent: React.FC = () => {
       )}
 
       {isAuthenticated && user?.role === 'child' && (
-        <Route path="/child" element={<ChildDashboard />} />
+        <>
+          <Route
+            path="/child"
+            element={
+              user?.mustChangePassword
+                ? <Navigate to="/child/change-password" replace />
+                : <ChildDashboard />
+            }
+          />
+          <Route path="/child/change-password" element={<ChildChangePasswordPage />} />
+          <Route path="/child/assignments/:assignmentId" element={<ChildAssignmentDetailPage />} />
+        </>
       )}
 
       {/* Catch-all route */}

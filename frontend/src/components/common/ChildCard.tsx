@@ -1,23 +1,27 @@
 import React from 'react';
 import { Child } from '../../types';
-import { Edit2, Trash2, BookOpen } from 'lucide-react';
+import { Edit2, Trash2, BookOpen, KeyRound } from 'lucide-react';
 
 interface ChildCardProps {
   child: Child;
   onEdit?: (child: Child) => void;
   onDelete?: (childId: string) => void;
+  onResetPassword?: (childId: string) => void;
   onClick?: (child: Child) => void;
   showActions?: boolean;
   isDeleting?: boolean;
+  isResettingPassword?: boolean;
 }
 
 const ChildCard: React.FC<ChildCardProps> = ({
   child,
   onEdit,
   onDelete,
+  onResetPassword,
   onClick,
   showActions = true,
   isDeleting = false,
+  isResettingPassword = false,
 }) => {
   const getLevelEmoji = (level?: string) => {
     switch (level) {
@@ -63,7 +67,7 @@ const ChildCard: React.FC<ChildCardProps> = ({
       </div>
 
       {/* Actions */}
-      {showActions && (onEdit || onDelete) && (
+      {showActions && (onEdit || onDelete || onResetPassword) && (
         <div className="flex gap-2 justify-center pt-3 border-t border-gray-200">
           {onEdit && (
             <button
@@ -78,6 +82,19 @@ const ChildCard: React.FC<ChildCardProps> = ({
               Edit
             </button>
           )}
+          {onResetPassword && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onResetPassword(child.id);
+              }}
+              className="btn-secondary flex items-center gap-1 text-xs"
+              disabled={isDeleting || isResettingPassword}
+            >
+              <KeyRound size={14} />
+              {isResettingPassword ? 'Resetting...' : 'Reset Password'}
+            </button>
+          )}
           {onDelete && (
             <button
               onClick={(e) => {
@@ -85,7 +102,7 @@ const ChildCard: React.FC<ChildCardProps> = ({
                 onDelete(child.id);
               }}
               className="btn-danger flex items-center gap-1 text-xs"
-              disabled={isDeleting}
+              disabled={isDeleting || isResettingPassword}
             >
               <Trash2 size={14} />
               {isDeleting ? 'Deleting...' : 'Delete'}

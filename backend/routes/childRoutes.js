@@ -6,6 +6,7 @@ const {
   getChildById,
   updateChild,
   deleteChild,
+  resetChildPassword,
 } = require("../controllers/childController");
 const { protect, parentOnly } = require("../middleware/authMiddleware");
 const {
@@ -36,5 +37,6 @@ router.put(
   updateChild,
 );
 router.delete("/:id", protect, parentOnly, deleteChild);
+router.post("/:id/reset-password", protect, parentOnly, resetChildPassword);
 
 module.exports = router;
