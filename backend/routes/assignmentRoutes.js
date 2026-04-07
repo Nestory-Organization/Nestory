@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const {
   createAssignment,
+  listAssignments,
+  bulkUpdateAssignmentStatus,
   getAssignmentsByChild,
   getFamilyDashboard,
   getAssignmentById,
@@ -14,7 +16,9 @@ const {
 } = require("../middleware/validationMiddleware");
 const {
   createAssignmentValidation,
+  listAssignmentsQueryValidation,
   updateStatusValidation,
+  bulkUpdateStatusValidation,
   assignmentIdParamValidation,
   childIdParamValidation,
 } = require("../validators/assignmentValidator");
@@ -27,6 +31,22 @@ router.post(
   createAssignmentValidation,
   handleValidationErrors,
   createAssignment,
+);
+router.get(
+  "/",
+  protect,
+  parentOnly,
+  listAssignmentsQueryValidation,
+  handleValidationErrors,
+  listAssignments,
+);
+router.put(
+  "/bulk/status",
+  protect,
+  parentOnly,
+  bulkUpdateStatusValidation,
+  handleValidationErrors,
+  bulkUpdateAssignmentStatus,
 );
 router.get("/family", protect, parentOnly, getFamilyDashboard);
 router.get(

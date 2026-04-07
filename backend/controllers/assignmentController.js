@@ -2,6 +2,7 @@ const Assignment = require("../models/Assignment");
 const Child = require("../models/Child");
 const Family = require("../models/Family");
 const Story = require("../models/storyLibrary/Story");
+const { PAGINATION } = require("../constants");
 const {
   normalizeAssignment,
   normalizeAssignmentStats,
@@ -11,6 +12,56 @@ const {
 const ensureParentOwnsFamily = async (familyId, userId) => {
   const family = await Family.findById(familyId).select("parent");
   return !!family && family.parent.toString() === userId.toString();
+};
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const getDueMetadata = (assignment, dueSoonDays = 3) => {
+  const now = new Date();
+  const normalizedStatus = assignment.status;
+
+  if (!assignment.dueDate) {
+    return {
+      hasDueDate: false,
+      isOverdue: false,
+      isDueSoon: false,
+      daysUntilDue: null,
+      dueState: "none",
+    };
+  }
+
+  const dueDate = new Date(assignment.dueDate);
+  const daysUntilDue = Math.ceil(
+    (dueDate.getTime() - now.getTime()) / MS_PER_DAY,
+  );
+  const isOverdue = normalizedStatus !== "completed" && dueDate < now;
+  const isDueSoon =
+    normalizedStatus !== "completed" &&
+    !isOverdue &&
+    daysUntilDue >= 0 &&
+    daysUntilDue <= dueSoonDays;
+
+  return {
+    hasDueDate: true,
+    isOverdue,
+    isDueSoon,
+    daysUntilDue,
+    dueState: isOverdue ? "overdue" : isDueSoon ? "due_soon" : "upcoming",
+  };
+};
+
+const withDueMetadata = (assignment, dueSoonDays = 3) => {
+  const normalized = normalizeAssignment(assignment);
+  const dueMeta = getDueMetadata(normalized, dueSoonDays);
+
+  return {
+    ...normalized,
+    dueMeta,
+    dueState: dueMeta.dueState,
+    isOverdue: dueMeta.isOverdue,
+    isDueSoon: dueMeta.isDueSoon,
+    daysUntilDue: dueMeta.daysUntilDue,
+  };
 };
 
 // @desc    Assign a story to a child
@@ -87,7 +138,156 @@ exports.createAssignment = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Story assigned successfully",
-      data: normalizeAssignment(assignment),
+      data: withDueMetadata(assignment),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    List assignments with filters + pagination
+// @route   GET /api/assignments
+// @access  Private
+exports.listAssignments = async (req, res) => {
+  try {
+    const {
+      childId,
+      status,
+      dueState = "all",
+      dueSoonDays: dueSoonDaysRaw,
+      page: pageRaw,
+      limit: limitRaw,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
+
+    const dueSoonDays = Math.max(parseInt(dueSoonDaysRaw, 10) || 3, 1);
+    const page = Math.max(parseInt(pageRaw, 10) || PAGINATION.DEFAULT_PAGE, 1);
+    const limit = Math.min(
+      Math.max(parseInt(limitRaw, 10) || PAGINATION.DEFAULT_LIMIT, 1),
+      PAGINATION.MAX_LIMIT,
+    );
+    const skip = (page - 1) * limit;
+
+    if (childId) {
+      const child = await Child.findById(childId);
+      if (!child) {
+        return res.status(404).json({
+          success: false,
+          message: "Child not found",
+        });
+      }
+
+      if (child.parent.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to view this child's assignments",
+        });
+      }
+    }
+
+    const baseFilter = {
+      assignedBy: req.user._id,
+    };
+
+    if (childId) {
+      baseFilter.child = childId;
+    }
+
+    if (status) {
+      baseFilter.status = status;
+    }
+
+    const now = new Date();
+    const dueSoonThreshold = new Date(now.getTime() + dueSoonDays * MS_PER_DAY);
+
+    const dueFilter = {};
+    const requireOpenAssignments = !status;
+    if (dueState === "overdue") {
+      dueFilter.dueDate = { $lt: now };
+      if (requireOpenAssignments) {
+        dueFilter.status = { $ne: "completed" };
+      }
+    } else if (dueState === "due_soon") {
+      dueFilter.dueDate = { $gte: now, $lte: dueSoonThreshold };
+      if (requireOpenAssignments) {
+        dueFilter.status = { $ne: "completed" };
+      }
+    } else if (dueState === "upcoming") {
+      dueFilter.dueDate = { $gt: dueSoonThreshold };
+      if (requireOpenAssignments) {
+        dueFilter.status = { $ne: "completed" };
+      }
+    } else if (dueState === "none") {
+      dueFilter.dueDate = null;
+    }
+
+    const queryFilter = {
+      ...baseFilter,
+      ...dueFilter,
+    };
+
+    const sort = {
+      [sortBy]: sortOrder === "asc" ? 1 : -1,
+      createdAt: -1,
+    };
+
+    const [assignments, totalItems, overdueCount, dueSoonCount] =
+      await Promise.all([
+        Assignment.find(queryFilter)
+          .populate("child", "name age")
+          .populate("story", "title author ageGroup coverImage readingLevel")
+          .populate("assignedBy", "name email")
+          .sort(sort)
+          .skip(skip)
+          .limit(limit),
+        Assignment.countDocuments(queryFilter),
+        Assignment.countDocuments({
+          ...baseFilter,
+          dueDate: { $lt: now },
+          status: { $ne: "completed" },
+        }),
+        Assignment.countDocuments({
+          ...baseFilter,
+          dueDate: { $gte: now, $lte: dueSoonThreshold },
+          status: { $ne: "completed" },
+        }),
+      ]);
+
+    const totalPages = Math.ceil(totalItems / limit) || 1;
+
+    res.status(200).json({
+      success: true,
+      message: "Assignments retrieved successfully",
+      count: assignments.length,
+      data: assignments.map((assignment) =>
+        withDueMetadata(assignment, dueSoonDays),
+      ),
+      pagination: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+      filters: {
+        childId: childId || null,
+        status: status || null,
+        dueState,
+        dueSoonDays,
+        sortBy,
+        sortOrder,
+      },
+      metadata: {
+        overdueCount,
+        dueSoonCount,
+      },
     });
   } catch (error) {
     console.error(error);
@@ -126,7 +326,7 @@ exports.getAssignmentsByChild = async (req, res) => {
       success: true,
       message: "Assignments retrieved successfully",
       count: assignments.length,
-      data: assignments.map(normalizeAssignment),
+      data: assignments.map((assignment) => withDueMetadata(assignment)),
     });
   } catch (error) {
     console.error(error);
@@ -245,7 +445,7 @@ exports.getAssignmentById = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Assignment retrieved successfully",
-      data: normalizeAssignment(assignment),
+      data: withDueMetadata(assignment),
     });
   } catch (error) {
     console.error(error);
@@ -307,7 +507,76 @@ exports.updateAssignmentStatus = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Assignment status updated successfully",
-      data: normalizeAssignment(assignment),
+      data: withDueMetadata(assignment),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Bulk update assignment status
+// @route   PUT /api/assignments/bulk/status
+// @access  Private
+exports.bulkUpdateAssignmentStatus = async (req, res) => {
+  try {
+    const { assignmentIds, status } = req.body;
+
+    const uniqueAssignmentIds = [...new Set(assignmentIds.map(String))];
+    const assignments = await Assignment.find({
+      _id: { $in: uniqueAssignmentIds },
+      assignedBy: req.user._id,
+    });
+
+    if (!assignments.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No assignments found to update",
+      });
+    }
+
+    const foundIds = new Set(
+      assignments.map((assignment) => assignment._id.toString()),
+    );
+    const notFoundIds = uniqueAssignmentIds.filter((id) => !foundIds.has(id));
+
+    await Promise.all(
+      assignments.map(async (assignment) => {
+        assignment.status = status;
+        assignment.completedAt = status === "completed" ? new Date() : null;
+        await assignment.save();
+      }),
+    );
+
+    await Promise.all(
+      assignments.map((assignment) =>
+        assignment.populate([
+          { path: "child", select: "name age" },
+          {
+            path: "story",
+            select: "title author ageGroup coverImage readingLevel",
+          },
+          { path: "assignedBy", select: "name email" },
+        ]),
+      ),
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Assignments updated successfully",
+      data: {
+        requestedCount: uniqueAssignmentIds.length,
+        updatedCount: assignments.length,
+        notFoundIds,
+        status,
+        assignments: assignments.map((assignment) =>
+          withDueMetadata(assignment),
+        ),
+      },
     });
   } catch (error) {
     console.error(error);
