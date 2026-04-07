@@ -88,6 +88,7 @@ const AssignmentsPage: React.FC = () => {
   const [detailDueDateDraft, setDetailDueDateDraft] = useState('');
   const [detailStatusDraft, setDetailStatusDraft] = useState<AssignmentStatus>('assigned');
   const [isSavingDetail, setIsSavingDetail] = useState(false);
+  const [expandedAssignmentId, setExpandedAssignmentId] = useState('');
 
   const {
     selectedAssignmentId,
@@ -229,6 +230,7 @@ const AssignmentsPage: React.FC = () => {
 
         if (selectedAssignmentId && !response.data.some((item) => item.id === selectedAssignmentId)) {
           clearSelection();
+          setExpandedAssignmentId('');
         }
       } catch (error: unknown) {
         toast.error(getErrorMessage(error, 'Failed to load assignments'));
@@ -365,6 +367,16 @@ const AssignmentsPage: React.FC = () => {
     } finally {
       setIsSavingDetail(false);
     }
+  };
+
+  const handleToggleDetails = (assignmentId: string) => {
+    if (expandedAssignmentId === assignmentId) {
+      setExpandedAssignmentId('');
+      return;
+    }
+
+    setExpandedAssignmentId(assignmentId);
+    void selectAssignment(assignmentId);
   };
 
   const handleResetFilters = () => {
@@ -635,11 +647,12 @@ const AssignmentsPage: React.FC = () => {
                 {filteredAssignments.map((assignment) => {
                   const dueTone = getDueTone(assignment);
                   const isDeleting = deletingIds.includes(assignment.id);
+                  const isExpanded = expandedAssignmentId === assignment.id;
                   return (
                     <div
                       key={assignment.id}
                       className={`rounded-lg border p-4 transition-colors ${
-                        selectedAssignmentId === assignment.id
+                        isExpanded
                           ? 'border-nestory-400 bg-nestory-50/40'
                           : 'border-gray-200 bg-white'
                       } ${isOverdueAssignment(assignment) ? 'ring-1 ring-red-200' : ''}`}
@@ -669,14 +682,10 @@ const AssignmentsPage: React.FC = () => {
                             className="btn-secondary"
                             disabled={isDeleting}
                             onClick={() => {
-                              if (selectedAssignmentId === assignment.id) {
-                                clearSelection();
-                                return;
-                              }
-                              void selectAssignment(assignment.id);
+                              handleToggleDetails(assignment.id);
                             }}
                           >
-                            {selectedAssignmentId === assignment.id ? 'Hide Details' : 'Details'}
+                            {isExpanded ? 'Hide Details' : 'Details'}
                           </button>
                           <button className="btn-danger" disabled={isDeleting} onClick={() => handleDelete(assignment.id)}>
                             {isDeleting ? 'Deleting...' : 'Delete'}
@@ -689,19 +698,19 @@ const AssignmentsPage: React.FC = () => {
                       <button
                         className="mt-3 text-sm font-semibold text-nestory-700 hover:text-nestory-800 inline-flex items-center gap-1"
                         onClick={() => {
-                          if (selectedAssignmentId === assignment.id) {
-                            clearSelection();
-                            return;
-                          }
-                          void selectAssignment(assignment.id);
+                          handleToggleDetails(assignment.id);
                         }}
                       >
-                        {selectedAssignmentId === assignment.id ? 'Collapse details' : 'Open assignment details'} <ArrowRight size={14} />
+                        {isExpanded ? 'Collapse details' : 'Open assignment details'} <ArrowRight size={14} />
                       </button>
 
-                      {selectedAssignmentId === assignment.id && (
-                        <div className="mt-4 rounded-lg border border-nestory-200 bg-nestory-50/40 p-4">
-                          {isLoadingDetail ? (
+                      <div
+                        className={`mt-4 overflow-hidden transition-all duration-300 ease-out ${
+                          isExpanded ? 'max-h-[560px] opacity-100' : 'max-h-0 opacity-0'
+                        }`}
+                      >
+                        <div className="rounded-lg border border-nestory-200 bg-nestory-50/40 p-4">
+                          {selectedAssignmentId !== assignment.id ? null : isLoadingDetail ? (
                             <p className="text-sm text-gray-600">Loading details...</p>
                           ) : detailError ? (
                             <div>
@@ -781,7 +790,7 @@ const AssignmentsPage: React.FC = () => {
                             <p className="text-sm text-gray-600">No details available.</p>
                           )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
