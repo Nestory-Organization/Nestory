@@ -98,6 +98,20 @@ class AssignmentService {
     return normalizeAssignment(response.data.data);
   }
 
+  async updateAssignmentDetails(
+    id: string,
+    data: {
+      dueDate?: string;
+      notes?: string;
+    }
+  ): Promise<Assignment> {
+    const response = await apiClient.getInstance().put<ApiResponse<Assignment>>(
+      `/assignments/${id}`,
+      data
+    );
+    return normalizeAssignment(response.data.data);
+  }
+
   async deleteAssignment(id: string): Promise<void> {
     await apiClient.getInstance().delete(`/assignments/${id}`);
   }

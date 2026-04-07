@@ -71,7 +71,6 @@ const AssignmentsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isListLoading, setIsListLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [statusUpdatingIds, setStatusUpdatingIds] = useState<string[]>([]);
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const [duplicateFeedback, setDuplicateFeedback] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,6 +82,9 @@ const AssignmentsPage: React.FC = () => {
   const [pageLimit, setPageLimit] = useState(8);
   const [pagination, setPagination] = useState<AssignmentPagination>(DEFAULT_PAGINATION);
   const [listMetadata, setListMetadata] = useState({ overdueCount: 0, dueSoonCount: 0 });
+  const [detailDueDateDraft, setDetailDueDateDraft] = useState('');
+  const [detailStatusDraft, setDetailStatusDraft] = useState<AssignmentStatus>('assigned');
+  const [isSavingDetail, setIsSavingDetail] = useState(false);
 
   const {
     selectedAssignmentId,
@@ -143,6 +145,18 @@ const AssignmentsPage: React.FC = () => {
     });
   }, [assignments, searchTerm]);
 
+  const selectedAssignmentPreview = useMemo(() => {
+    return assignments.find((item) => item.id === selectedAssignmentId) || null;
+  }, [assignments, selectedAssignmentId]);
+
+  const detailToRender = assignmentDetail || selectedAssignmentPreview;
+
+  useEffect(() => {
+    const dueValue = detailToRender?.dueDate ? new Date(detailToRender.dueDate).toISOString().slice(0, 10) : '';
+    setDetailDueDateDraft(dueValue);
+    setDetailStatusDraft(detailToRender?.status || 'assigned');
+  }, [detailToRender?.id, detailToRender?.dueDate, detailToRender?.status]);
+
   const loadBaseData = async () => {
     try {
       setIsLoading(true);
@@ -174,7 +188,7 @@ const AssignmentsPage: React.FC = () => {
   };
 
   const loadAssignments = useCallback(
-    async (childId: string, targetPage = currentPage, keepDetail = true) => {
+    async (childId: string, targetPage = currentPage) => {
       if (!childId) {
         setAssignments([]);
         setPagination(DEFAULT_PAGINATION);
@@ -199,10 +213,6 @@ const AssignmentsPage: React.FC = () => {
         setAssignments(response.data);
         setPagination(response.pagination);
         setListMetadata(response.metadata);
-
-        if (!keepDetail && selectedAssignmentId) {
-          clearSelection();
-        }
 
         if (selectedAssignmentId && !response.data.some((item) => item.id === selectedAssignmentId)) {
           clearSelection();
@@ -230,7 +240,7 @@ const AssignmentsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadAssignments(selectedChildId, currentPage, false);
+    loadAssignments(selectedChildId, currentPage);
   }, [currentPage, loadAssignments, selectedChildId]);
 
   const handleCreate = async () => {
@@ -260,27 +270,6 @@ const AssignmentsPage: React.FC = () => {
       toast.error(message);
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleStatusUpdate = async (assignmentId: string, status: AssignmentStatus) => {
-    const previousAssignments = assignments;
-    setStatusUpdatingIds((prev) => [...prev, assignmentId]);
-    setAssignments((prev) => prev.map((item) => (item.id === assignmentId ? { ...item, status } : item)));
-
-    try {
-      await AssignmentService.updateAssignmentStatus(assignmentId, status);
-
-      if (selectedAssignmentId === assignmentId) {
-        await refreshSelectedAssignment();
-      }
-
-      toast.success('Assignment updated');
-    } catch (error: unknown) {
-      setAssignments(previousAssignments);
-      toast.error(getErrorMessage(error, 'Failed to update assignment'));
-    } finally {
-      setStatusUpdatingIds((prev) => prev.filter((item) => item !== assignmentId));
     }
   };
 
@@ -321,6 +310,47 @@ const AssignmentsPage: React.FC = () => {
       toast.error(getErrorMessage(error, 'Failed to delete assignment'));
     } finally {
       setDeletingIds((prev) => prev.filter((item) => item !== assignmentId));
+    }
+  };
+
+  const handleSaveDetailDueDate = async () => {
+    if (!selectedAssignmentId) {
+      toast.error('Select an assignment first');
+      return;
+    }
+
+    try {
+      setIsSavingDetail(true);
+      await AssignmentService.updateAssignmentDetails(selectedAssignmentId, {
+        dueDate: detailDueDateDraft || undefined,
+      });
+
+      await loadAssignments(selectedChildId, currentPage);
+      await refreshSelectedAssignment();
+      toast.success('Due date updated');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to update due date'));
+    } finally {
+      setIsSavingDetail(false);
+    }
+  };
+
+  const handleSaveDetailStatus = async () => {
+    if (!selectedAssignmentId) {
+      toast.error('Select an assignment first');
+      return;
+    }
+
+    try {
+      setIsSavingDetail(true);
+      await AssignmentService.updateAssignmentStatus(selectedAssignmentId, detailStatusDraft);
+      await loadAssignments(selectedChildId, currentPage);
+      await refreshSelectedAssignment();
+      toast.success('Status updated');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to update status'));
+    } finally {
+      setIsSavingDetail(false);
     }
   };
 
@@ -518,7 +548,6 @@ const AssignmentsPage: React.FC = () => {
               <div className="space-y-3">
                 {filteredAssignments.map((assignment) => {
                   const dueTone = getDueTone(assignment);
-                  const isStatusUpdating = statusUpdatingIds.includes(assignment.id);
                   const isDeleting = deletingIds.includes(assignment.id);
                   return (
                     <div
@@ -547,23 +576,15 @@ const AssignmentsPage: React.FC = () => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
-                          <select
-                            className="input-base w-40"
-                            value={assignment.status}
-                            disabled={isStatusUpdating || isDeleting}
-                            onChange={(e) => handleStatusUpdate(assignment.id, e.target.value as AssignmentStatus)}
-                            title="Assignment status"
-                          >
-                            {statusOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
+                          <span className="badge bg-gray-100 text-gray-700 capitalize">
+                            {assignment.status.replace('_', ' ')}
+                          </span>
                           <button
                             className="btn-secondary"
                             disabled={isDeleting}
-                            onClick={() => selectAssignment(assignment.id)}
+                            onClick={() => {
+                              void selectAssignment(assignment.id);
+                            }}
                           >
                             Details
                           </button>
@@ -609,37 +630,81 @@ const AssignmentsPage: React.FC = () => {
               <p className="text-sm text-gray-600">Select an assignment to view notes and due date context.</p>
             ) : isLoadingDetail ? (
               <p className="text-sm text-gray-600">Loading details...</p>
-            ) : detailError ? (
-              <div>
-                <p className="text-sm text-red-600 mb-2">{detailError}</p>
-                <button className="btn-secondary" onClick={() => refreshSelectedAssignment()}>
-                  Retry
-                </button>
-              </div>
-            ) : assignmentDetail ? (
+            ) : detailToRender ? (
               <div className="space-y-3 text-sm">
                 <div>
                   <p className="text-gray-500">Story</p>
-                  <p className="font-semibold text-gray-900">{assignmentDetail.story?.title || 'Untitled story'}</p>
+                  <p className="font-semibold text-gray-900">{detailToRender.story?.title || 'Untitled story'}</p>
                 </div>
                 <div>
                   <p className="text-gray-500">Due Date</p>
-                  <p className={`font-semibold ${isOverdueAssignment(assignmentDetail) ? 'text-red-700' : 'text-gray-900'}`}>
-                    {formatDueDate(assignmentDetail.dueDate)}
+                  <p className={`font-semibold ${isOverdueAssignment(detailToRender) ? 'text-red-700' : 'text-gray-900'}`}>
+                    {formatDueDate(detailToRender.dueDate)}
                   </p>
                 </div>
                 <div>
+                  <label className="block text-gray-500 mb-1">Update Due Date</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      className="input-base"
+                      value={detailDueDateDraft}
+                      onChange={(e) => setDetailDueDateDraft(e.target.value)}
+                      title="Update assignment due date"
+                    />
+                    <button
+                      className="btn-primary"
+                      disabled={isSavingDetail || !selectedAssignmentId}
+                      onClick={handleSaveDetailDueDate}
+                    >
+                      {isSavingDetail ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+                <div>
                   <p className="text-gray-500">Status</p>
-                  <p className="font-semibold capitalize text-gray-900">{assignmentDetail.status.replace('_', ' ')}</p>
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="input-base"
+                      value={detailStatusDraft}
+                      onChange={(e) => setDetailStatusDraft(e.target.value as AssignmentStatus)}
+                      title="Update assignment status"
+                    >
+                      {statusOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn-primary"
+                      disabled={isSavingDetail || !selectedAssignmentId || detailStatusDraft === detailToRender.status}
+                      onClick={handleSaveDetailStatus}
+                    >
+                      {isSavingDetail ? 'Saving...' : 'Save Status'}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <p className="text-gray-500">Notes</p>
                   <p className="text-gray-800 whitespace-pre-wrap">
-                    {assignmentDetail.notes?.trim() || 'No notes added for this assignment.'}
+                    {detailToRender.notes?.trim() || 'No notes added for this assignment.'}
                   </p>
                 </div>
                 <button className="btn-secondary w-full" onClick={() => clearSelection()}>
                   Close Details
+                </button>
+              </div>
+            ) : detailError ? (
+              <div>
+                <p className="text-sm text-red-600 mb-2">{detailError}</p>
+                <button
+                  className="btn-secondary"
+                  onClick={() => {
+                    void refreshSelectedAssignment();
+                  }}
+                >
+                  Retry
                 </button>
               </div>
             ) : (

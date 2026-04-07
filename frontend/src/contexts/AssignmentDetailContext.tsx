@@ -44,7 +44,6 @@ export const AssignmentDetailProvider: React.FC<{ children: React.ReactNode }> =
     } catch (error) {
       setDetailError(getErrorMessage(error, 'Failed to load assignment details'));
       setAssignmentDetail(null);
-      throw error;
     } finally {
       setIsLoadingDetail(false);
     }
