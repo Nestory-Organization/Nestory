@@ -17,16 +17,42 @@ import {
   TrendingUp,
   Clock,
   Plus,
+  AlertCircle,
+  Home,
 } from 'lucide-react';
 import { Family, Child } from '../../types';
+
+const avatarEmojiRegex = /^(\p{Extended_Pictographic}|\uFE0F|\u200D)+$/u;
+
+const isValidAvatar = (value: string) => {
+  if (!value.trim()) return true;
+
+  const isUrl = /^https?:\/\//i.test(value);
+  if (isUrl) {
+    try {
+      new URL(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return avatarEmojiRegex.test(value.trim());
+};
 
 const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [family, setFamily] = useState<Family | null>(null);
   const [children, setChildren] = useState<Child[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [isCreatingFamily, setIsCreatingFamily] = useState(false);
+  const [newFamilyName, setNewFamilyName] = useState('');
+  const [familyNameError, setFamilyNameError] = useState('');
   const [showAddChildModal, setShowAddChildModal] = useState(false);
   const [editingChild, setEditingChild] = useState<Child | null>(null);
+  const [isSavingChild, setIsSavingChild] = useState(false);
+  const [deletingChildId, setDeletingChildId] = useState('');
   const [summaryStats, setSummaryStats] = useState({
     totalAssignments: 0,
     inProgress: 0,
@@ -53,108 +79,176 @@ const ParentDashboard: React.FC = () => {
 
   const validateChildForm = () => {
     const newErrors: Record<string, string> = {};
+    const trimmedName = formData.name.trim();
+    const trimmedAvatar = formData.avatar.trim();
 
-    if (!formData.name.trim()) {
+    if (!trimmedName) {
       newErrors.name = 'Child name is required';
+    } else if (trimmedName.length < 2 || trimmedName.length > 50) {
+      newErrors.name = 'Child name must be between 2 and 50 characters';
     }
 
-    if (!Number.isInteger(formData.age) || formData.age < 1 || formData.age > 18) {
-      newErrors.age = 'Age must be a whole number between 1 and 18';
+    if (!Number.isInteger(formData.age) || formData.age < 1 || formData.age > 17) {
+      newErrors.age = 'Age must be a whole number between 1 and 17';
+    }
+
+    if (trimmedAvatar.length > 2048) {
+      newErrors.avatar = 'Avatar must be 2048 characters or less';
+    } else if (!isValidAvatar(trimmedAvatar)) {
+      newErrors.avatar = 'Avatar must be an emoji or a valid http/https URL';
     }
 
     setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Fetch data on mount
-  useEffect(() => {
-    const loadData = async () => {
+  const resetDashboardData = () => {
+    setChildren([]);
+    setSummaryStats({ totalAssignments: 0, inProgress: 0, completed: 0 });
+    setReadingStats({ weeklyMinutes: 0, topStreak: 0 });
+    setRecentAssignments([]);
+  };
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      setLoadError('');
+
+      let familyData: Family | null = null;
+
       try {
-        setIsLoading(true);
-        const familyData = await FamilyService.getMyFamily();
-        setFamily(familyData);
-
-        const childrenData = await ChildService.getChildren();
-        setChildren(childrenData);
-
-        const [summaryData, familyDashboardData] = await Promise.all([
-          DashboardService.getFamilySummary().catch(() => null),
-          DashboardService.getFamilyDashboard().catch(() => null),
-        ]);
-
-        if (summaryData) {
-          setSummaryStats({
-            totalAssignments: Number(summaryData.totalAssignments) || 0,
-            inProgress: Number(summaryData.inProgress) || 0,
-            completed: Number(summaryData.completed) || 0,
-          });
+        familyData = await FamilyService.getMyFamily();
+      } catch (error: any) {
+        if (error?.response?.status === 404) {
+          setFamily(null);
+          resetDashboardData();
+          return;
         }
+        throw error;
+      }
 
-        const rawRecent = familyDashboardData?.recentAssignments || [];
+      setFamily(familyData);
 
-        setRecentAssignments(
-          rawRecent.map((item) => ({
-            id: item.id,
-            childName: item.child?.name || 'Unknown child',
-            storyTitle: item.story?.title || 'Untitled story',
-            status: item.status || 'assigned',
-          }))
+      const [childrenData, summaryData, familyDashboardData] = await Promise.all([
+        ChildService.getChildren(),
+        DashboardService.getFamilySummary().catch(() => null),
+        DashboardService.getFamilyDashboard().catch(() => null),
+      ]);
+
+      setChildren(childrenData);
+
+      if (summaryData) {
+        setSummaryStats({
+          totalAssignments: Number(summaryData.totalAssignments) || 0,
+          inProgress: Number(summaryData.inProgress) || 0,
+          completed: Number(summaryData.completed) || 0,
+        });
+      } else {
+        setSummaryStats({ totalAssignments: 0, inProgress: 0, completed: 0 });
+      }
+
+      const rawRecent = familyDashboardData?.recentAssignments || [];
+      setRecentAssignments(
+        rawRecent.map((item) => ({
+          id: item.id,
+          childName: item.child?.name || 'Unknown child',
+          storyTitle: item.story?.title || 'Untitled story',
+          status: item.status || 'assigned',
+        }))
+      );
+
+      if (childrenData.length > 0) {
+        const readingData = await Promise.all(
+          childrenData.map(async (child: Child) => {
+            const [weekly, streak] = await Promise.all([
+              ReadingService.getWeeklyReadingTime(child.id).catch(() => ({ totalTime: 0 })),
+              ReadingService.getReadingStreak(child.id).catch(() => ({ streak: 0 })),
+            ]);
+
+            return {
+              weeklyMinutes: Number(weekly?.totalTime) || 0,
+              streak: Number(streak?.streak) || 0,
+            };
+          })
         );
 
-        if (childrenData.length > 0) {
-          const readingData = await Promise.all(
-            childrenData.map(async (child: Child) => {
-              const [weekly, streak] = await Promise.all([
-                ReadingService.getWeeklyReadingTime(child.id).catch(() => ({ totalTime: 0 })),
-                ReadingService.getReadingStreak(child.id).catch(() => ({ streak: 0 })),
-              ]);
-
-              return {
-                weeklyMinutes: Number(weekly?.totalTime) || 0,
-                streak: Number(streak?.streak) || 0,
-              };
-            })
-          );
-
-          const totalWeekly = readingData.reduce((sum, item) => sum + item.weeklyMinutes, 0);
-          const topStreak = readingData.reduce((max, item) => Math.max(max, item.streak), 0);
-          setReadingStats({ weeklyMinutes: totalWeekly, topStreak });
-        }
-      } catch (error: any) {
-        toast.error('Failed to load family data');
-        console.error(error);
-      } finally {
-        setIsLoading(false);
+        const totalWeekly = readingData.reduce((sum, item) => sum + item.weeklyMinutes, 0);
+        const topStreak = readingData.reduce((max, item) => Math.max(max, item.streak), 0);
+        setReadingStats({ weeklyMinutes: totalWeekly, topStreak });
+      } else {
+        setReadingStats({ weeklyMinutes: 0, topStreak: 0 });
       }
-    };
+    } catch (error: any) {
+      setLoadError(error?.response?.data?.message || 'Failed to load family data. Please try again.');
+      resetDashboardData();
+      setFamily(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, []);
 
+  const handleCreateFamily = async () => {
+    const trimmedFamilyName = newFamilyName.trim();
+
+    if (!trimmedFamilyName) {
+      setFamilyNameError('Family name is required');
+      return;
+    }
+
+    if (trimmedFamilyName.length < 2 || trimmedFamilyName.length > 100) {
+      setFamilyNameError('Family name must be between 2 and 100 characters');
+      return;
+    }
+
+    try {
+      setIsCreatingFamily(true);
+      const createdFamily = await FamilyService.createFamily({ familyName: trimmedFamilyName });
+      setFamily(createdFamily);
+      setFamilyNameError('');
+      setNewFamilyName('');
+      toast.success('Family created successfully');
+      await loadData();
+    } catch (error: any) {
+      setFamilyNameError(error?.response?.data?.message || 'Failed to create family');
+    } finally {
+      setIsCreatingFamily(false);
+    }
+  };
+
   const handleAddChild = async () => {
+    if (!family?.id) {
+      toast.error('Create a family group before adding children');
+      return;
+    }
+
     if (!validateChildForm()) {
       toast.error('Please correct the highlighted fields');
       return;
     }
 
     try {
+      setIsSavingChild(true);
+      const payload = {
+        name: formData.name.trim(),
+        age: formData.age,
+        avatar: formData.avatar.trim(),
+        readingLevel: formData.readingLevel,
+      };
+
       if (editingChild) {
-        // Edit existing child
         const updated = await ChildService.updateChild(editingChild.id, {
-          name: formData.name,
-          age: formData.age,
-          avatar: formData.avatar,
-          readingLevel: formData.readingLevel,
+          ...payload,
         });
         setChildren(children.map(c => c.id === editingChild.id ? updated : c));
         toast.success('Child updated successfully');
       } else {
-        // Add new child
         const newChild = await ChildService.addChild({
-          name: formData.name,
-          age: formData.age,
-          avatar: formData.avatar,
-          family: family?.id || '',
+          ...payload,
+          family: family.id,
         });
         setChildren([...children, newChild]);
         toast.success('Child added successfully');
@@ -164,6 +258,8 @@ const ParentDashboard: React.FC = () => {
       setFormData({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner' });
       setShowAddChildModal(false);
       setEditingChild(null);
+      setFormErrors({});
+      await loadData();
     } catch (error: any) {
       const backendErrors = error?.response?.data?.errors;
       if (Array.isArray(backendErrors)) {
@@ -179,6 +275,8 @@ const ParentDashboard: React.FC = () => {
       }
 
       toast.error(error?.response?.data?.message || 'Failed to save child');
+    } finally {
+      setIsSavingChild(false);
     }
   };
 
@@ -198,11 +296,15 @@ const ParentDashboard: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this child?')) return;
 
     try {
+      setDeletingChildId(childId);
       await ChildService.deleteChild(childId);
       setChildren(children.filter(c => c.id !== childId));
       toast.success('Child deleted successfully');
+      await loadData();
     } catch (error: any) {
-      toast.error('Failed to delete child');
+      toast.error(error?.response?.data?.message || 'Failed to delete child');
+    } finally {
+      setDeletingChildId('');
     }
   };
 
@@ -234,6 +336,81 @@ const ParentDashboard: React.FC = () => {
         <div className="container-responsive py-8 text-center">
           <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your family data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar title="Dashboard" />
+        <div className="container-responsive py-10">
+          <div className="card max-w-2xl mx-auto text-center py-12">
+            <AlertCircle className="mx-auto mb-4 text-red-600" size={36} />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to load your dashboard</h2>
+            <p className="text-gray-600 mb-6">{loadError}</p>
+            <div className="flex justify-center gap-3">
+              <button onClick={loadData} className="btn-primary">Try Again</button>
+              <button onClick={() => navigate('/family-settings')} className="btn-secondary">Family Settings</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!family) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar title="Dashboard" />
+        <div className="container-responsive py-10">
+          <div className="card max-w-3xl mx-auto">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-12 h-12 rounded-full bg-nestory-100 flex items-center justify-center">
+                <Home className="text-nestory-700" size={22} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your Family Group</h1>
+                <p className="text-gray-600">To add children, assign stories, and track reading progress, start by creating your family profile.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <InputField
+                label="Family Name"
+                name="familyName"
+                value={newFamilyName}
+                onChange={(e) => {
+                  setNewFamilyName(e.target.value);
+                  if (familyNameError) setFamilyNameError('');
+                }}
+                placeholder="e.g., The Silva Family"
+                error={familyNameError}
+                required
+              />
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={handleCreateFamily}
+                  className="btn-primary"
+                  disabled={isCreatingFamily}
+                >
+                  {isCreatingFamily ? 'Creating Family...' : 'Create Family'}
+                </button>
+                <button
+                  onClick={() => navigate('/family-settings')}
+                  className="btn-secondary"
+                >
+                  Open Family Settings
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-500">
+                Backend rules: only parents can manage families, and each parent can have only one family group.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -299,6 +476,7 @@ const ParentDashboard: React.FC = () => {
               <button
                 onClick={() => setShowAddChildModal(true)}
                 className="btn-primary flex items-center gap-2"
+                disabled={!family}
               >
                 <Plus size={18} />
                 Add Child
@@ -323,6 +501,7 @@ const ParentDashboard: React.FC = () => {
                     child={child}
                     onEdit={handleEditChild}
                     onDelete={handleDeleteChild}
+                    isDeleting={deletingChildId === child.id}
                     onClick={() => navigate(`/child/${child.id}`)}
                   />
                 ))}
@@ -397,6 +576,7 @@ const ParentDashboard: React.FC = () => {
         onConfirm={handleAddChild}
         confirmText={editingChild ? 'Update' : 'Add Child'}
         size="md"
+        isLoading={isSavingChild}
       >
         <div className="space-y-6">
           {/* Avatar Selection */}
@@ -409,6 +589,7 @@ const ParentDashboard: React.FC = () => {
                 <button
                   key={emoji}
                   onClick={() => setFormData({ ...formData, avatar: emoji })}
+                  type="button"
                   className={`text-3xl p-3 rounded-lg border-2 transition-all ${
                     formData.avatar === emoji
                       ? 'border-nestory-600 bg-nestory-50'
@@ -451,9 +632,23 @@ const ParentDashboard: React.FC = () => {
               }
             }}
             min="1"
-            max="18"
+            max="17"
             error={formErrors.age}
             required
+          />
+
+          <InputField
+            label="Avatar (Emoji or URL)"
+            name="avatar"
+            value={formData.avatar}
+            onChange={(e) => {
+              setFormData({ ...formData, avatar: e.target.value });
+              if (formErrors.avatar) {
+                setFormErrors((prev) => ({ ...prev, avatar: '' }));
+              }
+            }}
+            placeholder="e.g., 👧 or https://example.com/avatar.png"
+            error={formErrors.avatar}
           />
 
           {/* Reading Level */}
