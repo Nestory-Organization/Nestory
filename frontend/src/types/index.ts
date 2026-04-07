@@ -71,6 +71,13 @@ export interface Story {
   updatedAt: string;
 }
 
+export interface StoryListResponse {
+  stories: Story[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
 // Reading Session Types
 export interface ReadingSession {
   id: string;
