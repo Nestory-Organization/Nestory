@@ -2,6 +2,11 @@ const Family = require('../models/Family');
 const Child = require('../models/Child');
 const Assignment = require('../models/Assignment');
 require('../models/storyLibrary/Story'); // Register Story model for populate
+const {
+  normalizeAssignment,
+  normalizeAssignmentStats,
+  getId,
+} = require('../utils/contractTransformers');
 
 // @desc    Get full family reading dashboard
 // @route   GET /api/dashboard/family
@@ -32,16 +37,17 @@ exports.getFamilyDashboard = async (req, res) => {
 
         return {
           childId: child._id,
+          id: getId(child),
           name: child.name,
           age: child.age,
           avatar: child.avatar,
-          assignments: {
+          assignments: normalizeAssignmentStats({
             total,
             assigned,
             in_progress: inProgress,
             completed,
-            completionRate: `${completionRate}%`
-          }
+            completionRate
+          })
         };
       })
     );
@@ -64,14 +70,14 @@ exports.getFamilyDashboard = async (req, res) => {
         : null;
 
     // Recent 5 assignments across the whole family
-    const recentAssignments = await Assignment.find({ family: family._id })
+    const recentAssignmentsRaw = await Assignment.find({ family: family._id })
       .populate('child', 'name age avatar')
       .populate('story', 'title author coverImage ageGroup')
       .sort({ createdAt: -1 })
       .limit(5);
 
     // Recent 5 completions
-    const recentCompletions = await Assignment.find({
+    const recentCompletionsRaw = await Assignment.find({
       family: family._id,
       status: 'completed'
     })
@@ -80,25 +86,30 @@ exports.getFamilyDashboard = async (req, res) => {
       .sort({ completedAt: -1 })
       .limit(5);
 
+    const recentAssignments = recentAssignmentsRaw.map(normalizeAssignment);
+    const recentCompletions = recentCompletionsRaw.map(normalizeAssignment);
+
     res.status(200).json({
       success: true,
       message: 'Family dashboard retrieved successfully',
       data: {
         family: {
           familyId: family._id,
+          id: getId(family),
           familyName: family.familyName,
           totalChildren: children.length
         },
-        overallStats: {
+        overallStats: normalizeAssignmentStats({
           total: overallTotal,
           assigned: overallAssigned,
           in_progress: overallInProgress,
           completed: overallCompleted,
-          completionRate: `${overallCompletionRate}%`
-        },
+          completionRate: overallCompletionRate
+        }),
         mostActiveReader: mostActiveReader
           ? {
               childId: mostActiveReader.childId,
+              id: mostActiveReader.id,
               name: mostActiveReader.name,
               completedStories: mostActiveReader.assignments.completed
             }
@@ -176,22 +187,23 @@ exports.getChildDashboard = async (req, res) => {
       data: {
         child: {
           childId: child._id,
+          id: getId(child),
           name: child.name,
           age: child.age,
           avatar: child.avatar,
           family: child.family
         },
-        stats: {
+        stats: normalizeAssignmentStats({
           total,
           assigned: assignedStories.length,
           in_progress: inProgressStories.length,
           completed: completedStories.length,
-          completionRate: `${completionRate}%`
-        },
-        upcomingDue,
-        assignedStories,
-        inProgressStories,
-        completedStories
+          completionRate
+        }),
+        upcomingDue: upcomingDue.map(normalizeAssignment),
+        assignedStories: assignedStories.map(normalizeAssignment),
+        inProgressStories: inProgressStories.map(normalizeAssignment),
+        completedStories: completedStories.map(normalizeAssignment)
       }
     });
   } catch (error) {
@@ -234,12 +246,15 @@ exports.getFamilySummary = async (req, res) => {
       message: 'Family summary retrieved successfully',
       data: {
         familyName: family.familyName,
+        familyId: getId(family),
         totalChildren,
         totalAssignments: total,
         assigned,
         in_progress: inProgress,
+        inProgress,
         completed,
-        completionRate: `${completionRate}%`
+        completionRate,
+        completionRateLabel: `${completionRate}%`
       }
     });
   } catch (error) {

@@ -1,5 +1,6 @@
 const Family = require("../models/Family");
 require("../models/Child"); // Register Child model so populate('children') works
+const { normalizeFamily } = require("../utils/contractTransformers");
 // @desc    Create a new family group
 // @route   POST /api/family
 // @access  Private (Parent only)
@@ -25,7 +26,7 @@ exports.createFamily = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Family group created successfully",
-      data: family,
+      data: normalizeFamily(family),
     });
   } catch (error) {
     console.error(error);
@@ -57,7 +58,7 @@ exports.getMyFamily = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Family group retrieved successfully",
-      data: family,
+      data: normalizeFamily(family),
     });
   } catch (error) {
     console.error(error);
@@ -97,7 +98,7 @@ exports.getFamilyById = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Family retrieved successfully",
-      data: family,
+      data: normalizeFamily(family),
     });
   } catch (error) {
     console.error(error);
@@ -139,7 +140,7 @@ exports.updateFamily = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Family updated successfully",
-      data: family,
+      data: normalizeFamily(family),
     });
   } catch (error) {
     console.error(error);

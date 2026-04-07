@@ -6,9 +6,7 @@ import InputField from '../../components/common/InputField';
 import AssignmentService from '../../services/assignmentService';
 import ChildService from '../../services/childService';
 import StoryService from '../../services/storyService';
-import { Child, Story } from '../../types';
-
-type AssignmentStatus = 'assigned' | 'in_progress' | 'completed';
+import { AssignmentStatus, Child, Story } from '../../types';
 
 interface AssignmentListItem {
   id: string;
@@ -57,8 +55,6 @@ const AssignmentsPage: React.FC = () => {
     { value: 'completed', label: 'Completed' },
   ];
 
-  const normalizeId = (value: any): string => String(value?.id || value?._id || '');
-
   const loadBaseData = async () => {
     try {
       setIsLoading(true);
@@ -67,14 +63,11 @@ const AssignmentsPage: React.FC = () => {
         StoryService.getStories(1, 100),
       ]);
 
-      const normalizedChildren = childrenData.map((child: any) => ({
-        ...child,
-        id: normalizeId(child),
-      }));
+      const normalizedChildren = childrenData;
 
-      const normalizedStories = (storyResponse.data || []).map((story: any) => ({
+      const normalizedStories = (storyResponse.data || []).map((story) => ({
         ...story,
-        id: normalizeId(story),
+        id: story.id || story._id || '',
       }));
 
       setChildren(normalizedChildren);
@@ -100,12 +93,12 @@ const AssignmentsPage: React.FC = () => {
 
     try {
       const data = await AssignmentService.getChildAssignments(childId);
-      const normalized = (data as any[]).map((item: any) => ({
-        id: normalizeId(item),
+      const normalized = data.map((item) => ({
+        id: item.id,
         status: item.status,
         dueDate: item.dueDate,
         notes: item.notes,
-        storyTitle: item.story?.title || 'Untitled',
+        storyTitle: item.story?.title || 'Untitled story',
         storyAuthor: item.story?.author || 'Unknown',
         readingLevel: item.story?.readingLevel,
       }));

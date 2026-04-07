@@ -1,12 +1,16 @@
 import apiClient from './apiClient';
-import { FamilyDashboard, ChildDashboard, ApiResponse } from '../types';
+import { FamilyDashboardData, ChildDashboard, ApiResponse, FamilySummary } from '../types';
+import {
+  normalizeFamilyDashboardData,
+  normalizeFamilySummary,
+} from './contractNormalizer';
 
 class DashboardService {
-  async getFamilyDashboard(): Promise<FamilyDashboard> {
-    const response = await apiClient.getInstance().get<ApiResponse<FamilyDashboard>>(
+  async getFamilyDashboard(): Promise<FamilyDashboardData> {
+    const response = await apiClient.getInstance().get<ApiResponse<unknown>>(
       '/dashboard/family'
     );
-    return response.data.data!;
+    return normalizeFamilyDashboardData(response.data.data);
   }
 
   async getChildDashboard(childId: string): Promise<ChildDashboard> {
@@ -16,11 +20,11 @@ class DashboardService {
     return response.data.data!;
   }
 
-  async getFamilySummary(): Promise<any> {
-    const response = await apiClient.getInstance().get(
+  async getFamilySummary(): Promise<FamilySummary> {
+    const response = await apiClient.getInstance().get<ApiResponse<unknown>>(
       '/dashboard/summary'
     );
-    return response.data.data;
+    return normalizeFamilySummary(response.data.data);
   }
 }
 

@@ -1,5 +1,6 @@
 import apiClient from './apiClient';
 import { Assignment, ApiResponse } from '../types';
+import { normalizeAssignment, normalizeFamilyDashboardData } from './contractNormalizer';
 
 class AssignmentService {
   async createAssignment(data: {
@@ -12,28 +13,29 @@ class AssignmentService {
       '/assignments',
       data
     );
-    return response.data.data!;
+    return normalizeAssignment(response.data.data);
   }
 
   async getFamilyAssignments(): Promise<Assignment[]> {
-    const response = await apiClient.getInstance().get<ApiResponse<Assignment[]>>(
+    const response = await apiClient.getInstance().get<ApiResponse<unknown>>(
       '/assignments/family'
     );
-    return response.data.data!;
+    const dashboard = normalizeFamilyDashboardData(response.data.data);
+    return dashboard.recentAssignments;
   }
 
   async getChildAssignments(childId: string): Promise<Assignment[]> {
     const response = await apiClient.getInstance().get<ApiResponse<Assignment[]>>(
       `/assignments/child/${childId}`
     );
-    return response.data.data!;
+    return (response.data.data || []).map(normalizeAssignment);
   }
 
   async getAssignmentById(id: string): Promise<Assignment> {
     const response = await apiClient.getInstance().get<ApiResponse<Assignment>>(
       `/assignments/${id}`
     );
-    return response.data.data!;
+    return normalizeAssignment(response.data.data);
   }
 
   async updateAssignmentStatus(
@@ -44,7 +46,7 @@ class AssignmentService {
       `/assignments/${id}/status`,
       { status }
     );
-    return response.data.data!;
+    return normalizeAssignment(response.data.data);
   }
 
   async deleteAssignment(id: string): Promise<void> {

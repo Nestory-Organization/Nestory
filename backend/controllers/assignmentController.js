@@ -2,6 +2,11 @@ const Assignment = require("../models/Assignment");
 const Child = require("../models/Child");
 const Family = require("../models/Family");
 require("../models/storyLibrary/Story"); // Register Story model for populate
+const {
+  normalizeAssignment,
+  normalizeAssignmentStats,
+  getId,
+} = require("../utils/contractTransformers");
 
 // @desc    Assign a story to a child
 // @route   POST /api/assignments
@@ -58,7 +63,7 @@ exports.createAssignment = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Story assigned successfully",
-      data: assignment,
+      data: normalizeAssignment(assignment),
     });
   } catch (error) {
     console.error(error);
@@ -97,7 +102,7 @@ exports.getAssignmentsByChild = async (req, res) => {
       success: true,
       message: "Assignments retrieved successfully",
       count: assignments.length,
-      data: assignments,
+      data: assignments.map(normalizeAssignment),
     });
   } catch (error) {
     console.error(error);
@@ -141,15 +146,16 @@ exports.getFamilyDashboard = async (req, res) => {
 
         return {
           childId: child._id,
+          id: getId(child),
           name: child.name,
           age: child.age,
           avatar: child.avatar,
-          assignments: {
+          assignments: normalizeAssignmentStats({
             total,
             assigned,
             in_progress: inProgress,
             completed,
-          },
+          }),
         };
       }),
     );
@@ -160,6 +166,7 @@ exports.getFamilyDashboard = async (req, res) => {
       data: {
         family: {
           familyId: family._id,
+          id: getId(family),
           familyName: family.familyName,
           totalChildren: children.length,
         },
@@ -203,7 +210,7 @@ exports.getAssignmentById = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Assignment retrieved successfully",
-      data: assignment,
+      data: normalizeAssignment(assignment),
     });
   } catch (error) {
     console.error(error);
@@ -254,7 +261,7 @@ exports.updateAssignmentStatus = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Assignment status updated successfully",
-      data: assignment,
+      data: normalizeAssignment(assignment),
     });
   } catch (error) {
     console.error(error);
