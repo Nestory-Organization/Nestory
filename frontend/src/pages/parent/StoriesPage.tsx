@@ -5,7 +5,7 @@ import StoryCard from '../../components/common/StoryCard';
 import SelectField from '../../components/common/SelectField';
 import StoryService from '../../services/storyService';
 import toast from 'react-hot-toast';
-import { Search } from 'lucide-react';
+import { BookOpen, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import { Story } from '../../types';
 
 const StoriesPage: React.FC = () => {
@@ -17,6 +17,8 @@ const StoriesPage: React.FC = () => {
   const [selectedAgeGroup, setSelectedAgeGroup] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalStories, setTotalStories] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const ageGroupOptions = [
     { value: '', label: 'All Age Groups' },
@@ -42,6 +44,8 @@ const StoriesPage: React.FC = () => {
           readingLevel: selectedLevel,
         });
         setStories(response.data || []);
+        setTotalStories(response.pagination?.total || 0);
+        setTotalPages(response.pagination?.pages || 1);
       } catch (error: any) {
         toast.error('Failed to load stories');
         console.error(error);
@@ -63,6 +67,19 @@ const StoriesPage: React.FC = () => {
     setFilteredStories(filtered);
   }, [searchQuery, stories]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedAgeGroup, selectedLevel]);
+
+  const hasActiveFilters = Boolean(searchQuery.trim() || selectedAgeGroup || selectedLevel);
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedAgeGroup('');
+    setSelectedLevel('');
+    setCurrentPage(1);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar title="Story Library" />
@@ -74,11 +91,27 @@ const StoriesPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Story Library</h1>
             <p className="text-gray-600">Discover stories for your family by age and reading level</p>
           </div>
-          <p className="text-sm text-gray-500">{filteredStories.length} results</p>
+          <p className="text-sm text-gray-500">
+            {filteredStories.length} visible • {totalStories} total matches
+          </p>
         </div>
 
         {/* Search & Filters */}
         <div className="card mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <SlidersHorizontal size={18} />
+              Search & Filters
+            </h2>
+            <button
+              className="btn-secondary flex items-center gap-2"
+              onClick={clearFilters}
+              disabled={!hasActiveFilters}
+            >
+              <RotateCcw size={14} />
+              Reset Filters
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 text-gray-400" size={20} />
@@ -105,6 +138,20 @@ const StoriesPage: React.FC = () => {
               options={levelOptions}
             />
           </div>
+
+          {hasActiveFilters && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {selectedAgeGroup && (
+                <span className="badge bg-blue-100 text-blue-800">Age: {selectedAgeGroup}</span>
+              )}
+              {selectedLevel && (
+                <span className="badge bg-purple-100 text-purple-800">Level: {selectedLevel}</span>
+              )}
+              {searchQuery.trim() && (
+                <span className="badge bg-gray-100 text-gray-800">Search: {searchQuery.trim()}</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Stories Grid */}
@@ -115,13 +162,11 @@ const StoriesPage: React.FC = () => {
           </div>
         ) : filteredStories.length === 0 ? (
           <div className="card text-center py-12">
-            <p className="text-gray-600 mb-4">No stories found with your filters</p>
+            <BookOpen className="mx-auto mb-3 text-gray-400" size={28} />
+            <p className="text-gray-700 font-semibold mb-1">No stories found with your filters</p>
+            <p className="text-sm text-gray-600 mb-4">Try broadening age range or reading level filters.</p>
             <button
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedAgeGroup('');
-                setSelectedLevel('');
-              }}
+              onClick={clearFilters}
               className="btn-primary"
             >
               Clear Filters
@@ -154,9 +199,10 @@ const StoriesPage: React.FC = () => {
             >
               Previous
             </button>
-            <span className="text-gray-600 px-2">Page {currentPage}</span>
+            <span className="text-gray-600 px-2">Page {currentPage} of {totalPages}</span>
             <button
               onClick={() => setCurrentPage(p => p + 1)}
+              disabled={currentPage >= totalPages}
               className="btn-secondary"
             >
               Next
