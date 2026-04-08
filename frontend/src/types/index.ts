@@ -31,6 +31,7 @@ export interface RegisterRequest {
 // Family & Child Types
 export interface Family {
   id: string;
+  _id?: string;
   familyName: string;
   parent: string;
   children: Child[];
@@ -41,6 +42,7 @@ export interface Family {
 
 export interface Child {
   id: string;
+  _id?: string;
   name: string;
   age: number;
   avatar?: string;
@@ -55,6 +57,7 @@ export interface Child {
 // Story Types
 export interface Story {
   id: string;
+  _id?: string;
   title: string;
   author: string;
   description: string;
@@ -97,16 +100,115 @@ export interface ReadingSession {
 // Assignment Types
 export interface Assignment {
   id: string;
+  _id?: string;
   childId: string;
   storyId: string;
   assignedBy: string;
   familyId: string;
-  status: 'assigned' | 'in_progress' | 'completed';
+  status: AssignmentStatus;
   dueDate?: string;
   completedAt?: string;
   notes?: string;
+  dueState?: 'none' | 'overdue' | 'due_soon' | 'upcoming';
+  isOverdue?: boolean;
+  isDueSoon?: boolean;
+  daysUntilDue?: number | null;
+  dueMeta?: {
+    hasDueDate: boolean;
+    isOverdue: boolean;
+    isDueSoon: boolean;
+    daysUntilDue: number | null;
+    dueState: 'none' | 'overdue' | 'due_soon' | 'upcoming';
+  };
   createdAt: string;
   updatedAt: string;
+  child?: {
+    id: string;
+    _id?: string;
+    name: string;
+    age?: number;
+    avatar?: string;
+  };
+  story?: {
+    id: string;
+    _id?: string;
+    title: string;
+    author: string;
+    readingLevel?: 'beginner' | 'intermediate' | 'advanced';
+    coverImage?: string;
+    ageGroup?: 'toddler' | 'early-reader' | 'middle-grade' | 'young-adult';
+  };
+}
+
+export type AssignmentStatus = 'assigned' | 'in_progress' | 'completed';
+
+export type AssignmentDueState = 'all' | 'overdue' | 'due_soon' | 'upcoming' | 'none';
+
+export interface AssignmentPagination {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface AssignmentListMetadata {
+  overdueCount: number;
+  dueSoonCount: number;
+}
+
+export interface AssignmentListResult {
+  data: Assignment[];
+  pagination: AssignmentPagination;
+  metadata: AssignmentListMetadata;
+}
+
+export interface AssignmentStats {
+  total: number;
+  assigned: number;
+  inProgress: number;
+  in_progress: number;
+  completed: number;
+  completionRate: number;
+  completionRateLabel: string;
+}
+
+export interface FamilySummary {
+  familyId: string;
+  familyName: string;
+  totalChildren: number;
+  totalAssignments: number;
+  assigned: number;
+  inProgress: number;
+  completed: number;
+  completionRate: number;
+}
+
+export interface FamilyDashboardData {
+  family: {
+    id: string;
+    familyId: string;
+    familyName: string;
+    totalChildren: number;
+  };
+  overallStats: AssignmentStats;
+  mostActiveReader: {
+    id: string;
+    childId: string;
+    name: string;
+    completedStories: number;
+  } | null;
+  children: Array<{
+    id: string;
+    childId: string;
+    name: string;
+    age: number;
+    avatar: string;
+    assignments: AssignmentStats;
+  }>;
+  recentAssignments: Assignment[];
+  recentCompletions: Assignment[];
 }
 
 // Dashboard Types

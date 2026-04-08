@@ -1,5 +1,24 @@
 const { body } = require("express-validator");
 
+const readingLevels = ["beginner", "intermediate", "advanced"];
+const avatarEmojiRegex = /^(\p{Extended_Pictographic}|\uFE0F|\u200D)+$/u;
+
+const isValidAvatar = (value) => {
+  if (value === "") return true;
+
+  const isUrl = /^https?:\/\//i.test(value);
+  if (isUrl) {
+    try {
+      new URL(value);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  return avatarEmojiRegex.test(value.trim());
+};
+
 // Validation rules for adding a child
 exports.addChildValidation = [
   body("name")
@@ -18,8 +37,17 @@ exports.addChildValidation = [
   body("avatar")
     .optional()
     .trim()
-    .isURL()
-    .withMessage("Avatar must be a valid URL"),
+    .isLength({ max: 2048 })
+    .withMessage("Avatar must be 2048 characters or less")
+    .custom((value) => isValidAvatar(value))
+    .withMessage("Avatar must be an emoji or a valid http/https URL"),
+
+  body("readingLevel")
+    .optional()
+    .isIn(readingLevels)
+    .withMessage(
+      "Reading level must be one of: beginner, intermediate, advanced",
+    ),
 ];
 
 // Validation rules for updating a child
@@ -40,6 +68,15 @@ exports.updateChildValidation = [
   body("avatar")
     .optional()
     .trim()
-    .isURL()
-    .withMessage("Avatar must be a valid URL"),
+    .isLength({ max: 2048 })
+    .withMessage("Avatar must be 2048 characters or less")
+    .custom((value) => isValidAvatar(value))
+    .withMessage("Avatar must be an emoji or a valid http/https URL"),
+
+  body("readingLevel")
+    .optional()
+    .isIn(readingLevels)
+    .withMessage(
+      "Reading level must be one of: beginner, intermediate, advanced",
+    ),
 ];

@@ -8,9 +8,17 @@ interface ChildCardProps {
   onDelete?: (childId: string) => void;
   onClick?: (child: Child) => void;
   showActions?: boolean;
+  isDeleting?: boolean;
 }
 
-const ChildCard: React.FC<ChildCardProps> = ({ child, onEdit, onDelete, onClick, showActions = true }) => {
+const ChildCard: React.FC<ChildCardProps> = ({
+  child,
+  onEdit,
+  onDelete,
+  onClick,
+  showActions = true,
+  isDeleting = false,
+}) => {
   const getLevelEmoji = (level?: string) => {
     switch (level) {
       case 'beginner':
@@ -64,6 +72,7 @@ const ChildCard: React.FC<ChildCardProps> = ({ child, onEdit, onDelete, onClick,
                 onEdit(child);
               }}
               className="btn-secondary flex items-center gap-1 text-xs"
+              disabled={isDeleting}
             >
               <Edit2 size={14} />
               Edit
@@ -76,9 +85,10 @@ const ChildCard: React.FC<ChildCardProps> = ({ child, onEdit, onDelete, onClick,
                 onDelete(child.id);
               }}
               className="btn-danger flex items-center gap-1 text-xs"
+              disabled={isDeleting}
             >
               <Trash2 size={14} />
-              Delete
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </button>
           )}
         </div>
