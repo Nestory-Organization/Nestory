@@ -51,17 +51,6 @@ const ChildDashboard: React.FC = () => {
             ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
             : 'Failed to load child dashboard';
         toast.error(message || 'Failed to load child dashboard');
-        const response = await StoryService.getStories(1, 24);
-
-        const normalizedStories = normalizeStoriesForDashboard(
-          response.stories || []
-        );
-
-        setStories(normalizedStories);
-      } catch (error: any) {
-        toast.error(
-          error?.response?.data?.message || 'Failed to load stories'
-        );
       } finally {
         setIsLoading(false);
       }
