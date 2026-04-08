@@ -38,6 +38,7 @@ backend/
 ## Installation
 
 1. **Install dependencies:**
+
    ```bash
    cd backend
    npm install
@@ -60,6 +61,7 @@ backend/
    - Or use MongoDB Atlas (cloud database)
 
 4. **Run the server:**
+
    ```bash
    # Development mode
    npm run dev
@@ -73,6 +75,7 @@ backend/
 ### Authentication Routes
 
 #### Register User
+
 - **POST** `/api/auth/register`
 - **Access:** Public
 - **Body:**
@@ -85,6 +88,7 @@ backend/
   ```
 
 #### Login User
+
 - **POST** `/api/auth/login`
 - **Access:** Public
 - **Body:**
@@ -96,6 +100,7 @@ backend/
   ```
 
 #### Get Current User Profile
+
 - **GET** `/api/auth/me`
 - **Access:** Private (Requires authentication)
 - **Headers:**
@@ -104,6 +109,7 @@ backend/
   ```
 
 #### Update User Profile
+
 - **PUT** `/api/auth/profile`
 - **Access:** Private
 - **Headers:**
@@ -121,6 +127,7 @@ backend/
   ```
 
 #### Get All Users (Admin)
+
 - **GET** `/api/auth/users`
 - **Access:** Private/Admin
 - **Headers:**
@@ -129,6 +136,7 @@ backend/
   ```
 
 #### Delete User (Admin)
+
 - **DELETE** `/api/auth/users/:id`
 - **Access:** Private/Admin
 - **Headers:**
@@ -136,9 +144,131 @@ backend/
   Authorization: Bearer <token>
   ```
 
+### Assignment Routes (Parent)
+
+#### List Assignments With Filters + Pagination
+
+- **GET** `/api/assignments`
+- **Access:** Private/Parent
+- **Headers:**
+  ```
+  Authorization: Bearer <token>
+  ```
+- **Query Parameters (optional):**
+  - `childId` (Mongo ID)
+  - `status` = `assigned` | `in_progress` | `completed`
+  - `dueState` = `all` | `overdue` | `due_soon` | `upcoming` | `none`
+  - `dueSoonDays` (1-30, default `3`)
+  - `page` (default `1`)
+  - `limit` (default `10`, max `100`)
+  - `sortBy` = `createdAt` | `dueDate` | `status`
+  - `sortOrder` = `asc` | `desc`
+
+- **Example:**
+
+  ```http
+  GET /api/assignments?status=assigned&dueState=due_soon&dueSoonDays=5&page=1&limit=10&sortBy=dueDate&sortOrder=asc
+  ```
+
+- **Success Response Example:**
+  ```json
+  {
+    "success": true,
+    "message": "Assignments retrieved successfully",
+    "count": 2,
+    "data": [
+      {
+        "id": "6612f4ef1cf0db7f5f8f0a12",
+        "status": "assigned",
+        "dueDate": "2026-04-10T00:00:00.000Z",
+        "childId": "6612f4ef1cf0db7f5f8f0101",
+        "storyId": "6612f4ef1cf0db7f5f8f0202",
+        "dueState": "due_soon",
+        "isOverdue": false,
+        "isDueSoon": true,
+        "daysUntilDue": 3,
+        "dueMeta": {
+          "hasDueDate": true,
+          "isOverdue": false,
+          "isDueSoon": true,
+          "daysUntilDue": 3,
+          "dueState": "due_soon"
+        }
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "totalItems": 14,
+      "totalPages": 2,
+      "hasNextPage": true,
+      "hasPrevPage": false
+    },
+    "filters": {
+      "childId": null,
+      "status": "assigned",
+      "dueState": "due_soon",
+      "dueSoonDays": 5,
+      "sortBy": "dueDate",
+      "sortOrder": "asc"
+    },
+    "metadata": {
+      "overdueCount": 3,
+      "dueSoonCount": 4
+    }
+  }
+  ```
+
+#### Bulk Update Assignment Status (Optional)
+
+- **PUT** `/api/assignments/bulk/status`
+- **Access:** Private/Parent
+- **Headers:**
+  ```
+  Authorization: Bearer <token>
+  Content-Type: application/json
+  ```
+- **Body:**
+
+  ```json
+  {
+    "assignmentIds": ["6612f4ef1cf0db7f5f8f0a12", "6612f4ef1cf0db7f5f8f0a13"],
+    "status": "completed"
+  }
+  ```
+
+- **Success Response Example:**
+  ```json
+  {
+    "success": true,
+    "message": "Assignments updated successfully",
+    "data": {
+      "requestedCount": 2,
+      "updatedCount": 2,
+      "notFoundIds": [],
+      "status": "completed",
+      "assignments": [
+        {
+          "id": "6612f4ef1cf0db7f5f8f0a12",
+          "status": "completed",
+          "dueState": "upcoming",
+          "dueMeta": {
+            "hasDueDate": true,
+            "isOverdue": false,
+            "isDueSoon": false,
+            "daysUntilDue": 10,
+            "dueState": "upcoming"
+          }
+        }
+      ]
+    }
+  }
+  ```
+
 ## Response Format
 
 ### Success Response
+
 ```json
 {
   "success": true,
@@ -150,6 +280,7 @@ backend/
 ```
 
 ### Error Response
+
 ```json
 {
   "success": false,

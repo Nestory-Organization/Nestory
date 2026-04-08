@@ -25,7 +25,10 @@ app.use(requestLogger);
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/stories', require('./routes/storyLibrary/storyRoutes'));
 app.use('/api/sessions', require('./routes/readingRoutes'));
-
+app.use('/api/family', require('./routes/familyRoutes'));
+app.use('/api/children', require('./routes/childRoutes'));
+app.use('/api/assignments', require('./routes/assignmentRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 // Welcome Route
 app.get('/', (req, res) => {
   res.json({ 

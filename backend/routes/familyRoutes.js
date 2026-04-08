@@ -7,7 +7,7 @@ const {
   updateFamily,
   deleteFamily,
 } = require("../controllers/familyController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, parentOnly } = require("../middleware/authMiddleware");
 const {
   handleValidationErrors,
 } = require("../middleware/validationMiddleware");
@@ -20,19 +20,21 @@ const {
 router.post(
   "/",
   protect,
+  parentOnly,
   createFamilyValidation,
   handleValidationErrors,
   createFamily,
 );
-router.get("/my", protect, getMyFamily);
-router.get("/:id", protect, getFamilyById);
+router.get("/my", protect, parentOnly, getMyFamily);
+router.get("/:id", protect, parentOnly, getFamilyById);
 router.put(
   "/:id",
   protect,
+  parentOnly,
   updateFamilyValidation,
   handleValidationErrors,
   updateFamily,
 );
-router.delete("/:id", protect, deleteFamily);
+router.delete("/:id", protect, parentOnly, deleteFamily);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const Story = require('../../models/storyLibrary/Story');
 const Child = require('../../models/Child');
 const { getGoogleBookById } = require('./googleBooksService');
+const { getStoriesWithQuery } = require("./storyQueryService");
 
 const mapAgeToGroup = (age) => {
     if (age <= 3) return 'toddler';
@@ -123,4 +124,7 @@ exports.syncGoogleMetadata = async (storyId) => {
 
     const updated = await story.save();
     return updated;
+};
+exports.listStories = async (query) => {
+    return getStoriesWithQuery(query);
 };

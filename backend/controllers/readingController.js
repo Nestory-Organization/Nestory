@@ -1,6 +1,7 @@
-const mongoose = require('mongoose');
-const ReadingSession = require('../models/ReadingSession');
-const Story = require('../models/storyLibrary/Story');
+const mongoose = require("mongoose");
+const ReadingSession = require("../models/ReadingSession");
+const Story = require("../models/storyLibrary/Story");
+const Child = require("../models/Child");
 
 // Normalize date to start of day (for streak: unique days with reading)
 const getDateKey = (date) => {
@@ -9,37 +10,70 @@ const getDateKey = (date) => {
   return d.getTime();
 };
 
+const ensureOwnedChild = async (childId, userId) => {
+  const child = await Child.findById(childId).select("parent isActive");
+  if (!child) {
+    return { ok: false, status: 404, message: "Child not found" };
+  }
+
+  if (!child.isActive) {
+    return { ok: false, status: 400, message: "Child profile is inactive" };
+  }
+
+  if (child.parent.toString() !== userId.toString()) {
+    return {
+      ok: false,
+      status: 403,
+      message: "Not authorized to access this child",
+    };
+  }
+
+  return { ok: true, child };
+};
+
 // @desc    Start a new reading session
 // @route   POST /api/sessions/start
-// @access  Private (uses auth; ties to logged-in user by default)
+// @access  Private (Parent only)
 exports.startSession = async (req, res) => {
   try {
-    const { childId, bookId, totalPages } = req.body;
+    const { childId, storyId, bookId, totalPages } = req.body;
+    const effectiveStoryId = storyId || bookId;
 
-    if (!bookId) {
+    if (!effectiveStoryId) {
       return res.status(400).json({
         success: false,
-        message: 'bookId is required'
+        message: "storyId or bookId is required",
       });
     }
 
-    // If childId is not provided, default to the authenticated user
-    // This will later be replaced by an actual child profile ID once that model exists
-    const effectiveChildId = childId || req.user?._id;
-
-    if (!effectiveChildId) {
+    if (!mongoose.Types.ObjectId.isValid(childId)) {
       return res.status(400).json({
         success: false,
-        message: 'Unable to determine reader (child/user). Make sure you are authenticated.'
+        message: "Invalid childId format",
+      });
+    }
+
+    const childAccess = await ensureOwnedChild(childId, req.user._id);
+    if (!childAccess.ok) {
+      return res.status(childAccess.status).json({
+        success: false,
+        message: childAccess.message,
       });
     }
 
     // Prefer total pages from the Story document; fall back to body.totalPages for backward compatibility
     let effectiveTotalPages = null;
 
-    const story = await Story.findById(bookId);
+    const story = await Story.findById(effectiveStoryId).select("pageCount");
 
-    if (story && typeof story.pageCount === 'number' && story.pageCount > 0) {
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: "Story not found",
+      });
+    }
+
+    if (story && typeof story.pageCount === "number" && story.pageCount > 0) {
       effectiveTotalPages = story.pageCount;
     } else if (totalPages) {
       effectiveTotalPages = Number(totalPages);
@@ -48,37 +82,38 @@ exports.startSession = async (req, res) => {
     if (!effectiveTotalPages || Number.isNaN(effectiveTotalPages)) {
       return res.status(400).json({
         success: false,
-        message: 'Total pages could not be determined. Provide totalPages in the request or set pageCount on the Story.'
+        message:
+          "Total pages could not be determined. Provide totalPages in the request or set pageCount on the Story.",
       });
     }
 
     const session = await ReadingSession.create({
-      childId: new mongoose.Types.ObjectId(effectiveChildId),
-      bookId: new mongoose.Types.ObjectId(bookId),
+      childId: new mongoose.Types.ObjectId(childId),
+      bookId: new mongoose.Types.ObjectId(effectiveStoryId),
       totalPages: effectiveTotalPages,
       pagesRead: 0,
       timeSpent: 0,
-      completed: false
+      completed: false,
     });
 
     return res.status(201).json({
       success: true,
-      message: 'Reading session started',
-      data: session
+      message: "Reading session started",
+      data: session,
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
 
 // @desc    Get weekly reading time (last 7 days) for a child
 // @route   GET /api/sessions/weekly/:childId
-// @access  Public (TODO: protect with auth, ensure childId belongs to user)
+// @access  Private (Parent only)
 exports.getWeeklyReadingTime = async (req, res) => {
   try {
     const { childId } = req.params;
@@ -86,7 +121,15 @@ exports.getWeeklyReadingTime = async (req, res) => {
     if (!childId) {
       return res.status(400).json({
         success: false,
-        message: 'childId is required'
+        message: "childId is required",
+      });
+    }
+
+    const childAccess = await ensureOwnedChild(childId, req.user._id);
+    if (!childAccess.ok) {
+      return res.status(childAccess.status).json({
+        success: false,
+        message: childAccess.message,
       });
     }
 
@@ -96,32 +139,37 @@ exports.getWeeklyReadingTime = async (req, res) => {
 
     const sessions = await ReadingSession.find({
       childId: new mongoose.Types.ObjectId(childId),
-      startedAt: { $gte: sevenDaysAgo, $lte: now }
+      startedAt: { $gte: sevenDaysAgo, $lte: now },
     });
 
-    const totalTimeSpent = sessions.reduce((sum, s) => sum + (s.timeSpent || 0), 0);
+    const totalTimeSpent = sessions.reduce(
+      (sum, s) => sum + (s.timeSpent || 0),
+      0,
+    );
 
     return res.status(200).json({
       success: true,
-      message: 'Weekly reading time fetched',
+      message: "Weekly reading time fetched",
       data: {
         totalTimeSpent, // minutes
-        sessionCount: sessions.length
-      }
+        totalTime: totalTimeSpent,
+        unit: "minutes",
+        sessionCount: sessions.length,
+      },
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
 
 // @desc    Get current reading streak (consecutive days with any reading)
 // @route   GET /api/sessions/streak/:childId
-// @access  Public (TODO: protect with auth, ensure childId belongs to user)
+// @access  Private (Parent only)
 exports.getReadingStreak = async (req, res) => {
   try {
     const { childId } = req.params;
@@ -129,19 +177,27 @@ exports.getReadingStreak = async (req, res) => {
     if (!childId) {
       return res.status(400).json({
         success: false,
-        message: 'childId is required'
+        message: "childId is required",
+      });
+    }
+
+    const childAccess = await ensureOwnedChild(childId, req.user._id);
+    if (!childAccess.ok) {
+      return res.status(childAccess.status).json({
+        success: false,
+        message: childAccess.message,
       });
     }
 
     const sessions = await ReadingSession.find({
-      childId: new mongoose.Types.ObjectId(childId)
+      childId: new mongoose.Types.ObjectId(childId),
     }).sort({ startedAt: 1 });
 
     if (!sessions.length) {
       return res.status(200).json({
         success: true,
-        message: 'Reading streak fetched',
-        data: { currentStreak: 0 }
+        message: "Reading streak fetched",
+        data: { currentStreak: 0, streak: 0, longestStreak: 0 },
       });
     }
 
@@ -158,22 +214,26 @@ exports.getReadingStreak = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Reading streak fetched',
-      data: { currentStreak }
+      message: "Reading streak fetched",
+      data: {
+        currentStreak,
+        streak: currentStreak,
+        longestStreak: currentStreak,
+      },
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
 
 // @desc    Update reading session (pages + time), return progress, mark completion
 // @route   POST /api/sessions/update
-// @access  Public (TODO: protect with auth)
+// @access  Private (Parent only)
 exports.updateSession = async (req, res) => {
   try {
     const { sessionId, pagesRead, timeSpent } = req.body;
@@ -181,7 +241,7 @@ exports.updateSession = async (req, res) => {
     if (!sessionId) {
       return res.status(400).json({
         success: false,
-        message: 'sessionId is required'
+        message: "sessionId is required",
       });
     }
 
@@ -190,7 +250,15 @@ exports.updateSession = async (req, res) => {
     if (!session) {
       return res.status(404).json({
         success: false,
-        message: 'Session not found'
+        message: "Session not found",
+      });
+    }
+
+    const childAccess = await ensureOwnedChild(session.childId, req.user._id);
+    if (!childAccess.ok) {
+      return res.status(childAccess.status).json({
+        success: false,
+        message: childAccess.message,
       });
     }
 
@@ -212,18 +280,18 @@ exports.updateSession = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Session updated',
+      message: "Session updated",
       data: {
         session,
-        progress: Number(progress.toFixed(2))
-      }
+        progress: Number(progress.toFixed(2)),
+      },
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };

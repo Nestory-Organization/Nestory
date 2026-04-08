@@ -1,0 +1,262 @@
+// Auth & User Types
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'parent' | 'admin' | 'child';
+  profilePicture?: string;
+  phoneNumber?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  token: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: 'parent' | 'admin';
+}
+
+// Family & Child Types
+export interface Family {
+  id: string;
+  _id?: string;
+  familyName: string;
+  parent: string;
+  children: Child[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Child {
+  id: string;
+  _id?: string;
+  name: string;
+  age: number;
+  avatar?: string;
+  family: string;
+  parent: string;
+  isActive: boolean;
+  readingLevel?: 'beginner' | 'intermediate' | 'advanced';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Story Types
+export interface Story {
+  id: string;
+  _id?: string;
+  title: string;
+  author: string;
+  description: string;
+  ageGroup: 'toddler' | 'early-reader' | 'middle-grade' | 'young-adult';
+  genres: string[];
+  readingLevel: 'beginner' | 'intermediate' | 'advanced';
+  coverImage: string;
+  pageCount: number;
+  source: 'internal' | 'google';
+  googleBookId?: string;
+  previewLink?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Reading Session Types
+export interface ReadingSession {
+  id: string;
+  childId: string;
+  storyId: string;
+  pagesRead: number;
+  totalPages: number;
+  timeSpent: number; // in minutes
+  completed: boolean;
+  startedAt: string;
+  completedAt?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Assignment Types
+export interface Assignment {
+  id: string;
+  _id?: string;
+  childId: string;
+  storyId: string;
+  assignedBy: string;
+  familyId: string;
+  status: AssignmentStatus;
+  dueDate?: string;
+  completedAt?: string;
+  notes?: string;
+  dueState?: 'none' | 'overdue' | 'due_soon' | 'upcoming';
+  isOverdue?: boolean;
+  isDueSoon?: boolean;
+  daysUntilDue?: number | null;
+  dueMeta?: {
+    hasDueDate: boolean;
+    isOverdue: boolean;
+    isDueSoon: boolean;
+    daysUntilDue: number | null;
+    dueState: 'none' | 'overdue' | 'due_soon' | 'upcoming';
+  };
+  createdAt: string;
+  updatedAt: string;
+  child?: {
+    id: string;
+    _id?: string;
+    name: string;
+    age?: number;
+    avatar?: string;
+  };
+  story?: {
+    id: string;
+    _id?: string;
+    title: string;
+    author: string;
+    readingLevel?: 'beginner' | 'intermediate' | 'advanced';
+    coverImage?: string;
+    ageGroup?: 'toddler' | 'early-reader' | 'middle-grade' | 'young-adult';
+  };
+}
+
+export type AssignmentStatus = 'assigned' | 'in_progress' | 'completed';
+
+export type AssignmentDueState = 'all' | 'overdue' | 'due_soon' | 'upcoming' | 'none';
+
+export interface AssignmentPagination {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface AssignmentListMetadata {
+  overdueCount: number;
+  dueSoonCount: number;
+}
+
+export interface AssignmentListResult {
+  data: Assignment[];
+  pagination: AssignmentPagination;
+  metadata: AssignmentListMetadata;
+}
+
+export interface AssignmentStats {
+  total: number;
+  assigned: number;
+  inProgress: number;
+  in_progress: number;
+  completed: number;
+  completionRate: number;
+  completionRateLabel: string;
+}
+
+export interface FamilySummary {
+  familyId: string;
+  familyName: string;
+  totalChildren: number;
+  totalAssignments: number;
+  assigned: number;
+  inProgress: number;
+  completed: number;
+  completionRate: number;
+}
+
+export interface FamilyDashboardData {
+  family: {
+    id: string;
+    familyId: string;
+    familyName: string;
+    totalChildren: number;
+  };
+  overallStats: AssignmentStats;
+  mostActiveReader: {
+    id: string;
+    childId: string;
+    name: string;
+    completedStories: number;
+  } | null;
+  children: Array<{
+    id: string;
+    childId: string;
+    name: string;
+    age: number;
+    avatar: string;
+    assignments: AssignmentStats;
+  }>;
+  recentAssignments: Assignment[];
+  recentCompletions: Assignment[];
+}
+
+// Dashboard Types
+export interface DashboardStats {
+  totalReadingTime: number;
+  storiesRead: number;
+  currentStreak: number;
+  assignmentsCompleted: number;
+  averageReadingTimePerDay: number;
+}
+
+export interface ChildDashboard {
+  child: Child;
+  stats: DashboardStats;
+  upcomingAssignments: Assignment[];
+  recentReadingSessions: ReadingSession[];
+}
+
+export interface FamilyDashboard {
+  family: Family;
+  children: ChildDashboard[];
+  totalFamilyReadingTime: number;
+  familyStats: DashboardStats;
+}
+
+// API Response Types
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean;
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+// UI State Types
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface ModalState {
+  isOpen: boolean;
+  title?: string;
+  message?: string;
+  type?: 'info' | 'warning' | 'error' | 'success';
+}
