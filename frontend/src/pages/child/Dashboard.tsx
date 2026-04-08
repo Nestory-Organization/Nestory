@@ -10,6 +10,21 @@ import StoryService from '../../services/storyService';
 import AssignmentService from '../../services/assignmentService';
 import { Story, Assignment } from '../../types';
 
+const FALLBACK_COVER =
+  'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80';
+
+const normalizeCoverImage = (url?: string) => {
+  if (!url || !url.trim()) return FALLBACK_COVER;
+  return url.replace(/^http:\/\//i, 'https://');
+};
+
+const normalizeStoriesForDashboard = (stories: Story[]): Story[] => {
+  return stories.map((story) => ({
+    ...story,
+    coverImage: normalizeCoverImage(story.coverImage),
+  }));
+};
+
 const ChildDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -36,6 +51,17 @@ const ChildDashboard: React.FC = () => {
             ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
             : 'Failed to load child dashboard';
         toast.error(message || 'Failed to load child dashboard');
+        const response = await StoryService.getStories(1, 24);
+
+        const normalizedStories = normalizeStoriesForDashboard(
+          response.stories || []
+        );
+
+        setStories(normalizedStories);
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data?.message || 'Failed to load stories'
+        );
       } finally {
         setIsLoading(false);
       }
@@ -80,8 +106,12 @@ const ChildDashboard: React.FC = () => {
 
       <div className="container-responsive py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">Welcome, {user?.name || 'Reader'}</h1>
-          <p className="text-gray-600">Track your progress and continue your reading journey.</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">
+            Welcome, {user?.name || 'Reader'}
+          </h1>
+          <p className="text-gray-600">
+            Track your progress and continue your reading journey.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -178,6 +208,7 @@ const ChildDashboard: React.FC = () => {
               <BookOpen className="text-nestory-600" size={22} />
               <h2 className="text-xl font-bold text-gray-900">Story Picks</h2>
             </div>
+
             {isLoading ? (
               <p className="text-gray-600">Loading story recommendations...</p>
             ) : quickPicks.length === 0 ? (
@@ -201,9 +232,14 @@ const ChildDashboard: React.FC = () => {
                 { emoji: '📝', text: 'Tell a parent what you learned' },
                 { emoji: '🎯', text: 'Finish one story this week' },
               ].map((achievement) => (
-                <div key={achievement.text} className="rounded-lg border border-gray-200 bg-gray-50 p-3 flex items-center gap-3">
+                <div
+                  key={achievement.text}
+                  className="rounded-lg border border-gray-200 bg-gray-50 p-3 flex items-center gap-3"
+                >
                   <span className="text-xl">{achievement.emoji}</span>
-                  <span className="font-medium text-gray-700">{achievement.text}</span>
+                  <span className="font-medium text-gray-700">
+                    {achievement.text}
+                  </span>
                 </div>
               ))}
             </div>
