@@ -65,7 +65,7 @@ const StoryManagementPage: React.FC = () => {
     try {
       setIsLoading(true);
       const response = await StoryService.getStories(1, 100);
-      const normalized = (response.data || []).map((story: any) => ({
+      const normalized = response.stories.map((story: any) => ({
         id: normalizeId(story),
         title: story.title || 'Untitled',
         author: story.author || 'Unknown',
@@ -120,8 +120,8 @@ const StoryManagementPage: React.FC = () => {
       ageGroup: formData.ageGroup,
       readingLevel: formData.readingLevel,
       genres: formData.genres.split(',').map((item) => item.trim()).filter(Boolean),
-      pageCount: formData.pageCount,
       coverImage: formData.coverImage.trim(),
+      previewLink: '',
     };
 
     try {
