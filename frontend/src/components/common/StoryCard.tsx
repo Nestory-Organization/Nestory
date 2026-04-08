@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Story } from '../../types';
 import { BookOpen, Users } from 'lucide-react';
 
@@ -9,7 +9,11 @@ interface StoryCardProps {
   clickable?: boolean;
 }
 
+const DEFAULT_BOOK_COVER = 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80';
+
 const StoryCard: React.FC<StoryCardProps> = ({ story, onSelect, isSelected = false, clickable = true }) => {
+  const [imageLoadError, setImageLoadError] = useState(false);
+
   const getAgeGroupEmoji = (ageGroup?: string) => {
     switch (ageGroup) {
       case 'toddler':
@@ -23,6 +27,22 @@ const StoryCard: React.FC<StoryCardProps> = ({ story, onSelect, isSelected = fal
       default:
         return '📚';
     }
+  };
+
+  const normalizeImageUrl = (url?: string): string | null => {
+    if (!url) return null;
+    // Convert http:// to https://
+    return url.replace(/^http:\/\//, 'https://');
+  };
+
+  const getCoverImageUrl = (): string => {
+    if (!imageLoadError) {
+      const normalizedUrl = normalizeImageUrl(story.coverImage);
+      if (normalizedUrl) {
+        return normalizedUrl;
+      }
+    }
+    return DEFAULT_BOOK_COVER;
   };
 
   const getLevelColor = (level?: string) => {
@@ -45,9 +65,14 @@ const StoryCard: React.FC<StoryCardProps> = ({ story, onSelect, isSelected = fal
       } ${clickable ? 'cursor-pointer active:scale-95' : ''}`}
       onClick={() => clickable && onSelect?.(story)}
     >
-      {/* Cover Image Placeholder */}
-      <div className="w-full h-40 bg-gradient-to-br from-nestory-100 to-blue-100 rounded-lg mb-4 flex items-center justify-center text-4xl">
-        {getAgeGroupEmoji(story.ageGroup)}
+      {/* Cover Image */}
+      <div className="w-full h-40 bg-gray-200 rounded-lg mb-4 overflow-hidden flex items-center justify-center">
+        <img
+          src={getCoverImageUrl()}
+          alt={story.title || 'Book cover'}
+          className="w-full h-full object-cover"
+          onError={() => setImageLoadError(true)}
+        />
       </div>
 
       {/* Title & Author */}

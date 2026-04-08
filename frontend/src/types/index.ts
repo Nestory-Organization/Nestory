@@ -4,6 +4,7 @@ export interface User {
   name: string;
   email: string;
   role: 'parent' | 'admin' | 'child';
+  mustChangePassword?: boolean;
   profilePicture?: string;
   phoneNumber?: string;
   isActive: boolean;
@@ -54,6 +55,17 @@ export interface Child {
   updatedAt: string;
 }
 
+export interface ChildAccountCredentials {
+  email: string;
+  temporaryPassword: string;
+  mustChangePassword: boolean;
+}
+
+export interface AddChildResponse {
+  child: Child;
+  credentials: ChildAccountCredentials;
+}
+
 // Story Types
 export interface Story {
   id: string;
@@ -72,6 +84,13 @@ export interface Story {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StoryListResponse {
+  stories: Story[];
+  total: number;
+  page: number;
+  pages: number;
 }
 
 // Reading Session Types

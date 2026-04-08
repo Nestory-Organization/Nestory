@@ -13,6 +13,7 @@ interface BackendAuthPayload {
   createdAt?: string;
   updatedAt?: string;
   token?: string;
+  mustChangePassword?: boolean;
 }
 
 class AuthService {
@@ -32,6 +33,7 @@ class AuthService {
       name: payload.name || '',
       email: payload.email || '',
       role: this.normalizeRole(payload.role),
+      mustChangePassword: payload.mustChangePassword ?? false,
       profilePicture: payload.profilePicture,
       phoneNumber: payload.phoneNumber,
       isActive: payload.isActive ?? true,
@@ -82,6 +84,13 @@ class AuthService {
       data
     );
     return this.normalizeUser(response.data.data!);
+  }
+
+  async changePassword(data: { currentPassword: string; newPassword: string }): Promise<void> {
+    await apiClient.getInstance().put<ApiResponse<{ mustChangePassword: boolean }>>(
+      '/auth/change-password',
+      data
+    );
   }
 
   logout(): void {

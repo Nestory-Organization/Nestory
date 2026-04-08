@@ -1,5 +1,5 @@
-const User = require('../models/User');
-const generateToken = require('../utils/generateToken');
+const User = require("../models/User");
+const generateToken = require("../utils/generateToken");
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -12,7 +12,7 @@ exports.register = async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields'
+        message: "Please provide all required fields",
       });
     }
 
@@ -22,7 +22,7 @@ exports.register = async (req, res) => {
     if (userExists) {
       return res.status(400).json({
         success: false,
-        message: 'User already exists with this email'
+        message: "User already exists with this email",
       });
     }
 
@@ -30,33 +30,34 @@ exports.register = async (req, res) => {
     const user = await User.create({
       name,
       email,
-      password
+      password,
     });
 
     if (user) {
       res.status(201).json({
         success: true,
-        message: 'User registered successfully',
+        message: "User registered successfully",
         data: {
           _id: user._id,
           name: user.name,
           email: user.email,
           role: user.role,
-          token: generateToken(user._id)
-        }
+          mustChangePassword: user.mustChangePassword === true,
+          token: generateToken(user._id),
+        },
       });
     } else {
       res.status(400).json({
         success: false,
-        message: 'Invalid user data'
+        message: "Invalid user data",
       });
     }
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -72,17 +73,17 @@ exports.login = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide email and password'
+        message: "Please provide email and password",
       });
     }
 
     // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: "Invalid credentials",
       });
     }
 
@@ -90,7 +91,7 @@ exports.login = async (req, res) => {
     if (!user.isActive) {
       return res.status(401).json({
         success: false,
-        message: 'Account has been deactivated'
+        message: "Account has been deactivated",
       });
     }
 
@@ -100,27 +101,28 @@ exports.login = async (req, res) => {
     if (!isPasswordMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: "Invalid credentials",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       data: {
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        token: generateToken(user._id)
-      }
+        mustChangePassword: user.mustChangePassword === true,
+        token: generateToken(user._id),
+      },
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -143,21 +145,22 @@ exports.getMe = async (req, res) => {
           profilePicture: user.profilePicture,
           phoneNumber: user.phoneNumber,
           isActive: user.isActive,
-          createdAt: user.createdAt
-        }
+          mustChangePassword: user.mustChangePassword === true,
+          createdAt: user.createdAt,
+        },
       });
     } else {
       res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -183,7 +186,7 @@ exports.updateProfile = async (req, res) => {
 
       res.status(200).json({
         success: true,
-        message: 'Profile updated successfully',
+        message: "Profile updated successfully",
         data: {
           _id: updatedUser._id,
           name: updatedUser.name,
@@ -191,21 +194,22 @@ exports.updateProfile = async (req, res) => {
           role: updatedUser.role,
           profilePicture: updatedUser.profilePicture,
           phoneNumber: updatedUser.phoneNumber,
-          token: generateToken(updatedUser._id)
-        }
+          mustChangePassword: updatedUser.mustChangePassword === true,
+          token: generateToken(updatedUser._id),
+        },
       });
     } else {
       res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -220,14 +224,14 @@ exports.getAllUsers = async (req, res) => {
     res.status(200).json({
       success: true,
       count: users.length,
-      data: users
+      data: users,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -243,20 +247,72 @@ exports.deleteUser = async (req, res) => {
       await user.deleteOne();
       res.status(200).json({
         success: true,
-        message: 'User removed successfully'
+        message: "User removed successfully",
       });
     } else {
       res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
   } catch (error) {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Change current user's password
+// @route   PUT /api/auth/change-password
+// @access  Private
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide current password and new password",
+      });
+    }
+
+    const user = await User.findById(req.user._id).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const isPasswordMatch = await user.matchPassword(currentPassword);
+    if (!isPasswordMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    user.password = newPassword;
+    user.mustChangePassword = false;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+      data: {
+        mustChangePassword: false,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
     });
   }
 };

@@ -56,6 +56,28 @@ class AssignmentService {
     return (response.data.data || []).map(normalizeAssignment);
   }
 
+  async getMyAssignments(): Promise<Assignment[]> {
+    const response = await apiClient.getInstance().get<ApiResponse<Assignment[]>>(
+      '/assignments/me'
+    );
+    return (response.data.data || []).map(normalizeAssignment);
+  }
+
+  async getMyAssignmentById(id: string): Promise<Assignment> {
+    const response = await apiClient.getInstance().get<ApiResponse<Assignment>>(
+      `/assignments/me/${id}`
+    );
+    return normalizeAssignment(response.data.data);
+  }
+
+  async updateMyAssignmentStatus(id: string, status: AssignmentStatus): Promise<Assignment> {
+    const response = await apiClient.getInstance().put<ApiResponse<Assignment>>(
+      `/assignments/me/${id}/status`,
+      { status }
+    );
+    return normalizeAssignment(response.data.data);
+  }
+
   async listAssignments(query: ListAssignmentsQuery): Promise<AssignmentListResult> {
     const response = await apiClient
       .getInstance()
