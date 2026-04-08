@@ -23,8 +23,9 @@ import {
   RefreshCw,
   ChevronRight,
   Sparkles,
+  Copy,
 } from 'lucide-react';
-import { Family, Child } from '../../types';
+import { Family, Child, ChildAccountCredentials } from '../../types';
 
 const avatarEmojiRegex = /^(\p{Extended_Pictographic}|\uFE0F|\u200D)+$/u;
 
@@ -75,6 +76,9 @@ const ParentDashboard: React.FC = () => {
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [isSavingChild, setIsSavingChild] = useState(false);
   const [deletingChildId, setDeletingChildId] = useState('');
+  const [resettingChildId, setResettingChildId] = useState('');
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [newChildCredentials, setNewChildCredentials] = useState<ChildAccountCredentials | null>(null);
   const [summaryStats, setSummaryStats] = useState({
     totalAssignments: 0,
     assigned: 0,
@@ -347,11 +351,14 @@ const ParentDashboard: React.FC = () => {
         setChildren(children.map(c => c.id === editingChild.id ? updated : c));
         toast.success('Child updated successfully');
       } else {
-        const newChild = await ChildService.addChild({
+        const addChildResponse = await ChildService.addChild({
           ...payload,
           family: family.id,
         });
+        const newChild = addChildResponse.child;
         setChildren([...children, newChild]);
+        setNewChildCredentials(addChildResponse.credentials);
+        setShowCredentialsModal(true);
         toast.success('Child added successfully');
       }
 
@@ -414,6 +421,57 @@ const ParentDashboard: React.FC = () => {
     setEditingChild(null);
     setFormErrors({});
     setFormData({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner' });
+  };
+
+  const handleResetChildPassword = async (childId: string) => {
+    const selectedChild = children.find((item) => item.id === childId);
+    const childName = selectedChild?.name || 'this child';
+
+    if (!window.confirm(`Reset password for ${childName}?`)) return;
+
+    try {
+      setResettingChildId(childId);
+      const response = await ChildService.resetChildPassword(childId);
+      setNewChildCredentials(response.credentials);
+      setShowCredentialsModal(true);
+      toast.success(`Password reset for ${childName}`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to reset child password');
+    } finally {
+      setResettingChildId('');
+    }
+  };
+
+  const handleCloseCredentialsModal = () => {
+    setShowCredentialsModal(false);
+    setNewChildCredentials(null);
+  };
+
+  const copyToClipboard = async (value: string, label: string) => {
+    if (!value) {
+      toast.error(`No ${label.toLowerCase()} available to copy`);
+      return;
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = value;
+        textArea.setAttribute('readonly', '');
+        textArea.style.position = 'absolute';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error(`Failed to copy ${label.toLowerCase()}`);
+    }
   };
 
   const avatarEmojis = ['👧', '👦', '🧒', '👨', '👩', '🤓', '😊', '🎒'];
@@ -706,8 +764,10 @@ const ParentDashboard: React.FC = () => {
                     key={child.id}
                     child={child}
                     onEdit={handleEditChild}
+                    onResetPassword={handleResetChildPassword}
                     onDelete={handleDeleteChild}
                     isDeleting={deletingChildId === child.id}
+                    isResettingPassword={resettingChildId === child.id}
                     onClick={() => navigate(`/child/${child.id}`)}
                   />
                 ))}
@@ -918,6 +978,50 @@ const ParentDashboard: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, readingLevel: parseReadingLevel(e.target.value) })}
             options={readingLevels}
           />
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showCredentialsModal}
+        title="Child Login Credentials"
+        onClose={handleCloseCredentialsModal}
+        size="md"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-gray-700">
+            Share these credentials with your child. They will be prompted to change this temporary password after first login.
+          </p>
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-500">Login Email</p>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <p className="font-semibold text-gray-900 break-all">{newChildCredentials?.email}</p>
+              <button
+                type="button"
+                className="btn-secondary whitespace-nowrap inline-flex items-center gap-2"
+                onClick={() => copyToClipboard(newChildCredentials?.email || '', 'Email')}
+              >
+                <Copy size={16} />
+                Copy
+              </button>
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-500">Temporary Password</p>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <p className="font-semibold text-gray-900">{newChildCredentials?.temporaryPassword}</p>
+              <button
+                type="button"
+                className="btn-secondary whitespace-nowrap inline-flex items-center gap-2"
+                onClick={() => copyToClipboard(newChildCredentials?.temporaryPassword || '', 'Password')}
+              >
+                <Copy size={16} />
+                Copy
+              </button>
+            </div>
+          </div>
+          <div className="pt-2">
+            <button className="btn-primary" onClick={handleCloseCredentialsModal}>Done</button>
+          </div>
         </div>
       </Modal>
     </div>

@@ -338,6 +338,178 @@ exports.getAssignmentsByChild = async (req, res) => {
   }
 };
 
+// @desc    Get assignments for logged-in child
+// @route   GET /api/assignments/me
+// @access  Private (Child)
+exports.getMyAssignments = async (req, res) => {
+  try {
+    if (req.user.normalizedRole !== "child") {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to access child assignments",
+      });
+    }
+
+    if (!req.user.childProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Child profile not linked to this account",
+      });
+    }
+
+    const child = await Child.findById(req.user.childProfile);
+    if (!child) {
+      return res.status(404).json({
+        success: false,
+        message: "Child not found",
+      });
+    }
+
+    const assignments = await Assignment.find({ child: child._id })
+      .populate("story", "title author ageGroup coverImage readingLevel")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "Child assignments retrieved successfully",
+      count: assignments.length,
+      data: assignments.map((assignment) => withDueMetadata(assignment)),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get a single assignment for logged-in child
+// @route   GET /api/assignments/me/:id
+// @access  Private (Child)
+exports.getMyAssignmentById = async (req, res) => {
+  try {
+    if (req.user.normalizedRole !== "child") {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to access child assignments",
+      });
+    }
+
+    if (!req.user.childProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Child profile not linked to this account",
+      });
+    }
+
+    const assignment = await Assignment.findById(req.params.id)
+      .populate("child", "name age avatar")
+      .populate("story", "title author ageGroup coverImage readingLevel")
+      .populate("assignedBy", "name email");
+
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment not found",
+      });
+    }
+
+    const assignmentChildId = getId(assignment.child);
+    if (assignmentChildId !== req.user.childProfile.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to access this assignment",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Assignment retrieved successfully",
+      data: withDueMetadata(assignment),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Update assignment status for logged-in child
+// @route   PUT /api/assignments/me/:id/status
+// @access  Private (Child)
+exports.updateMyAssignmentStatus = async (req, res) => {
+  try {
+    if (req.user.normalizedRole !== "child") {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update child assignments",
+      });
+    }
+
+    if (!req.user.childProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Child profile not linked to this account",
+      });
+    }
+
+    const { status } = req.body;
+
+    if (!["in_progress", "completed"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Child can only set status to in_progress or completed",
+      });
+    }
+
+    const assignment = await Assignment.findById(req.params.id);
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment not found",
+      });
+    }
+
+    if (assignment.child.toString() !== req.user.childProfile.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update this assignment",
+      });
+    }
+
+    assignment.status = status;
+    assignment.completedAt = status === "completed" ? new Date() : null;
+    await assignment.save();
+
+    await assignment.populate([
+      { path: "child", select: "name age avatar" },
+      {
+        path: "story",
+        select: "title author ageGroup coverImage readingLevel",
+      },
+      { path: "assignedBy", select: "name email" },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Assignment status updated successfully",
+      data: withDueMetadata(assignment),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 // @desc    Get family reading dashboard (all children + their assignment stats)
 // @route   GET /api/assignments/family
 // @access  Private

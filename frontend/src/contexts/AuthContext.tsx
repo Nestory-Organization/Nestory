@@ -11,6 +11,7 @@ interface AuthContextType {
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
   updateUserProfile: (data: Partial<User>) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -140,6 +141,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    await authService.changePassword({ currentPassword, newPassword });
+    setUser((prev) => (prev ? { ...prev, mustChangePassword: false } : prev));
+    const storedUser = localStorage.getItem('user');
+    const parsed = parseStoredUser(storedUser);
+    if (parsed) {
+      localStorage.setItem('user', JSON.stringify({ ...parsed, mustChangePassword: false }));
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -149,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     updateUserProfile,
+    changePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

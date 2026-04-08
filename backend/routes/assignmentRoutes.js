@@ -5,13 +5,20 @@ const {
   listAssignments,
   bulkUpdateAssignmentStatus,
   getAssignmentsByChild,
+  getMyAssignments,
+  getMyAssignmentById,
+  updateMyAssignmentStatus,
   getFamilyDashboard,
   getAssignmentById,
   updateAssignmentDetails,
   updateAssignmentStatus,
   deleteAssignment,
 } = require("../controllers/assignmentController");
-const { protect, parentOnly } = require("../middleware/authMiddleware");
+const {
+  protect,
+  parentOnly,
+  authorize,
+} = require("../middleware/authMiddleware");
 const {
   handleValidationErrors,
 } = require("../middleware/validationMiddleware");
@@ -51,6 +58,24 @@ router.put(
   bulkUpdateAssignmentStatus,
 );
 router.get("/family", protect, parentOnly, getFamilyDashboard);
+router.get("/me", protect, authorize("child"), getMyAssignments);
+router.get(
+  "/me/:id",
+  protect,
+  authorize("child"),
+  assignmentIdParamValidation,
+  handleValidationErrors,
+  getMyAssignmentById,
+);
+router.put(
+  "/me/:id/status",
+  protect,
+  authorize("child"),
+  assignmentIdParamValidation,
+  updateStatusValidation,
+  handleValidationErrors,
+  updateMyAssignmentStatus,
+);
 router.get(
   "/child/:childId",
   protect,
