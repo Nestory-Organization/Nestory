@@ -1,36 +1,35 @@
 const Story = require('../../models/storyLibrary/Story');
 const Child = require('../../models/Child');
 const { getGoogleBookById } = require('./googleBooksService');
-const { getStoriesWithQuery } = require("./storyQueryService");
 
 const mapAgeToGroup = (age) => {
-    if (age <= 3) return 'toddler';
-    if (age <= 7) return 'early-reader';
+    if (age <= 5) return 'toddler';
+    if (age <= 8) return 'early-reader';
     if (age <= 12) return 'middle-grade';
     return 'young-adult';
 };
 
 exports.listStories = async (query, user) => {
-    const { page = 1, limit = 10, search, ageGroup, genre, readingLevel } = query;
+    const { page = 1, limit = 10, search, ageGroup, genre, readingLevel, source } = query;
 
     const filter = {};
 
-    // 🔥 CORE LOGIC
     if (user && user.role === 'child') {
-        // get child age → map to ageGroup
-        const child = await Child.findById(user.id);
+        const child = await Child.findById(user.id || user._id);
 
         if (child) {
-            if (child.age <= 5) filter.ageGroup = 'toddler';
-            else if (child.age <= 8) filter.ageGroup = 'early-reader';
-            else if (child.age <= 12) filter.ageGroup = 'middle-grade';
-            else filter.ageGroup = 'young-adult';
+            filter.ageGroup = mapAgeToGroup(child.age);
+        } else if (ageGroup) {
+            filter.ageGroup = ageGroup;
         }
+    } else if (user && user.ageGroup) {
+        filter.ageGroup = user.ageGroup;
     } else if (ageGroup) {
         filter.ageGroup = ageGroup;
     }
 
     if (readingLevel) filter.readingLevel = readingLevel;
+    if (source) filter.source = source;
     if (genre) filter.genres = { $in: [genre] };
 
     if (search) {
@@ -58,6 +57,7 @@ exports.listStories = async (query, user) => {
         pages: Math.ceil(total / Number(limit))
     };
 };
+
 exports.getStoryById = async (id) => {
     return Story.findById(id);
 };
@@ -78,12 +78,10 @@ exports.deleteStory = async (id) => {
     return Story.findByIdAndDelete(id);
 };
 
-//import Google Book into DB (Admin)
+// import Google Book into DB (Admin)
 exports.importGoogleBook = async (googleBookId, defaults, userId) => {
-    //fetch metadata from Google
     const meta = await getGoogleBookById(googleBookId);
 
-    //Prevent duplicate import
     const exists = await Story.findOne({ googleBookId });
     if (exists) {
         const err = new Error('This Google book has already been imported');
@@ -91,27 +89,27 @@ exports.importGoogleBook = async (googleBookId, defaults, userId) => {
         throw err;
     }
 
-    //create internal story 
     const story = await Story.create({
         title: meta.title,
         author: meta.author,
         description: meta.description,
         coverImage: meta.coverImage,
         previewLink: meta.previewLink,
+        pageCount: meta.pageCount || 0,
         googleBookId: meta.googleBookId,
         source: 'google',
 
-        //defaults from admin input
         ageGroup: defaults.ageGroup,
         genres: defaults.genres,
         readingLevel: defaults.readingLevel || 'intermediate',
 
         createdBy: userId
     });
+
     return story;
 };
 
-//Sync Google metadata for an imported story (Admin)
+// Sync Google metadata for an imported story (Admin)
 exports.syncGoogleMetadata = async (storyId) => {
     const story = await Story.findById(storyId);
     if (!story) {
@@ -119,11 +117,13 @@ exports.syncGoogleMetadata = async (storyId) => {
         err.statusCode = 404;
         throw err;
     }
+
     if (!story.googleBookId) {
         const err = new Error('This story has no GoogleBookID to sync');
         err.statusCode = 400;
         throw err;
     }
+
     const meta = await getGoogleBookById(story.googleBookId);
 
     story.title = meta.title;
@@ -131,6 +131,7 @@ exports.syncGoogleMetadata = async (storyId) => {
     story.description = meta.description;
     story.coverImage = meta.coverImage;
     story.previewLink = meta.previewLink;
+    story.pageCount = meta.pageCount || story.pageCount || 0;
 
     const updated = await story.save();
     return updated;
