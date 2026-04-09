@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Navbar from '../../../components/common/Navbar';
 import InputField from '../../../components/common/InputField';
@@ -22,6 +23,7 @@ const defaultForm: StoryFormValues = {
 };
 
 const StoryLibraryCrudPage: React.FC = () => {
+  const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -189,9 +191,17 @@ const StoryLibraryCrudPage: React.FC = () => {
             </p>
           </div>
 
-          <button className="btn-primary" onClick={openCreate}>
-            Add New Story
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              className="btn-secondary"
+              onClick={() => navigate('/admin/google-import')}
+            >
+              Import from Google
+            </button>
+            <button className="btn-primary" onClick={openCreate}>
+              Add New Story
+            </button>
+          </div>
         </div>
 
         <div className="card mb-6">

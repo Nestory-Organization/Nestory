@@ -19,6 +19,7 @@ import StoryLibraryCrudPage from './pages/admin/storyLibrary/StoryLibraryCrudPag
 import ChildDashboard from './pages/child/Dashboard';
 import ChildChangePasswordPage from './pages/child/ChangePasswordPage';
 import ChildAssignmentDetailPage from './pages/child/AssignmentDetailPage';
+import GoogleBooksImportPage from './pages/admin/storyLibrary/GoogleBooksImportPage';
 
 // Loading component
 const LoadingScreen: React.FC = () => (
@@ -121,6 +122,7 @@ const AppContent: React.FC = () => {
         <>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/stories" element={<StoryLibraryCrudPage />} />
+          <Route path='/admin/google-import' element={<GoogleBooksImportPage />} />
         </>
       )}
 
