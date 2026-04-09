@@ -19,6 +19,8 @@ import StoryLibraryCrudPage from './pages/admin/storyLibrary/StoryLibraryCrudPag
 import ChildDashboard from './pages/child/Dashboard';
 import ChildChangePasswordPage from './pages/child/ChangePasswordPage';
 import ChildAssignmentDetailPage from './pages/child/AssignmentDetailPage';
+import GamificationPage from './pages/gamification/GamificationPage';
+import GamificationAdminPage from './pages/admin/gamification/GamificationAdminPage';
 import ReaderPage from './pages/child/ReaderPage';
 import GoogleBooksImportPage from './pages/admin/storyLibrary/GoogleBooksImportPage';
 
@@ -116,6 +118,7 @@ const AppContent: React.FC = () => {
             }
           />
           <Route path="/family-settings" element={<FamilySettingsPage />} />
+          <Route path="/gamification" element={<GamificationPage />} />
         </>
       )}
 
@@ -123,6 +126,7 @@ const AppContent: React.FC = () => {
         <>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/stories" element={<StoryLibraryCrudPage />} />
+          <Route path="/admin/gamification" element={<GamificationAdminPage />} />
           <Route path='/admin/google-import' element={<GoogleBooksImportPage />} />
         </>
       )}
@@ -139,6 +143,7 @@ const AppContent: React.FC = () => {
           />
           <Route path="/child/change-password" element={<ChildChangePasswordPage />} />
           <Route path="/child/assignments/:assignmentId" element={<ChildAssignmentDetailPage />} />
+          <Route path="/child/gamification" element={<GamificationPage />} />
           <Route path="/reader/:storyId" element={<ReaderPage />} />
           <Route path='/story/:storyId' element={<StoryDetailPage />} />
         </>

@@ -273,6 +273,93 @@ export interface AuthState {
   error: string | null;
 }
 
+export interface GamificationBadge {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  category: string;
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+  points: number;
+  rarity?: 'common' | 'rare' | 'epic' | 'legendary';
+  isActive: boolean;
+  criteria?: {
+    type: string;
+    threshold: number;
+  };
+}
+
+export interface GamificationBadgeProgress {
+  id: string;
+  badge: GamificationBadge;
+  earnedAt?: string;
+}
+
+export interface GamificationAchievement {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  category: string;
+  type?: 'one_time' | 'repeatable' | 'progressive';
+  difficulty: string;
+  targetValue: number;
+  reward: {
+    points: number;
+    badge?: GamificationBadge | string;
+  };
+  isActive?: boolean;
+}
+
+export interface GamificationAchievementProgress {
+  id: string;
+  achievement: GamificationAchievement;
+  progress: number;
+  completed: boolean;
+  completedAt?: string;
+}
+
+export interface GamificationProgress {
+  id: string;
+  user: string;
+  child?: string;
+  totalPoints: number;
+  level: number;
+  currentStreak: number;
+  longestStreak: number;
+  stats: {
+    storiesRead: number;
+    assignmentsCompleted: number;
+  };
+  badges: GamificationBadgeProgress[];
+  achievements: GamificationAchievementProgress[];
+}
+
+export interface GamificationTransaction {
+  id: string;
+  points: number;
+  type: string;
+  source: string;
+  description: string;
+  balanceBefore: number;
+  balanceAfter: number;
+  createdAt: string;
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  user: User | null;
+  child?: Child | null;
+  totalPoints: number;
+  level: number;
+  currentStreak: number;
+  longestStreak: number;
+  stats: {
+    storiesRead: number;
+    assignmentsCompleted: number;
+  };
+}
+
 export interface ModalState {
   isOpen: boolean;
   title?: string;

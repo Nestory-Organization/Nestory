@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
-import { Users, Settings, BookOpen, Activity } from 'lucide-react';
+import { Users, Settings, BookOpen, Activity, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '../../services/apiClient';
 import StoryService from '../../services/storyService';
@@ -42,7 +42,7 @@ const AdminDashboard: React.FC = () => {
         }));
 
         setUsers(normalizedUsers);
-        setStoryCount(Array.isArray(storiesResponse.data) ? storiesResponse.data.length : 0);
+        setStoryCount(storiesResponse.total || 0);
       } catch (error: any) {
         toast.error(error?.response?.data?.message || 'Failed to load admin dashboard');
       } finally {
@@ -85,7 +85,7 @@ const AdminDashboard: React.FC = () => {
           <StatCard title="Parents" value={isLoading ? '...' : userStats.parents} icon={Activity} color="orange" subtext={`Admins: ${userStats.admins}`} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="card">
             <div className="flex items-center gap-2 mb-4">
               <Users className="text-nestory-600" size={22} />
@@ -107,6 +107,18 @@ const AdminDashboard: React.FC = () => {
               <button className="btn-primary w-full" onClick={() => navigate('/admin/stories')}>Browse Stories</button>
               <button className="btn-outline w-full">Total Stories: {storyCount}</button>
               <button className="btn-outline w-full">Catalog Health: Good</button>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="text-nestory-600" size={22} />
+              <h2 className="text-xl font-bold text-gray-900">Gamification</h2>
+            </div>
+            <div className="space-y-3">
+              <button className="btn-primary w-full" onClick={() => navigate('/admin/gamification')}>Manage Badges</button>
+              <button className="btn-outline w-full">Create Achievements</button>
+              <button className="btn-outline w-full">View Leaderboard</button>
             </div>
           </div>
         </div>
