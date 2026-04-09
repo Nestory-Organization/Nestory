@@ -136,6 +136,7 @@ const AppContent: React.FC = () => {
           />
           <Route path="/child/change-password" element={<ChildChangePasswordPage />} />
           <Route path="/child/assignments/:assignmentId" element={<ChildAssignmentDetailPage />} />
+          <Route path='/story/:storyId' element={<StoryDetailPage />} />
         </>
       )}
 

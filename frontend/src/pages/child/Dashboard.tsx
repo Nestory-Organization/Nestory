@@ -13,17 +13,19 @@ import { Story, Assignment } from '../../types';
 const FALLBACK_COVER =
   'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80';
 
+const DETAIL_ROUTE_BASE = '/story';
+
 const normalizeCoverImage = (url?: string) => {
   if (!url || !url.trim()) return FALLBACK_COVER;
   return url.replace(/^http:\/\//i, 'https://');
 };
 
-const normalizeStoriesForDashboard = (stories: Story[]): Story[] => {
-  return stories.map((story) => ({
-    ...story,
-    coverImage: normalizeCoverImage(story.coverImage),
-  }));
-};
+const normalizeText = (value?: string) =>
+  (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const ChildDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -40,7 +42,13 @@ const ChildDashboard: React.FC = () => {
           StoryService.getStories(1, 24),
           AssignmentService.getMyAssignments(),
         ]);
-        setStories(response.data || []);
+
+        const normalizedStories = (response.stories || []).map((story) => ({
+          ...story,
+          coverImage: normalizeCoverImage(story.coverImage),
+        }));
+
+        setStories(normalizedStories);
         setAssignments(childAssignments || []);
       } catch (error: unknown) {
         const message =
@@ -50,6 +58,7 @@ const ChildDashboard: React.FC = () => {
           typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
             ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
             : 'Failed to load child dashboard';
+
         toast.error(message || 'Failed to load child dashboard');
       } finally {
         setIsLoading(false);
@@ -88,6 +97,84 @@ const ChildDashboard: React.FC = () => {
     () => assignments.filter((item) => item.status !== 'completed').slice(0, 6),
     [assignments]
   );
+
+  const findGooglePreviewForManualStory = async (
+    story: Partial<Story>
+  ): Promise<string | null> => {
+    const title = normalizeText(story.title);
+    const author = normalizeText(story.author);
+
+    const searchTerms = [
+      `${story.title || ''} ${story.author || ''}`.trim(),
+      `${story.title || ''}`.trim(),
+    ].filter(Boolean);
+
+    for (const term of searchTerms) {
+      const results = await StoryService.searchGoogle(term);
+
+      if (!Array.isArray(results) || results.length === 0) {
+        continue;
+      }
+
+      const exactMatch = results.find((item: any) => {
+        const itemTitle = normalizeText(item?.title);
+        const itemAuthor = normalizeText(item?.author);
+        return itemTitle === title && (!author || itemAuthor.includes(author));
+      });
+
+      if (exactMatch?.previewLink) {
+        return exactMatch.previewLink;
+      }
+
+      const strongMatch = results.find((item: any) => {
+        const itemTitle = normalizeText(item?.title);
+        const itemAuthor = normalizeText(item?.author);
+
+        const titleLooksClose =
+          itemTitle.includes(title) ||
+          title.includes(itemTitle) ||
+          itemTitle.split(' ').some((word: string) => title.includes(word));
+
+        const authorLooksClose =
+          !author || itemAuthor.includes(author) || author.includes(itemAuthor);
+
+        return titleLooksClose && authorLooksClose && item?.previewLink;
+      });
+
+      if (strongMatch?.previewLink) {
+        return strongMatch.previewLink;
+      }
+    }
+
+    return null;
+  };
+
+  const handleStoryOpen = async (selectedStory: Partial<Story>) => {
+    if (!selectedStory?.id) {
+      toast.error('Story id is missing');
+      return;
+    }
+
+    if (selectedStory.previewLink) {
+      window.open(selectedStory.previewLink, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    if (selectedStory.source === 'internal') {
+      try {
+        const matchedPreview = await findGooglePreviewForManualStory(selectedStory);
+
+        if (matchedPreview) {
+          window.open(matchedPreview, '_blank', 'noopener,noreferrer');
+          return;
+        }
+      } catch (error) {
+        console.error('Preview lookup failed:', error);
+      }
+    }
+
+    navigate(`${DETAIL_ROUTE_BASE}/${selectedStory.id}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -137,19 +224,27 @@ const ChildDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
           <div className="card">
             <p className="text-sm text-gray-600 mb-1">My Assignments</p>
-            <p className="text-2xl font-bold text-gray-900">{isLoading ? '...' : assignmentStats.total}</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {isLoading ? '...' : assignmentStats.total}
+            </p>
           </div>
           <div className="card">
             <p className="text-sm text-gray-600 mb-1">Assigned</p>
-            <p className="text-2xl font-bold text-blue-700">{isLoading ? '...' : assignmentStats.assigned}</p>
+            <p className="text-2xl font-bold text-blue-700">
+              {isLoading ? '...' : assignmentStats.assigned}
+            </p>
           </div>
           <div className="card">
             <p className="text-sm text-gray-600 mb-1">In Progress</p>
-            <p className="text-2xl font-bold text-amber-700">{isLoading ? '...' : assignmentStats.inProgress}</p>
+            <p className="text-2xl font-bold text-amber-700">
+              {isLoading ? '...' : assignmentStats.inProgress}
+            </p>
           </div>
           <div className="card">
             <p className="text-sm text-gray-600 mb-1">Completed</p>
-            <p className="text-2xl font-bold text-green-700">{isLoading ? '...' : assignmentStats.completed}</p>
+            <p className="text-2xl font-bold text-green-700">
+              {isLoading ? '...' : assignmentStats.completed}
+            </p>
           </div>
         </div>
 
@@ -164,7 +259,9 @@ const ChildDashboard: React.FC = () => {
               {isLoading ? (
                 <p className="text-gray-600">Loading assignments...</p>
               ) : pendingAssignments.length === 0 ? (
-                <p className="text-gray-600">No active assignments yet. Great job keeping up!</p>
+                <p className="text-gray-600">
+                  No active assignments yet. Great job keeping up!
+                </p>
               ) : (
                 <div className="space-y-3">
                   {pendingAssignments.map((assignment) => (
@@ -174,8 +271,12 @@ const ChildDashboard: React.FC = () => {
                       onClick={() => navigate(`/child/assignments/${assignment.id}`)}
                       className="w-full text-left rounded-lg border border-gray-200 p-4 hover:border-nestory-300 hover:bg-nestory-50/40 transition-colors"
                     >
-                      <p className="font-semibold text-gray-900">{assignment.story?.title || 'Untitled story'}</p>
-                      <p className="text-sm text-gray-600">{assignment.story?.author || 'Unknown author'}</p>
+                      <p className="font-semibold text-gray-900">
+                        {assignment.story?.title || 'Untitled story'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {assignment.story?.author || 'Unknown author'}
+                      </p>
                       <div className="mt-2 flex items-center gap-2">
                         <span className="badge bg-blue-100 text-blue-800 capitalize">
                           {assignment.status.replace('_', ' ')}
@@ -193,24 +294,28 @@ const ChildDashboard: React.FC = () => {
             </div>
 
             <div className="card">
-            <div className="flex items-center gap-2 mb-4">
-              <BookOpen className="text-nestory-600" size={22} />
-              <h2 className="text-xl font-bold text-gray-900">Story Picks</h2>
-            </div>
-
-            {isLoading ? (
-              <p className="text-gray-600">Loading story recommendations...</p>
-            ) : quickPicks.length === 0 ? (
-              <p className="text-gray-600">No stories available yet.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {quickPicks.map((story) => (
-                  <StoryCard key={story.id} story={story} />
-                ))}
+              <div className="flex items-center gap-2 mb-4">
+                <BookOpen className="text-nestory-600" size={22} />
+                <h2 className="text-xl font-bold text-gray-900">Story Picks</h2>
               </div>
-            )}
-          </div>
 
+              {isLoading ? (
+                <p className="text-gray-600">Loading story recommendations...</p>
+              ) : quickPicks.length === 0 ? (
+                <p className="text-gray-600">No stories available yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {quickPicks.map((story) => (
+                    <StoryCard
+                      key={story.id}
+                      story={story}
+                      onSelect={handleStoryOpen}
+                      clickable
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="card">

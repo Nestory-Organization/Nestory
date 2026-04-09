@@ -14,30 +14,40 @@ exports.listStories = async (query, user) => {
     const { page = 1, limit = 10, search, ageGroup, genre, readingLevel } = query;
 
     const filter = {};
-    if (user && user.ageGroup) {
-        filter.ageGroup = user.ageGroup;
-    } else if (ageGroup) { 
+
+    // 🔥 CORE LOGIC
+    if (user && user.role === 'child') {
+        // get child age → map to ageGroup
+        const child = await Child.findById(user.id);
+
+        if (child) {
+            if (child.age <= 5) filter.ageGroup = 'toddler';
+            else if (child.age <= 8) filter.ageGroup = 'early-reader';
+            else if (child.age <= 12) filter.ageGroup = 'middle-grade';
+            else filter.ageGroup = 'young-adult';
+        }
+    } else if (ageGroup) {
         filter.ageGroup = ageGroup;
     }
-    
+
     if (readingLevel) filter.readingLevel = readingLevel;
     if (genre) filter.genres = { $in: [genre] };
 
     if (search) {
         filter.$or = [
             { title: { $regex: search, $options: 'i' } },
-            { author: {$regex: search, $options: 'i' } },
-            { description: { $regex: search, $options: 'i' } }  
+            { author: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } }
         ];
     }
 
-    const skip = (Number(page) - 1) * Number(limit); // Calculate how many documents to skip based on the current page and limit
+    const skip = (Number(page) - 1) * Number(limit);
 
     const [stories, total] = await Promise.all([
         Story.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(Number(limit)),
         Story.countDocuments(filter)
     ]);
 
@@ -124,7 +134,4 @@ exports.syncGoogleMetadata = async (storyId) => {
 
     const updated = await story.save();
     return updated;
-};
-exports.listStories = async (query) => {
-    return getStoriesWithQuery(query);
 };
