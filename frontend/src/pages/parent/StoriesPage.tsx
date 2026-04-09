@@ -154,29 +154,20 @@ const StoriesPage: React.FC = () => {
       }
 
       if (selectedStory.previewLink) {
-        window.open(selectedStory.previewLink, '_blank', 'noopener,noreferrer');
+        window.location.href = selectedStory.previewLink;
         return;
       }
 
       if (selectedStory.source === 'internal') {
-        const loadingToast = toast.loading('Checking for available preview...');
-
         try {
           const matchedPreview = await findGooglePreviewForManualStory(selectedStory);
 
-          toast.dismiss(loadingToast);
-
           if (matchedPreview) {
-            toast.success('Preview found. Opening now...');
-            window.open(matchedPreview, '_blank', 'noopener,noreferrer');
+            window.location.href = matchedPreview;
             return;
           }
-
-          toast('No Google preview found. Opening story details instead.');
         } catch (error) {
-          toast.dismiss(loadingToast);
-          console.error(error);
-          toast('Preview lookup failed. Opening story details instead.');
+          console.error('Preview lookup failed:', error);
         }
       }
 
