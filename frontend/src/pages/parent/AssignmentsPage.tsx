@@ -3,13 +3,21 @@ import toast from 'react-hot-toast';
 import Navbar from '../../components/common/Navbar';
 import SelectField from '../../components/common/SelectField';
 import InputField from '../../components/common/InputField';
-import { ArrowRight, Library, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, BarChart3, Library, RotateCcw, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AssignmentService from '../../services/assignmentService';
 import ChildService from '../../services/childService';
 import StoryService from '../../services/storyService';
 import { useAssignmentDetail } from '../../contexts/AssignmentDetailContext';
-import { Assignment, AssignmentDueState, AssignmentPagination, AssignmentStatus, Child, Story } from '../../types';
+import {
+  Assignment,
+  AssignmentDueState,
+  AssignmentPagination,
+  AssignmentProgressRow,
+  AssignmentStatus,
+  Child,
+  Story,
+} from '../../types';
 
 const DEFAULT_PAGINATION: AssignmentPagination = {
   page: 1,
@@ -65,6 +73,76 @@ const getDueTone = (assignment: Assignment): { label: string; classes: string } 
   return { label: 'Upcoming', classes: 'badge bg-blue-100 text-blue-700' };
 };
 
+const formatMediumDate = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString(undefined, { dateStyle: 'medium' });
+};
+
+const AssignmentRowProgressHint: React.FC<{
+  assignment: Assignment;
+  row?: AssignmentProgressRow;
+}> = ({ assignment, row }) => {
+  if (!row) return null;
+
+  if (assignment.status === 'completed') {
+    const d = row.deadlineVsCompletion;
+    if (!d || d.outcome === 'incomplete') return null;
+    return (
+      <div className="mt-2 text-xs text-gray-600 flex flex-wrap items-center gap-2">
+        <span className="font-medium text-gray-800">Deadline vs completed:</span>
+        <span>{d.label}</span>
+      </div>
+    );
+  }
+
+  const hasDue = !!assignment.dueDate;
+  const hasProjected = !!row.pace.projectedCompletionDate && row.reading.pagesRead > 0;
+
+  if (!hasDue && !hasProjected) return null;
+
+  return (
+    <div className="mt-2 rounded-md bg-gray-50 border border-gray-100 px-3 py-2 text-xs text-gray-700 space-y-1">
+      <p className="font-semibold text-gray-800 flex items-center gap-1">
+        <BarChart3 size={12} className="text-nestory-600 shrink-0" />
+        Reading pace (from logged sessions)
+      </p>
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {hasProjected && (
+          <span>
+            Projected finish:{' '}
+            <strong>{formatMediumDate(row.pace.projectedCompletionDate!)}</strong>
+          </span>
+        )}
+        {hasDue && (
+          <span>
+            Due date: <strong>{formatDueDate(assignment.dueDate)}</strong>
+          </span>
+        )}
+      </div>
+      {hasDue && row.deadlinePace.onTrack === true && (
+        <p className="text-green-700 font-medium">On track to finish by the due date.</p>
+      )}
+      {hasDue && row.deadlinePace.onTrack === false && (
+        <p className="text-amber-800 font-medium">At current pace, may finish after the due date.</p>
+      )}
+      {hasDue && row.reading.pagesRemaining > 0 && row.deadlinePace.pagesPerDayNeeded != null && (
+        <p className="text-gray-600">
+          ~<strong>{row.deadlinePace.pagesPerDayNeeded}</strong> pages/day to meet deadline
+          {row.deadlinePace.minutesPerDayNeeded != null && (
+            <>
+              {' '}
+              (~<strong>{row.deadlinePace.minutesPerDayNeeded}</strong> min/day est.)
+            </>
+          )}
+        </p>
+      )}
+      {row.reading.pagesRead === 0 && hasDue && (
+        <p className="text-gray-500">No pages logged yet — see full progress for pace targets.</p>
+      )}
+    </div>
+  );
+};
+
 const AssignmentsPage: React.FC = () => {
   const navigate = useNavigate();
   const [children, setChildren] = useState<Child[]>([]);
@@ -85,6 +163,9 @@ const AssignmentsPage: React.FC = () => {
   const [pageLimit, setPageLimit] = useState(8);
   const [pagination, setPagination] = useState<AssignmentPagination>(DEFAULT_PAGINATION);
   const [listMetadata, setListMetadata] = useState({ overdueCount: 0, dueSoonCount: 0 });
+  const [progressByAssignmentId, setProgressByAssignmentId] = useState<
+    Record<string, AssignmentProgressRow>
+  >({});
   const [detailDueDateDraft, setDetailDueDateDraft] = useState('');
   const [detailStatusDraft, setDetailStatusDraft] = useState<AssignmentStatus>('assigned');
   const [isSavingDetail, setIsSavingDetail] = useState(false);
@@ -205,6 +286,7 @@ const AssignmentsPage: React.FC = () => {
     async (childId: string, targetPage = currentPage) => {
       if (!childId) {
         setAssignments([]);
+        setProgressByAssignmentId({});
         setPagination(DEFAULT_PAGINATION);
         setListMetadata({ overdueCount: 0, dueSoonCount: 0 });
         clearSelection();
@@ -227,6 +309,17 @@ const AssignmentsPage: React.FC = () => {
         setAssignments(response.data);
         setPagination(response.pagination);
         setListMetadata(response.metadata);
+
+        try {
+          const overview = await AssignmentService.getParentProgressOverview(childId);
+          const map: Record<string, AssignmentProgressRow> = {};
+          overview.assignments.forEach((r) => {
+            map[r.assignmentId] = r;
+          });
+          setProgressByAssignmentId(map);
+        } catch {
+          setProgressByAssignmentId({});
+        }
 
         if (selectedAssignmentId && !response.data.some((item) => item.id === selectedAssignmentId)) {
           clearSelection();
@@ -416,13 +509,30 @@ const AssignmentsPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Manage Assignments</h1>
             <p className="text-gray-600">Create, search, filter, and manage child assignments with live updates.</p>
           </div>
-          <button
-            className="btn-secondary flex items-center gap-2"
-            onClick={() => navigate('/stories')}
-          >
-            <Library size={16} />
-            View Story Library
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            <button
+              type="button"
+              className="btn-secondary flex items-center justify-center gap-2"
+              onClick={() => navigate('/stories')}
+            >
+              <Library size={16} />
+              View Story Library
+            </button>
+            <button
+              type="button"
+              className="btn-primary flex items-center justify-center gap-2"
+              onClick={() =>
+                navigate(
+                  selectedChildId
+                    ? `/progress?childId=${encodeURIComponent(selectedChildId)}`
+                    : '/progress'
+                )
+              }
+            >
+              <BarChart3 size={16} />
+              Reading progress
+            </button>
+          </div>
         </div>
 
         <div className="card mb-8">
@@ -514,17 +624,37 @@ const AssignmentsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mb-4 rounded-lg border border-nestory-200 bg-nestory-50/60 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div className="mb-4 rounded-lg border border-nestory-200 bg-nestory-50/60 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <p className="text-sm text-nestory-900 flex items-center gap-2">
-                <Sparkles size={16} className="text-nestory-700" />
-                Focused on <span className="font-semibold">{children.find((child) => child.id === selectedChildId)?.name || 'selected child'}</span>
+                <Sparkles size={16} className="text-nestory-700 shrink-0" />
+                Focused on{' '}
+                <span className="font-semibold">
+                  {children.find((child) => child.id === selectedChildId)?.name || 'selected child'}
+                </span>
               </p>
-              <button
-                className="text-sm font-semibold text-nestory-700 hover:text-nestory-800"
-                onClick={() => navigate('/dashboard')}
-              >
-                Go to child dashboards
-              </button>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold">
+                <button
+                  type="button"
+                  className="text-nestory-700 hover:text-nestory-800"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Child dashboards
+                </button>
+                <button
+                  type="button"
+                  className="text-nestory-700 hover:text-nestory-800 inline-flex items-center gap-1"
+                  onClick={() =>
+                    navigate(
+                      selectedChildId
+                        ? `/progress?childId=${encodeURIComponent(selectedChildId)}`
+                        : '/progress'
+                    )
+                  }
+                >
+                  <BarChart3 size={14} />
+                  Full reading progress
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 mb-5">
@@ -672,6 +802,10 @@ const AssignmentsPage: React.FC = () => {
                             )}
                             {dueTone && <span className={dueTone.classes}>{dueTone.label}</span>}
                           </div>
+                          <AssignmentRowProgressHint
+                            assignment={assignment}
+                            row={progressByAssignmentId[assignment.id]}
+                          />
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
