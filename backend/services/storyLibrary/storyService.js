@@ -1,43 +1,52 @@
 const Story = require('../../models/storyLibrary/Story');
 const Child = require('../../models/Child');
 const { getGoogleBookById } = require('./googleBooksService');
-const { getStoriesWithQuery } = require("./storyQueryService");
 
 const mapAgeToGroup = (age) => {
-    if (age <= 3) return 'toddler';
-    if (age <= 7) return 'early-reader';
+    if (age <= 5) return 'toddler';
+    if (age <= 8) return 'early-reader';
     if (age <= 12) return 'middle-grade';
     return 'young-adult';
 };
 
 exports.listStories = async (query, user) => {
-    const { page = 1, limit = 10, search, ageGroup, genre, readingLevel } = query;
+    const { page = 1, limit = 10, search, ageGroup, genre, readingLevel, source } = query;
 
     const filter = {};
-    if (user && user.ageGroup) {
+
+    if (user && user.role === 'child') {
+        const child = await Child.findById(user.id || user._id);
+
+        if (child) {
+            filter.ageGroup = mapAgeToGroup(child.age);
+        } else if (ageGroup) {
+            filter.ageGroup = ageGroup;
+        }
+    } else if (user && user.ageGroup) {
         filter.ageGroup = user.ageGroup;
-    } else if (ageGroup) { 
+    } else if (ageGroup) {
         filter.ageGroup = ageGroup;
     }
-    
+
     if (readingLevel) filter.readingLevel = readingLevel;
+    if (source) filter.source = source;
     if (genre) filter.genres = { $in: [genre] };
 
     if (search) {
         filter.$or = [
             { title: { $regex: search, $options: 'i' } },
-            { author: {$regex: search, $options: 'i' } },
-            { description: { $regex: search, $options: 'i' } }  
+            { author: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } }
         ];
     }
 
-    const skip = (Number(page) - 1) * Number(limit); // Calculate how many documents to skip based on the current page and limit
+    const skip = (Number(page) - 1) * Number(limit);
 
     const [stories, total] = await Promise.all([
         Story.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(Number(limit)),
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(Number(limit)),
         Story.countDocuments(filter)
     ]);
 
@@ -48,6 +57,7 @@ exports.listStories = async (query, user) => {
         pages: Math.ceil(total / Number(limit))
     };
 };
+
 exports.getStoryById = async (id) => {
     return Story.findById(id);
 };
@@ -68,12 +78,10 @@ exports.deleteStory = async (id) => {
     return Story.findByIdAndDelete(id);
 };
 
-//import Google Book into DB (Admin)
+// import Google Book into DB (Admin)
 exports.importGoogleBook = async (googleBookId, defaults, userId) => {
-    //fetch metadata from Google
     const meta = await getGoogleBookById(googleBookId);
 
-    //Prevent duplicate import
     const exists = await Story.findOne({ googleBookId });
     if (exists) {
         const err = new Error('This Google book has already been imported');
@@ -81,27 +89,27 @@ exports.importGoogleBook = async (googleBookId, defaults, userId) => {
         throw err;
     }
 
-    //create internal story 
     const story = await Story.create({
         title: meta.title,
         author: meta.author,
         description: meta.description,
         coverImage: meta.coverImage,
         previewLink: meta.previewLink,
+        pageCount: meta.pageCount || 0,
         googleBookId: meta.googleBookId,
         source: 'google',
 
-        //defaults from admin input
         ageGroup: defaults.ageGroup,
         genres: defaults.genres,
         readingLevel: defaults.readingLevel || 'intermediate',
 
         createdBy: userId
     });
+
     return story;
 };
 
-//Sync Google metadata for an imported story (Admin)
+// Sync Google metadata for an imported story (Admin)
 exports.syncGoogleMetadata = async (storyId) => {
     const story = await Story.findById(storyId);
     if (!story) {
@@ -109,11 +117,13 @@ exports.syncGoogleMetadata = async (storyId) => {
         err.statusCode = 404;
         throw err;
     }
+
     if (!story.googleBookId) {
         const err = new Error('This story has no GoogleBookID to sync');
         err.statusCode = 400;
         throw err;
     }
+
     const meta = await getGoogleBookById(story.googleBookId);
 
     story.title = meta.title;
@@ -121,10 +131,8 @@ exports.syncGoogleMetadata = async (storyId) => {
     story.description = meta.description;
     story.coverImage = meta.coverImage;
     story.previewLink = meta.previewLink;
+    story.pageCount = meta.pageCount || story.pageCount || 0;
 
     const updated = await story.save();
     return updated;
-};
-exports.listStories = async (query) => {
-    return getStoriesWithQuery(query);
 };

@@ -15,10 +15,11 @@ import ChildDetailPage from './pages/parent/ChildDetailPage';
 import AssignmentsPage from './pages/parent/AssignmentsPage';
 import FamilySettingsPage from './pages/parent/FamilySettingsPage';
 import AdminDashboard from './pages/admin/Dashboard';
-import StoryManagementPage from './pages/admin/StoryManagementPage';
+import StoryLibraryCrudPage from './pages/admin/storyLibrary/StoryLibraryCrudPage';
 import ChildDashboard from './pages/child/Dashboard';
 import ChildChangePasswordPage from './pages/child/ChangePasswordPage';
 import ChildAssignmentDetailPage from './pages/child/AssignmentDetailPage';
+import GoogleBooksImportPage from './pages/admin/storyLibrary/GoogleBooksImportPage';
 
 // Loading component
 const LoadingScreen: React.FC = () => (
@@ -120,7 +121,8 @@ const AppContent: React.FC = () => {
       {isAuthenticated && user?.role === 'admin' && (
         <>
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/stories" element={<StoryManagementPage />} />
+          <Route path="/admin/stories" element={<StoryLibraryCrudPage />} />
+          <Route path='/admin/google-import' element={<GoogleBooksImportPage />} />
         </>
       )}
 
@@ -136,6 +138,7 @@ const AppContent: React.FC = () => {
           />
           <Route path="/child/change-password" element={<ChildChangePasswordPage />} />
           <Route path="/child/assignments/:assignmentId" element={<ChildAssignmentDetailPage />} />
+          <Route path='/story/:storyId' element={<StoryDetailPage />} />
         </>
       )}
 
