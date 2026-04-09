@@ -21,6 +21,7 @@ import ChildChangePasswordPage from './pages/child/ChangePasswordPage';
 import ChildAssignmentDetailPage from './pages/child/AssignmentDetailPage';
 import GamificationPage from './pages/gamification/GamificationPage';
 import GamificationAdminPage from './pages/admin/gamification/GamificationAdminPage';
+import ReaderPage from './pages/child/ReaderPage';
 import GoogleBooksImportPage from './pages/admin/storyLibrary/GoogleBooksImportPage';
 
 // Loading component
@@ -143,6 +144,7 @@ const AppContent: React.FC = () => {
           <Route path="/child/change-password" element={<ChildChangePasswordPage />} />
           <Route path="/child/assignments/:assignmentId" element={<ChildAssignmentDetailPage />} />
           <Route path="/child/gamification" element={<GamificationPage />} />
+          <Route path="/reader/:storyId" element={<ReaderPage />} />
           <Route path='/story/:storyId' element={<StoryDetailPage />} />
         </>
       )}

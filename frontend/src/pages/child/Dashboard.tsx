@@ -13,19 +13,10 @@ import { Story, Assignment } from '../../types';
 const FALLBACK_COVER =
   'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80';
 
-const DETAIL_ROUTE_BASE = '/story';
-
 const normalizeCoverImage = (url?: string) => {
   if (!url || !url.trim()) return FALLBACK_COVER;
   return url.replace(/^http:\/\//i, 'https://');
 };
-
-const normalizeText = (value?: string) =>
-  (value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 
 const ChildDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -98,82 +89,13 @@ const ChildDashboard: React.FC = () => {
     [assignments]
   );
 
-  const findGooglePreviewForManualStory = async (
-    story: Partial<Story>
-  ): Promise<string | null> => {
-    const title = normalizeText(story.title);
-    const author = normalizeText(story.author);
-
-    const searchTerms = [
-      `${story.title || ''} ${story.author || ''}`.trim(),
-      `${story.title || ''}`.trim(),
-    ].filter(Boolean);
-
-    for (const term of searchTerms) {
-      const results = await StoryService.searchGoogle(term);
-
-      if (!Array.isArray(results) || results.length === 0) {
-        continue;
-      }
-
-      const exactMatch = results.find((item: any) => {
-        const itemTitle = normalizeText(item?.title);
-        const itemAuthor = normalizeText(item?.author);
-        return itemTitle === title && (!author || itemAuthor.includes(author));
-      });
-
-      if (exactMatch?.previewLink) {
-        return exactMatch.previewLink;
-      }
-
-      const strongMatch = results.find((item: any) => {
-        const itemTitle = normalizeText(item?.title);
-        const itemAuthor = normalizeText(item?.author);
-
-        const titleLooksClose =
-          itemTitle.includes(title) ||
-          title.includes(itemTitle) ||
-          itemTitle.split(' ').some((word: string) => title.includes(word));
-
-        const authorLooksClose =
-          !author || itemAuthor.includes(author) || author.includes(itemAuthor);
-
-        return titleLooksClose && authorLooksClose && item?.previewLink;
-      });
-
-      if (strongMatch?.previewLink) {
-        return strongMatch.previewLink;
-      }
-    }
-
-    return null;
-  };
-
-  const handleStoryOpen = async (selectedStory: Partial<Story>) => {
+  const handleStoryOpen = (selectedStory: Partial<Story>) => {
     if (!selectedStory?.id) {
       toast.error('Story id is missing');
       return;
     }
 
-    if (selectedStory.previewLink) {
-      window.open(selectedStory.previewLink, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
-    if (selectedStory.source === 'internal') {
-      try {
-        const matchedPreview = await findGooglePreviewForManualStory(selectedStory);
-
-        if (matchedPreview) {
-          window.open(matchedPreview, '_blank', 'noopener,noreferrer');
-          return;
-        }
-      } catch (error) {
-        console.error('Preview lookup failed:', error);
-      }
-    }
-
-    navigate(`${DETAIL_ROUTE_BASE}/${selectedStory.id}`);
+    navigate(`/reader/${selectedStory.id}`);
   };
 
   return (
