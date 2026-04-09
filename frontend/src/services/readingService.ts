@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { ReadingSession, ApiResponse } from '../types';
+import { ReadingSession, ApiResponse, BookReadingProgress, ReadingActivitySummary } from '../types';
 
 class ReadingService {
   async startSession(data: {
@@ -36,6 +36,29 @@ class ReadingService {
   async getReadingStreak(childId: string): Promise<{ streak: number; longestStreak: number }> {
     const response = await apiClient.getInstance().get<ApiResponse<{ streak: number; longestStreak: number }>>(
       `/sessions/streak/${childId}`
+    );
+    return response.data.data!;
+  }
+
+  async getProgressByBook(bookId: string): Promise<BookReadingProgress> {
+    const response = await apiClient.getInstance().get<ApiResponse<BookReadingProgress>>(
+      `/sessions/progress/${bookId}`
+    );
+    return response.data.data!;
+  }
+
+  async getMyActivitySummary(days = 7): Promise<ReadingActivitySummary> {
+    const response = await apiClient.getInstance().get<ApiResponse<ReadingActivitySummary>>(
+      '/sessions/me/activity-summary',
+      { params: { days } }
+    );
+    return response.data.data!;
+  }
+
+  async getFamilyActivitySummary(days = 7): Promise<ReadingActivitySummary> {
+    const response = await apiClient.getInstance().get<ApiResponse<ReadingActivitySummary>>(
+      '/sessions/activity-summary/family',
+      { params: { days } }
     );
     return response.data.data!;
   }
