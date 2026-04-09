@@ -144,7 +144,6 @@ const ReadingPage: React.FC = () => {
       }
 
       const viewer = new window.google.books.DefaultViewer(viewerContainerRef.current);
-      // Google volume IDs from the API are not ISBNs — try volume id first, then ISBN: prefix for legacy data
       viewer.load(
         volumeId,
         () => {

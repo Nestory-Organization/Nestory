@@ -48,6 +48,24 @@ exports.updateSessionValidation = [
     .withMessage("timeSpent must be a non-negative integer"),
 ];
 
+exports.startMySessionValidation = [
+  body("storyId").optional().isMongoId().withMessage("Invalid storyId format"),
+
+  body("bookId").optional().isMongoId().withMessage("Invalid bookId format"),
+
+  body().custom((value) => {
+    if (!value.storyId && !value.bookId) {
+      throw new Error("Either storyId or bookId is required");
+    }
+    return true;
+  }),
+
+  body("totalPages")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("totalPages must be a positive integer"),
+];
+
 exports.childIdParamValidation = [
   param("childId")
     .notEmpty()

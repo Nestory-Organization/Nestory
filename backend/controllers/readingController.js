@@ -32,6 +32,114 @@ const ensureOwnedChild = async (childId, userId) => {
   return { ok: true, child };
 };
 
+/** Sessions use Child document id; child users have it on user.childProfile */
+const resolveReadingChildId = (user) => {
+  if (user.role === "child") {
+    return user.childProfile || null;
+  }
+  return user._id;
+};
+
+// @desc    Start or resume a reading session (logged-in child; uses linked Child profile)
+// @route   POST /api/sessions/start-me
+// @access  Private (Child only)
+exports.startMySession = async (req, res) => {
+  try {
+    const childId = resolveReadingChildId(req.user);
+    if (!childId) {
+      return res.status(400).json({
+        success: false,
+        message: "Child profile is not linked to this account",
+      });
+    }
+
+    const child = await Child.findById(childId).select("isActive");
+    if (!child || !child.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Child profile is missing or inactive",
+      });
+    }
+
+    const { storyId, bookId, totalPages } = req.body;
+    const effectiveStoryId = storyId || bookId;
+
+    if (!effectiveStoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "storyId or bookId is required",
+      });
+    }
+
+    let effectiveTotalPages = null;
+    const story = await Story.findById(effectiveStoryId).select("pageCount");
+
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: "Story not found",
+      });
+    }
+
+    if (story && typeof story.pageCount === "number" && story.pageCount > 0) {
+      effectiveTotalPages = story.pageCount;
+    } else if (totalPages) {
+      effectiveTotalPages = Number(totalPages);
+    }
+
+    if (!effectiveTotalPages || Number.isNaN(effectiveTotalPages)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Total pages could not be determined. Provide totalPages in the request or set pageCount on the Story.",
+      });
+    }
+
+    let existing = await ReadingSession.findOne({
+      childId,
+      bookId: effectiveStoryId,
+      completed: false,
+    }).sort({ lastUpdatedAt: -1 });
+
+    if (!existing) {
+      existing = await ReadingSession.findOne({
+        childId,
+        bookId: effectiveStoryId,
+      }).sort({ lastUpdatedAt: -1 });
+    }
+
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        message: existing.completed ? "Reading session loaded" : "Reading session resumed",
+        data: existing,
+      });
+    }
+
+    const session = await ReadingSession.create({
+      childId: new mongoose.Types.ObjectId(childId),
+      bookId: new mongoose.Types.ObjectId(effectiveStoryId),
+      totalPages: effectiveTotalPages,
+      pagesRead: 0,
+      timeSpent: 0,
+      completed: false,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Reading session started",
+      data: session,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 // @desc    Start a new reading session
 // @route   POST /api/sessions/start
 // @access  Private (parent: childId + story; child: story only)

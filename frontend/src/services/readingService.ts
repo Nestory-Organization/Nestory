@@ -9,6 +9,14 @@ import {
 export type SessionListItem = MyReadingSessionRow;
 
 class ReadingService {
+  async getMySessions(status?: 'active' | 'completed'): Promise<MyReadingSessionRow[]> {
+    const response = await apiClient.getInstance().get<ApiResponse<MyReadingSessionRow[]>>(
+      '/sessions/my-sessions',
+      { params: status ? { status } : undefined }
+    );
+    return response.data.data ?? [];
+  }
+
   /** Parent: pass childId + storyId. Child: storyId only. */
   async startSession(data: {
     childId?: string;
@@ -22,12 +30,18 @@ class ReadingService {
     return response.data.data!;
   }
 
-  /** Start session for logged-in child; returns new session id. */
-  async startMySession(body: { storyId: string }): Promise<{ _id: string }> {
-    const data = await this.startSession({ storyId: body.storyId });
-    const id = (data as { _id?: string })._id;
-    if (!id) throw new Error('No session id returned');
-    return { _id: String(id) };
+  /** Child account: start or resume a session for a story (no parent flow). */
+  async startMySession(body: { storyId?: string; bookId?: string }): Promise<{ _id: string }> {
+    const response = await apiClient.getInstance().post<ApiResponse<{ _id?: string; id?: string }>>(
+      '/sessions/start-me',
+      body
+    );
+    const data = response.data.data!;
+    const _id = data._id ?? data.id;
+    if (!_id) {
+      throw new Error('Session id missing from server response');
+    }
+    return { _id: String(_id) };
   }
 
   async updateSession(data: {
@@ -40,14 +54,6 @@ class ReadingService {
       ApiResponse<{ session: Record<string, unknown>; progress: number }>
     >('/sessions/update', data);
     return response.data.data!;
-  }
-
-  async getMySessions(status?: 'active' | 'completed'): Promise<MyReadingSessionRow[]> {
-    const response = await apiClient.getInstance().get<ApiResponse<MyReadingSessionRow[]>>(
-      '/sessions/my-sessions',
-      { params: status ? { status } : undefined }
-    );
-    return response.data.data ?? [];
   }
 
   async getProgressByBook(bookId: string): Promise<BookReadingProgress> {

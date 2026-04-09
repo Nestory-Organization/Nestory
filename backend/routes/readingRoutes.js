@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   startSession,
+  startMySession,
   updateSession,
   getWeeklyReadingTime,
   getReadingStreak,
@@ -20,6 +21,7 @@ const {
 } = require("../middleware/validationMiddleware");
 const {
   startSessionValidation,
+  startMySessionValidation,
   updateSessionValidation,
   childIdParamValidation,
 } = require("../validators/readingValidator");
@@ -34,6 +36,15 @@ router.post(
   startSessionValidation,
   handleValidationErrors,
   startSession,
+);
+
+router.post(
+  "/start-me",
+  protect,
+  authorize("child"),
+  startMySessionValidation,
+  handleValidationErrors,
+  startMySession,
 );
 
 router.post(
