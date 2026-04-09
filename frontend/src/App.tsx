@@ -20,6 +20,7 @@ import StoryLibraryCrudPage from './pages/admin/storyLibrary/StoryLibraryCrudPag
 import ChildDashboard from './pages/child/Dashboard';
 import ChildChangePasswordPage from './pages/child/ChangePasswordPage';
 import ChildAssignmentDetailPage from './pages/child/AssignmentDetailPage';
+import ReaderPage from './pages/child/ReaderPage';
 import GoogleBooksImportPage from './pages/admin/storyLibrary/GoogleBooksImportPage';
 import ReadingPage from './pages/child/ReadingPage';
 import ChildProgressPage from './pages/child/ProgressPage';
@@ -143,6 +144,7 @@ const AppContent: React.FC = () => {
           <Route path="/child/change-password" element={<ChildChangePasswordPage />} />
           <Route path="/child/assignments/:assignmentId" element={<ChildAssignmentDetailPage />} />
           <Route path="/story/:storyId" element={<StoryDetailPage />} />
+          <Route path="/reader/:storyId" element={<ReaderPage />} />
           <Route path="/child/read/:sessionId" element={<ReadingPage />} />
           <Route path="/child/progress" element={<ChildProgressPage />} />
         </>
