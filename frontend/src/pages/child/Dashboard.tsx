@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
 import StoryCard from '../../components/common/StoryCard';
-import { BookOpen, Flame, Clock, Award, CalendarDays } from 'lucide-react';
+import { BookOpen, Flame, Clock, Award, CalendarDays, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StoryService from '../../services/storyService';
 import AssignmentService from '../../services/assignmentService';
@@ -182,12 +182,23 @@ const ChildDashboard: React.FC = () => {
 
       <div className="container-responsive py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">
-            Welcome, {user?.name || 'Reader'}
-          </h1>
-          <p className="text-gray-600">
-            Track your progress and continue your reading journey.
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">
+                Welcome, {user?.name || 'Reader'}
+              </h1>
+              <p className="text-gray-600">
+                Track your progress and continue your reading journey.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/child/gamification')}
+              className="btn-primary inline-flex items-center gap-2"
+            >
+              <Sparkles size={18} />
+              View Gamification
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
