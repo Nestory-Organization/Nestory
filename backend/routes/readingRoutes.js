@@ -5,6 +5,17 @@ const {
   updateSession,
   getWeeklyReadingTime,
   getReadingStreak,
+<<<<<<< Updated upstream
+=======
+  getMySessions,
+  getProgressByBook,
+  deleteSession,
+  getMonthlyAnalytics,
+  getTopBooks,
+  getAchievements,
+  getMyActivitySummary,
+  getFamilyActivitySummary,
+>>>>>>> Stashed changes
 } = require("../controllers/readingController");
 const { protect, parentOnly } = require("../middleware/authMiddleware");
 const {
@@ -61,4 +72,35 @@ router.get(
   getReadingStreak,
 );
 
+<<<<<<< Updated upstream
+=======
+// GET /api/sessions/my-sessions — all sessions for logged-in user (?status=active|completed)
+router.get('/my-sessions', protect, getMySessions);
+router.get(
+  "/me/activity-summary",
+  protect,
+  authorize("child"),
+  getMyActivitySummary,
+);
+router.get(
+  "/activity-summary/family",
+  protect,
+  parentOnly,
+  getFamilyActivitySummary,
+);
+
+// GET /api/sessions/progress/:bookId — progress for a specific book (resume reading)
+router.get('/progress/:bookId', protect, getProgressByBook);
+
+// DELETE /api/sessions/:sessionId — delete / reset a session
+router.delete('/:sessionId', protect, deleteSession);
+
+// GET /api/sessions/monthly/:childId — monthly reading analytics
+router.get('/monthly/:childId', protect, getMonthlyAnalytics);
+
+// GET /api/sessions/top-books/:childId — top 5 most read books by time
+router.get('/top-books/:childId', protect, getTopBooks);
+
+
+>>>>>>> Stashed changes
 module.exports = router;
