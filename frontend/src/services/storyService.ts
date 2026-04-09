@@ -1,12 +1,13 @@
 import apiClient from './apiClient';
 import { Story, ApiResponse } from '../types';
-import { normalizeStory, normalizeStoryList } from '../utils/storyLibrary/storyMapper';
+import { normalizeStory } from '../utils/storyLibrary/storyMapper';
 
 type StoryFilters = {
   ageGroup?: string;
   readingLevel?: string;
   genre?: string;
   search?: string;
+  source?: string;
 };
 
 type StoryListResult = {
@@ -17,8 +18,11 @@ type StoryListResult = {
 };
 
 interface StoryListPayload {
-  data?: Story[];
-  stories?: Story[];
+  data?: any[];
+  stories?: any[];
+  total?: number;
+  page?: number;
+  pages?: number;
   pagination?: {
     page?: number;
     limit?: number;
@@ -68,28 +72,37 @@ class StoryService {
     limit: number = 12,
     filters?: StoryFilters
   ): Promise<StoryListResult> {
-    let url = `/stories?page=${page}&limit=${limit}`;
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('limit', String(limit));
 
-    const response = await apiClient.getInstance().get<ApiResponse<StoryListPayload>>(url);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.ageGroup) params.append('ageGroup', filters.ageGroup);
+    if (filters?.readingLevel) params.append('readingLevel', filters.readingLevel);
+    if (filters?.genre) params.append('genre', filters.genre);
+    if (filters?.source) params.append('source', filters.source);
+
+    const response = await apiClient
+      .getInstance()
+      .get<ApiResponse<StoryListPayload>>(`/stories?${params.toString()}`);
+
     const payload = response.data.data || {};
 
-    const stories = Array.isArray(payload.data)
+    const rawStories = Array.isArray(payload.data)
       ? payload.data
       : Array.isArray(payload.stories)
-        ? payload.stories
-        : [];
+      ? payload.stories
+      : [];
+
+    const stories = rawStories.map(normalizeStory);
 
     const meta = payload.pagination || payload.meta;
 
     return {
-      success: true,
-      data: stories,
-      pagination: {
-        page: Number(meta?.page) || page,
-        limit: Number(meta?.limit) || limit,
-        total: Number(meta?.total) || stories.length,
-        pages: Number(meta?.pages) || 1,
-      },
+      stories,
+      total: Number(meta?.total ?? payload.total ?? rawStories.length),
+      page: Number(meta?.page ?? payload.page ?? page),
+      pages: Number(meta?.pages ?? payload.pages ?? 1),
     };
   }
 

@@ -15,7 +15,7 @@ import ChildDetailPage from './pages/parent/ChildDetailPage';
 import AssignmentsPage from './pages/parent/AssignmentsPage';
 import FamilySettingsPage from './pages/parent/FamilySettingsPage';
 import AdminDashboard from './pages/admin/Dashboard';
-import StoryManagementPage from './pages/admin/StoryManagementPage';
+import StoryLibraryCrudPage from './pages/admin/storyLibrary/StoryLibraryCrudPage';
 import ChildDashboard from './pages/child/Dashboard';
 import ChildChangePasswordPage from './pages/child/ChangePasswordPage';
 import ChildAssignmentDetailPage from './pages/child/AssignmentDetailPage';
@@ -120,7 +120,7 @@ const AppContent: React.FC = () => {
       {isAuthenticated && user?.role === 'admin' && (
         <>
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/stories" element={<StoryManagementPage />} />
+          <Route path="/admin/stories" element={<StoryLibraryCrudPage />} />
         </>
       )}
 
