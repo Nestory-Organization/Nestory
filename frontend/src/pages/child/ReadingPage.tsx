@@ -64,9 +64,18 @@ const ReadingPage: React.FC = () => {
         }
         setSession(found);
 
-        if (found.bookId?._id) {
-          const storyData = await StoryService.getStoryById(found.bookId._id).catch(() => null);
+        const bookRef = found.bookId;
+        const bookStoryId =
+          typeof bookRef === 'object' && bookRef !== null
+            ? String((bookRef as { _id?: string })._id || '')
+            : bookRef
+              ? String(bookRef)
+              : '';
+        if (bookStoryId) {
+          const storyData = await StoryService.getStoryById(bookStoryId).catch(() => null);
           setStory(storyData);
+        } else {
+          setStory(null);
         }
       } catch (error: any) {
         toast.error('Failed to load reading session');
@@ -126,6 +135,7 @@ const ReadingPage: React.FC = () => {
       const timer = setTimeout(initViewer, 300);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [story, initViewer, viewerReady, viewerError]);
 
   useEffect(() => {
@@ -207,7 +217,9 @@ const ReadingPage: React.FC = () => {
 
   const pagesRemaining = session.totalPages - session.pagesRead;
   const maxPages = Math.max(pagesRemaining, 0);
-  const hasGoogleBook = !!story?.googleBookId;
+  const googleId = story?.googleBookId?.trim();
+  const previewUrl = story?.previewLink?.trim();
+  const hasGoogleBook = !!googleId;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -332,7 +344,7 @@ const ReadingPage: React.FC = () => {
               </div>
             )}
 
-            {story?.previewLink && !isFullscreen && (
+            {previewUrl && !isFullscreen && (
               <div className="card mb-4 bg-nestory-50 border border-nestory-200">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-lg bg-nestory-100 flex items-center justify-center shrink-0">
@@ -344,7 +356,7 @@ const ReadingPage: React.FC = () => {
                       Open the book on Google Books to read, then come back to log your pages.
                     </p>
                     <a
-                      href={story.previewLink}
+                      href={previewUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white font-semibold hover:bg-nestory-700 transition-colors"
@@ -357,11 +369,26 @@ const ReadingPage: React.FC = () => {
               </div>
             )}
 
-            {!story?.previewLink && !story?.googleBookId && !isFullscreen && (
+            {!story && !isFullscreen && (
               <div className="card mb-4 text-center py-8">
                 <BookOpen size={48} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-600">
-                  No preview available for this book. Ask your parent for a physical copy!
+                <p className="text-gray-600 mb-2">
+                  Book details could not be loaded. You can still use the timer and log pages below.
+                </p>
+                <p className="text-sm text-gray-500">
+                  If this keeps happening, ask a parent to check the story in the library.
+                </p>
+              </div>
+            )}
+
+            {story && !previewUrl && !googleId && !isFullscreen && (
+              <div className="card mb-4 text-center py-8">
+                <BookOpen size={48} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-600 mb-2">
+                  This book has no linked Google Books preview in Nestory yet.
+                </p>
+                <p className="text-sm text-gray-500">
+                  Ask a parent to add the book from Google Books in the admin story tools, or use a physical copy while you log reading here.
                 </p>
               </div>
             )}

@@ -1,7 +1,33 @@
 import apiClient from './apiClient';
 import { ReadingSession, ApiResponse } from '../types';
 
+export interface SessionListItem {
+  _id: string;
+  bookId?: {
+    _id: string;
+    title: string;
+    author: string;
+    coverImage?: string;
+    pageCount?: number;
+  };
+  pagesRead: number;
+  totalPages: number;
+  progress: number;
+  timeSpent: number;
+  completed: boolean;
+  startedAt: string;
+  lastUpdatedAt: string;
+}
+
 class ReadingService {
+  async getMySessions(status?: 'active' | 'completed'): Promise<SessionListItem[]> {
+    const params = status ? `?status=${status}` : '';
+    const response = await apiClient.getInstance().get<ApiResponse<SessionListItem[]>>(
+      `/sessions/my-sessions${params}`
+    );
+    return response.data.data || [];
+  }
+
   async startSession(data: {
     childId: string;
     storyId: string;
@@ -11,6 +37,20 @@ class ReadingService {
       data
     );
     return response.data.data!;
+  }
+
+  /** Child account: start or resume a session for a story (no parent flow). */
+  async startMySession(body: { storyId: string }): Promise<{ _id: string }> {
+    const response = await apiClient.getInstance().post<ApiResponse<{ _id?: string; id?: string }>>(
+      '/sessions/start-me',
+      body
+    );
+    const data = response.data.data!;
+    const _id = data._id ?? data.id;
+    if (!_id) {
+      throw new Error('Session id missing from server response');
+    }
+    return { _id: String(_id) };
   }
 
   async updateSession(data: {

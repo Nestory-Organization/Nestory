@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   startSession,
+  startMySession,
   updateSession,
   getWeeklyReadingTime,
   getReadingStreak,
@@ -12,12 +13,13 @@ const {
   getTopBooks,
   getAchievements,
 } = require("../controllers/readingController");
-const { protect, parentOnly } = require("../middleware/authMiddleware");
+const { protect, parentOnly, authorize } = require("../middleware/authMiddleware");
 const {
   handleValidationErrors,
 } = require("../middleware/validationMiddleware");
 const {
   startSessionValidation,
+  startMySessionValidation,
   updateSessionValidation,
   childIdParamValidation,
 } = require("../validators/readingValidator");
@@ -37,11 +39,20 @@ router.post(
   startSession,
 );
 
+// POST /api/sessions/start-me — child starts or resumes reading a book (no parent library needed)
+router.post(
+  "/start-me",
+  protect,
+  authorize("child"),
+  startMySessionValidation,
+  handleValidationErrors,
+  startMySession,
+);
+
 // POST /api/sessions/update — update pages read, time spent; returns progress %, marks completion
 router.post(
   "/update",
   protect,
-  parentOnly,
   updateSessionValidation,
   handleValidationErrors,
   updateSession,

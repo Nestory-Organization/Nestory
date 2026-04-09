@@ -31,6 +31,114 @@ const ensureOwnedChild = async (childId, userId) => {
   return { ok: true, child };
 };
 
+/** Sessions use Child document id; child users have it on user.childProfile */
+const resolveReadingChildId = (user) => {
+  if (user.role === "child") {
+    return user.childProfile || null;
+  }
+  return user._id;
+};
+
+// @desc    Start or resume a reading session (logged-in child; uses linked Child profile)
+// @route   POST /api/sessions/start-me
+// @access  Private (Child only)
+exports.startMySession = async (req, res) => {
+  try {
+    const childId = resolveReadingChildId(req.user);
+    if (!childId) {
+      return res.status(400).json({
+        success: false,
+        message: "Child profile is not linked to this account",
+      });
+    }
+
+    const child = await Child.findById(childId).select("isActive");
+    if (!child || !child.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Child profile is missing or inactive",
+      });
+    }
+
+    const { storyId, bookId, totalPages } = req.body;
+    const effectiveStoryId = storyId || bookId;
+
+    if (!effectiveStoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "storyId or bookId is required",
+      });
+    }
+
+    let effectiveTotalPages = null;
+    const story = await Story.findById(effectiveStoryId).select("pageCount");
+
+    if (!story) {
+      return res.status(404).json({
+        success: false,
+        message: "Story not found",
+      });
+    }
+
+    if (story && typeof story.pageCount === "number" && story.pageCount > 0) {
+      effectiveTotalPages = story.pageCount;
+    } else if (totalPages) {
+      effectiveTotalPages = Number(totalPages);
+    }
+
+    if (!effectiveTotalPages || Number.isNaN(effectiveTotalPages)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Total pages could not be determined. Provide totalPages in the request or set pageCount on the Story.",
+      });
+    }
+
+    let existing = await ReadingSession.findOne({
+      childId,
+      bookId: effectiveStoryId,
+      completed: false,
+    }).sort({ lastUpdatedAt: -1 });
+
+    if (!existing) {
+      existing = await ReadingSession.findOne({
+        childId,
+        bookId: effectiveStoryId,
+      }).sort({ lastUpdatedAt: -1 });
+    }
+
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        message: existing.completed ? "Reading session loaded" : "Reading session resumed",
+        data: existing,
+      });
+    }
+
+    const session = await ReadingSession.create({
+      childId: new mongoose.Types.ObjectId(childId),
+      bookId: new mongoose.Types.ObjectId(effectiveStoryId),
+      totalPages: effectiveTotalPages,
+      pagesRead: 0,
+      timeSpent: 0,
+      completed: false,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Reading session started",
+      data: session,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 // @desc    Start a new reading session
 // @route   POST /api/sessions/start
 // @access  Private (Parent only)
@@ -254,12 +362,24 @@ exports.updateSession = async (req, res) => {
       });
     }
 
-    const childAccess = await ensureOwnedChild(session.childId, req.user._id);
-    if (!childAccess.ok) {
-      return res.status(childAccess.status).json({
-        success: false,
-        message: childAccess.message,
-      });
+    if (req.user.role === "child") {
+      if (
+        !req.user.childProfile ||
+        session.childId.toString() !== req.user.childProfile.toString()
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Not allowed to update this session",
+        });
+      }
+    } else {
+      const childAccess = await ensureOwnedChild(session.childId, req.user._id);
+      if (!childAccess.ok) {
+        return res.status(childAccess.status).json({
+          success: false,
+          message: childAccess.message,
+        });
+      }
     }
 
     const pagesToAdd = Number(pagesRead) || 0;
@@ -301,10 +421,20 @@ exports.updateSession = async (req, res) => {
 // @access  Private
 exports.getMySessions = async (req, res) => {
   try {
-    const userId = req.user._id;
+    let readerId = req.user._id;
+    if (req.user.role === "child") {
+      if (!req.user.childProfile) {
+        return res.status(400).json({
+          success: false,
+          message: "Child profile is not linked to this account",
+        });
+      }
+      readerId = req.user.childProfile;
+    }
+
     const { status } = req.query; // optional: 'active' | 'completed'
 
-    const filter = { childId: userId };
+    const filter = { childId: readerId };
     if (status === 'active') filter.completed = false;
     if (status === 'completed') filter.completed = true;
 
@@ -345,11 +475,21 @@ exports.getMySessions = async (req, res) => {
 // @access  Private
 exports.getProgressByBook = async (req, res) => {
   try {
-    const userId = req.user._id;
+    let readerId = req.user._id;
+    if (req.user.role === "child") {
+      if (!req.user.childProfile) {
+        return res.status(400).json({
+          success: false,
+          message: "Child profile is not linked to this account",
+        });
+      }
+      readerId = req.user.childProfile;
+    }
+
     const { bookId } = req.params;
 
     const session = await ReadingSession.findOne({
-      childId: userId,
+      childId: readerId,
       bookId
     })
       .sort({ lastUpdatedAt: -1 })
@@ -396,7 +536,6 @@ exports.getProgressByBook = async (req, res) => {
 // @access  Private
 exports.deleteSession = async (req, res) => {
   try {
-    const userId = req.user._id;
     const { sessionId } = req.params;
 
     const session = await ReadingSession.findById(sessionId);
@@ -407,11 +546,24 @@ exports.deleteSession = async (req, res) => {
       });
     }
 
-    if (session.childId.toString() !== userId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not allowed to delete this session'
-      });
+    if (req.user.role === "child") {
+      if (
+        !req.user.childProfile ||
+        session.childId.toString() !== req.user.childProfile.toString()
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Not allowed to delete this session",
+        });
+      }
+    } else {
+      const childAccess = await ensureOwnedChild(session.childId, req.user._id);
+      if (!childAccess.ok) {
+        return res.status(childAccess.status).json({
+          success: false,
+          message: childAccess.message,
+        });
+      }
     }
 
     await ReadingSession.findByIdAndDelete(sessionId);
