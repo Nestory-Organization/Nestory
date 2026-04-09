@@ -66,7 +66,7 @@ const StoryManagementPage: React.FC = () => {
     try {
       setIsLoading(true);
       const response = await StoryService.getStories(1, 100);
-      const normalized = (response.data || []).map((story: any) => ({
+      const normalized = (response.stories || []).map((story: any) => ({
         id: normalizeId(story),
         title: story.title || 'Untitled',
         author: story.author || 'Unknown',

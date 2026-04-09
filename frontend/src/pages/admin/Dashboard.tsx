@@ -42,7 +42,7 @@ const AdminDashboard: React.FC = () => {
         }));
 
         setUsers(normalizedUsers);
-        setStoryCount(Array.isArray(storiesResponse.data) ? storiesResponse.data.length : 0);
+        setStoryCount(Array.isArray(storiesResponse.stories) ? storiesResponse.stories.length : 0);
       } catch (error: any) {
         toast.error(error?.response?.data?.message || 'Failed to load admin dashboard');
       } finally {

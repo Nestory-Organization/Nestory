@@ -11,14 +11,10 @@ type StoryFilters = {
 };
 
 type StoryListResult = {
-  success: boolean;
-  data: Story[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
+  stories: Story[];
+  total: number;
+  page: number;
+  pages: number;
 };
 
 interface StoryListPayload {
