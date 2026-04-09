@@ -7,11 +7,18 @@ interface StoryCardProps {
   onSelect?: (story: Partial<Story>) => void;
   isSelected?: boolean;
   clickable?: boolean;
+  disabled?: boolean;
 }
 
 const DEFAULT_BOOK_COVER = 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80';
 
-const StoryCard: React.FC<StoryCardProps> = ({ story, onSelect, isSelected = false, clickable = true }) => {
+const StoryCard: React.FC<StoryCardProps> = ({
+  story,
+  onSelect,
+  isSelected = false,
+  clickable = true,
+  disabled = false,
+}) => {
   const [imageLoadError, setImageLoadError] = useState(false);
 
   const getAgeGroupEmoji = (ageGroup?: string) => {
@@ -58,12 +65,14 @@ const StoryCard: React.FC<StoryCardProps> = ({ story, onSelect, isSelected = fal
     }
   };
 
+  const canInteract = clickable && !disabled;
+
   return (
     <div
       className={`card-interactive flex flex-col h-full transition-all hover:shadow-lg ${
         isSelected ? 'ring-2 ring-nestory-600 shadow-lg' : ''
-      } ${clickable ? 'cursor-pointer active:scale-95' : ''}`}
-      onClick={() => clickable && onSelect?.(story)}
+      } ${canInteract ? 'cursor-pointer active:scale-95' : ''} ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
+      onClick={() => canInteract && onSelect?.(story)}
     >
       {/* Cover Image */}
       <div className="w-full h-40 bg-gray-200 rounded-lg mb-4 overflow-hidden flex items-center justify-center">

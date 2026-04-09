@@ -11,14 +11,24 @@ exports.searchGoogleBooks = async (q) => {
   const res = await axios.get(GOOGLE_BOOKS_URL, { params });
   const items = res.data.items || [];
 
-  return items.map((item) => ({
-    googleBookId: item.id,
-    title: item.volumeInfo.title || 'Unknown',
-    author: item.volumeInfo.authors?.[0] || 'Unknown',
-    description: item.volumeInfo.description || '',
-    coverImage: toHttps(item.volumeInfo.imageLinks?.thumbnail || ''),
-    previewLink: item.volumeInfo.previewLink || ''
-  }));
+  return items.map((item) => {
+    const vi = item.volumeInfo || {};
+    const previewLink = vi.previewLink || '';
+    const infoLink = vi.infoLink || '';
+    const id = item.id;
+    const fallbackReader =
+      previewLink ||
+      (infoLink ? toHttps(infoLink) : '') ||
+      `https://books.google.com/books?id=${encodeURIComponent(id)}&printsec=frontcover`;
+    return {
+      googleBookId: id,
+      title: vi.title || 'Unknown',
+      author: vi.authors?.[0] || 'Unknown',
+      description: vi.description || '',
+      coverImage: toHttps(vi.imageLinks?.thumbnail || ''),
+      previewLink: fallbackReader,
+    };
+  });
 };
 
 exports.getGoogleBookById = async (googleBookId) => {
@@ -28,13 +38,20 @@ exports.getGoogleBookById = async (googleBookId) => {
   const res = await axios.get(`${GOOGLE_BOOKS_URL}/${googleBookId}`, { params });
   const v = res.data?.volumeInfo || {};
 
+  const previewLink = v.previewLink || '';
+  const infoLink = v.infoLink || '';
+  const fallbackReader =
+    previewLink ||
+    (infoLink ? toHttps(infoLink) : '') ||
+    `https://books.google.com/books?id=${encodeURIComponent(googleBookId)}&printsec=frontcover`;
+
   return {
     googleBookId,
     title: v.title || 'Unknown',
     author: v.authors?.[0] || 'Unknown',
     description: v.description || '',
     coverImage: toHttps(v.imageLinks?.thumbnail || ''),
-    previewLink: v.previewLink || ''
+    previewLink: fallbackReader,
   };
 };
 
@@ -45,12 +62,19 @@ exports.getBookById = async (googleBookId) => {
   const response = await axios.get(`${GOOGLE_BOOKS_URL}/${googleBookId}`, { params });
   const volume = response.data?.volumeInfo || {};
 
+  const previewLink = volume.previewLink || '';
+  const infoLink = volume.infoLink || '';
+  const fallbackReader =
+    previewLink ||
+    (infoLink ? toHttps(infoLink) : '') ||
+    `https://books.google.com/books?id=${encodeURIComponent(googleBookId)}&printsec=frontcover`;
+
   return {
     googleBookId,
     title: volume.title || 'Unknown',
     author: volume.authors ? volume.authors.join(', ') : 'Unknown',
     description: volume.description || '',
     coverImage: toHttps(volume.imageLinks?.thumbnail || ''),
-    previewLink: volume.previewLink || '',
+    previewLink: fallbackReader,
   };
 };
