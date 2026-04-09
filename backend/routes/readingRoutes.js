@@ -11,8 +11,10 @@ const {
   getMonthlyAnalytics,
   getTopBooks,
   getAchievements,
+  getMyActivitySummary,
+  getFamilyActivitySummary,
 } = require("../controllers/readingController");
-const { protect, parentOnly } = require("../middleware/authMiddleware");
+const { protect, parentOnly, authorize } = require("../middleware/authMiddleware");
 const {
   handleValidationErrors,
 } = require("../middleware/validationMiddleware");
@@ -22,32 +24,26 @@ const {
   childIdParamValidation,
 } = require("../validators/readingValidator");
 
-// GET /api/sessions — quick check that sessions router is mounted
 router.get("/", (req, res) =>
   res.json({ success: true, message: "Reading sessions API" }),
 );
 
-// POST /api/sessions/start — start a reading session for the authenticated user (or specified child)
 router.post(
   "/start",
   protect,
-  parentOnly,
   startSessionValidation,
   handleValidationErrors,
   startSession,
 );
 
-// POST /api/sessions/update — update pages read, time spent; returns progress %, marks completion
 router.post(
   "/update",
   protect,
-  parentOnly,
   updateSessionValidation,
   handleValidationErrors,
   updateSession,
 );
 
-// GET /api/sessions/weekly/:childId — total reading time in last 7 days
 router.get(
   "/weekly/:childId",
   protect,
@@ -57,7 +53,6 @@ router.get(
   getWeeklyReadingTime,
 );
 
-// GET /api/sessions/streak/:childId — consecutive days with reading
 router.get(
   "/streak/:childId",
   protect,
@@ -67,20 +62,30 @@ router.get(
   getReadingStreak,
 );
 
-// GET /api/sessions/my-sessions — all sessions for logged-in user (?status=active|completed)
-router.get('/my-sessions', protect, getMySessions);
+router.get("/my-sessions", protect, getMySessions);
 
-// GET /api/sessions/progress/:bookId — progress for a specific book (resume reading)
-router.get('/progress/:bookId', protect, getProgressByBook);
+router.get(
+  "/me/activity-summary",
+  protect,
+  authorize("child"),
+  getMyActivitySummary,
+);
 
-// DELETE /api/sessions/:sessionId — delete / reset a session
-router.delete('/:sessionId', protect, deleteSession);
+router.get(
+  "/activity-summary/family",
+  protect,
+  parentOnly,
+  getFamilyActivitySummary,
+);
 
-// GET /api/sessions/monthly/:childId — monthly reading analytics
-router.get('/monthly/:childId', protect, getMonthlyAnalytics);
+router.get("/progress/:bookId", protect, getProgressByBook);
 
-// GET /api/sessions/top-books/:childId — top 5 most read books by time
-router.get('/top-books/:childId', protect, getTopBooks);
+router.delete("/:sessionId", protect, deleteSession);
 
+router.get("/monthly/:childId", protect, getMonthlyAnalytics);
+
+router.get("/top-books/:childId", protect, getTopBooks);
+
+router.get("/achievements/:childId", protect, getAchievements);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const ReadingSession = require("../models/ReadingSession");
+const ReadingActivity = require("../models/ReadingActivity");
 const Story = require("../models/storyLibrary/Story");
 const Child = require("../models/Child");
 
@@ -33,7 +34,7 @@ const ensureOwnedChild = async (childId, userId) => {
 
 // @desc    Start a new reading session
 // @route   POST /api/sessions/start
-// @access  Private (Parent only)
+// @access  Private (parent: childId + story; child: story only)
 exports.startSession = async (req, res) => {
   try {
     const { childId, storyId, bookId, totalPages } = req.body;
@@ -46,19 +47,52 @@ exports.startSession = async (req, res) => {
       });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(childId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid childId format",
-      });
-    }
+    let effectiveChildId;
 
-    const childAccess = await ensureOwnedChild(childId, req.user._id);
-    if (!childAccess.ok) {
-      return res.status(childAccess.status).json({
-        success: false,
-        message: childAccess.message,
-      });
+    if (req.user.role === "child") {
+      if (!req.user.childProfile) {
+        return res.status(400).json({
+          success: false,
+          message: "Your account is not linked to a child profile",
+        });
+      }
+      if (!mongoose.Types.ObjectId.isValid(req.user.childProfile)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid child profile on account",
+        });
+      }
+      const childRow = await Child.findById(req.user.childProfile).select(
+        "isActive",
+      );
+      if (!childRow) {
+        return res.status(404).json({
+          success: false,
+          message: "Child profile not found",
+        });
+      }
+      if (!childRow.isActive) {
+        return res.status(400).json({
+          success: false,
+          message: "Child profile is inactive",
+        });
+      }
+      effectiveChildId = req.user.childProfile;
+    } else {
+      if (!childId || !mongoose.Types.ObjectId.isValid(childId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or missing childId",
+        });
+      }
+      const childAccess = await ensureOwnedChild(childId, req.user._id);
+      if (!childAccess.ok) {
+        return res.status(childAccess.status).json({
+          success: false,
+          message: childAccess.message,
+        });
+      }
+      effectiveChildId = childId;
     }
 
     // Prefer total pages from the Story document; fall back to body.totalPages for backward compatibility
@@ -88,7 +122,7 @@ exports.startSession = async (req, res) => {
     }
 
     const session = await ReadingSession.create({
-      childId: new mongoose.Types.ObjectId(childId),
+      childId: new mongoose.Types.ObjectId(effectiveChildId),
       bookId: new mongoose.Types.ObjectId(effectiveStoryId),
       totalPages: effectiveTotalPages,
       pagesRead: 0,
@@ -233,7 +267,7 @@ exports.getReadingStreak = async (req, res) => {
 
 // @desc    Update reading session (pages + time), return progress, mark completion
 // @route   POST /api/sessions/update
-// @access  Private (Parent only)
+// @access  Private (parent: own children; child: own sessions)
 exports.updateSession = async (req, res) => {
   try {
     const { sessionId, pagesRead, timeSpent } = req.body;
@@ -254,12 +288,24 @@ exports.updateSession = async (req, res) => {
       });
     }
 
-    const childAccess = await ensureOwnedChild(session.childId, req.user._id);
-    if (!childAccess.ok) {
-      return res.status(childAccess.status).json({
-        success: false,
-        message: childAccess.message,
-      });
+    if (req.user.role === "child") {
+      if (
+        !req.user.childProfile ||
+        session.childId.toString() !== req.user.childProfile.toString()
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Not allowed to update this session",
+        });
+      }
+    } else {
+      const childAccess = await ensureOwnedChild(session.childId, req.user._id);
+      if (!childAccess.ok) {
+        return res.status(childAccess.status).json({
+          success: false,
+          message: childAccess.message,
+        });
+      }
     }
 
     const pagesToAdd = Number(pagesRead) || 0;
@@ -275,6 +321,20 @@ exports.updateSession = async (req, res) => {
 
     session.lastUpdatedAt = new Date();
     await session.save();
+
+    if (pagesToAdd > 0 || timeToAdd > 0) {
+      try {
+        await ReadingActivity.create({
+          childId: session.childId,
+          sessionId: session._id,
+          bookId: session.bookId,
+          pagesAdded: pagesToAdd,
+          minutesAdded: timeToAdd,
+        });
+      } catch (logErr) {
+        console.error("ReadingActivity log failed", logErr);
+      }
+    }
 
     const progress = (session.pagesRead / session.totalPages) * 100;
 
@@ -296,15 +356,173 @@ exports.updateSession = async (req, res) => {
   }
 };
 
+// @desc    Pages/minutes logged in rolling window (from progress saves)
+// @route   GET /api/sessions/me/activity-summary
+// @access  Private (child)
+exports.getMyActivitySummary = async (req, res) => {
+  try {
+    if (req.user.role !== "child" || !req.user.childProfile) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized",
+      });
+    }
+
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 7, 1), 90);
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(end.getDate() - days);
+    start.setHours(0, 0, 0, 0);
+
+    const childId = req.user.childProfile;
+    const rows = await ReadingActivity.aggregate([
+      {
+        $match: {
+          childId: new mongoose.Types.ObjectId(childId),
+          createdAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          pages: { $sum: "$pagesAdded" },
+          minutes: { $sum: "$minutesAdded" },
+          entries: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const row = rows[0] || { pages: 0, minutes: 0, entries: 0 };
+
+    return res.status(200).json({
+      success: true,
+      message: "Activity summary",
+      data: {
+        days,
+        periodStart: start.toISOString(),
+        periodEnd: end.toISOString(),
+        totalPagesLogged: row.pages,
+        totalMinutesLogged: row.minutes,
+        progressSaveCount: row.entries,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Family-wide activity summary (all parent's children)
+// @route   GET /api/sessions/activity-summary/family
+// @access  Private (parent)
+exports.getFamilyActivitySummary = async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 7, 1), 90);
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(end.getDate() - days);
+    start.setHours(0, 0, 0, 0);
+
+    const children = await Child.find({ parent: req.user._id, isActive: true }).select("name");
+    if (!children.length) {
+      return res.status(200).json({
+        success: true,
+        message: "Activity summary",
+        data: {
+          days,
+          periodStart: start.toISOString(),
+          periodEnd: end.toISOString(),
+          totalPagesLogged: 0,
+          totalMinutesLogged: 0,
+          progressSaveCount: 0,
+          byChild: [],
+        },
+      });
+    }
+
+    const childIds = children.map((c) => c._id);
+    const nameById = Object.fromEntries(
+      children.map((c) => [c._id.toString(), c.name || "Reader"])
+    );
+
+    const agg = await ReadingActivity.aggregate([
+      {
+        $match: {
+          childId: { $in: childIds },
+          createdAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: "$childId",
+          pages: { $sum: "$pagesAdded" },
+          minutes: { $sum: "$minutesAdded" },
+          entries: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const byChild = agg.map((a) => ({
+      childId: a._id.toString(),
+      childName: nameById[a._id.toString()] || "Reader",
+      pages: a.pages,
+      minutes: a.minutes,
+      progressSaveCount: a.entries,
+    }));
+
+    const totals = byChild.reduce(
+      (acc, c) => ({
+        pages: acc.pages + c.pages,
+        minutes: acc.minutes + c.minutes,
+        entries: acc.entries + c.progressSaveCount,
+      }),
+      { pages: 0, minutes: 0, entries: 0 }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Activity summary",
+      data: {
+        days,
+        periodStart: start.toISOString(),
+        periodEnd: end.toISOString(),
+        totalPagesLogged: totals.pages,
+        totalMinutesLogged: totals.minutes,
+        progressSaveCount: totals.entries,
+        byChild,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 // @desc    Get all sessions for the logged-in user (dashboard: current + history)
 // @route   GET /api/sessions/my-sessions
 // @access  Private
 exports.getMySessions = async (req, res) => {
   try {
-    const userId = req.user._id;
+    if (req.user.role !== "child" || !req.user.childProfile) {
+      return res.status(200).json({
+        success: true,
+        message: "My sessions fetched",
+        data: [],
+      });
+    }
+
+    const readerChildId = req.user.childProfile;
     const { status } = req.query; // optional: 'active' | 'completed'
 
-    const filter = { childId: userId };
+    const filter = { childId: readerChildId };
     if (status === 'active') filter.completed = false;
     if (status === 'completed') filter.completed = true;
 
@@ -345,12 +563,20 @@ exports.getMySessions = async (req, res) => {
 // @access  Private
 exports.getProgressByBook = async (req, res) => {
   try {
-    const userId = req.user._id;
+    if (req.user.role !== "child" || !req.user.childProfile) {
+      return res.status(200).json({
+        success: true,
+        message: "No session found for this book",
+        data: { session: null, progress: 0, pagesRead: 0, totalPages: null },
+      });
+    }
+
+    const readerChildId = req.user.childProfile;
     const { bookId } = req.params;
 
     const session = await ReadingSession.findOne({
-      childId: userId,
-      bookId
+      childId: readerChildId,
+      bookId,
     })
       .sort({ lastUpdatedAt: -1 })
       .populate('bookId', 'title author coverImage pageCount')
@@ -396,7 +622,6 @@ exports.getProgressByBook = async (req, res) => {
 // @access  Private
 exports.deleteSession = async (req, res) => {
   try {
-    const userId = req.user._id;
     const { sessionId } = req.params;
 
     const session = await ReadingSession.findById(sessionId);
@@ -407,11 +632,24 @@ exports.deleteSession = async (req, res) => {
       });
     }
 
-    if (session.childId.toString() !== userId.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not allowed to delete this session'
-      });
+    if (req.user.role === "child") {
+      if (
+        !req.user.childProfile ||
+        session.childId.toString() !== req.user.childProfile.toString()
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Not allowed to delete this session",
+        });
+      }
+    } else {
+      const childAccess = await ensureOwnedChild(session.childId, req.user._id);
+      if (!childAccess.ok) {
+        return res.status(childAccess.status).json({
+          success: false,
+          message: childAccess.message,
+        });
+      }
     }
 
     await ReadingSession.findByIdAndDelete(sessionId);

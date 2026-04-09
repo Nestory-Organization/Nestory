@@ -15,6 +15,10 @@ const {
   deleteAssignment,
 } = require("../controllers/assignmentController");
 const {
+  getParentProgressOverview,
+  getMyProgressOverview,
+} = require("../controllers/assignmentProgressController");
+const {
   protect,
   parentOnly,
   authorize,
@@ -58,7 +62,9 @@ router.put(
   bulkUpdateAssignmentStatus,
 );
 router.get("/family", protect, parentOnly, getFamilyDashboard);
+router.get("/progress", protect, parentOnly, getParentProgressOverview);
 router.get("/me", protect, authorize("child"), getMyAssignments);
+router.get("/me/progress", protect, authorize("child"), getMyProgressOverview);
 router.get(
   "/me/:id",
   protect,

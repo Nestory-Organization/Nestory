@@ -7,6 +7,7 @@ interface BackendAuthPayload {
   name: string;
   email: string;
   role: 'user' | 'parent' | 'admin' | 'child';
+  childProfile?: string | null;
   profilePicture?: string;
   phoneNumber?: string;
   isActive?: boolean;
@@ -28,11 +29,16 @@ class AuthService {
   }
 
   private normalizeUser(payload: BackendAuthPayload): User {
+    const childProfile = payload.childProfile;
     return {
       id: payload.id || payload._id || '',
       name: payload.name || '',
       email: payload.email || '',
       role: this.normalizeRole(payload.role),
+      childProfile:
+        childProfile === undefined || childProfile === null
+          ? undefined
+          : String(childProfile),
       mustChangePassword: payload.mustChangePassword ?? false,
       profilePicture: payload.profilePicture,
       phoneNumber: payload.phoneNumber,

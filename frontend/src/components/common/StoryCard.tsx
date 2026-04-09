@@ -7,6 +7,7 @@ interface StoryCardProps {
   onSelect?: (story: Partial<Story>) => void;
   isSelected?: boolean;
   clickable?: boolean;
+  disabled?: boolean;
 }
 
 const DEFAULT_BOOK_COVER =
@@ -17,6 +18,7 @@ const StoryCard: React.FC<StoryCardProps> = ({
   onSelect,
   isSelected = false,
   clickable = true,
+  disabled = false,
 }) => {
   const [imageLoadError, setImageLoadError] = useState(false);
 
@@ -66,8 +68,10 @@ const StoryCard: React.FC<StoryCardProps> = ({
   const pageCount =
     typeof story.pageCount === 'number' && story.pageCount > 0 ? story.pageCount : null;
 
+  const canInteract = clickable && !disabled;
+
   const handleClick = () => {
-    if (!clickable) return;
+    if (!canInteract) return;
     onSelect?.(story);
   };
 
@@ -76,9 +80,9 @@ const StoryCard: React.FC<StoryCardProps> = ({
       type="button"
       className={`relative w-full text-left card-interactive flex flex-col h-full transition-all hover:shadow-lg ${
         isSelected ? 'ring-2 ring-nestory-600 shadow-lg' : ''
-      } ${clickable ? 'cursor-pointer active:scale-95' : ''}`}
+      } ${canInteract ? 'cursor-pointer active:scale-95' : ''} ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
       onClick={handleClick}
-      disabled={!clickable}
+      disabled={!canInteract}
     >
       <div className="w-full h-44 bg-gray-200 rounded-lg mb-4 overflow-hidden flex items-center justify-center">
         <img

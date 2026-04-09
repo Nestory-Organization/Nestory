@@ -2,8 +2,7 @@ const { body, param } = require("express-validator");
 
 exports.startSessionValidation = [
   body("childId")
-    .notEmpty()
-    .withMessage("childId is required")
+    .optional()
     .isMongoId()
     .withMessage("Invalid childId format"),
 
@@ -11,9 +10,16 @@ exports.startSessionValidation = [
 
   body("bookId").optional().isMongoId().withMessage("Invalid bookId format"),
 
-  body().custom((value) => {
+  body().custom((value, { req }) => {
     if (!value.storyId && !value.bookId) {
       throw new Error("Either storyId or bookId is required");
+    }
+    const role = req.user?.role;
+    if (role === "child") {
+      return true;
+    }
+    if (!value.childId) {
+      throw new Error("childId is required");
     }
     return true;
   }),
