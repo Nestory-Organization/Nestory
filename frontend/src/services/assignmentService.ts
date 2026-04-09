@@ -3,6 +3,7 @@ import {
   Assignment,
   AssignmentDueState,
   AssignmentListResult,
+  AssignmentProgressOverview,
   AssignmentStatus,
   ApiResponse,
 } from '../types';
@@ -61,6 +62,21 @@ class AssignmentService {
       '/assignments/me'
     );
     return (response.data.data || []).map(normalizeAssignment);
+  }
+
+  async getMyProgressOverview(): Promise<AssignmentProgressOverview> {
+    const response = await apiClient.getInstance().get<ApiResponse<AssignmentProgressOverview>>(
+      '/assignments/me/progress'
+    );
+    return response.data.data!;
+  }
+
+  async getParentProgressOverview(childId?: string): Promise<AssignmentProgressOverview> {
+    const response = await apiClient.getInstance().get<ApiResponse<AssignmentProgressOverview>>(
+      '/assignments/progress',
+      { params: childId ? { childId } : undefined }
+    );
+    return response.data.data!;
   }
 
   async getMyAssignmentById(id: string): Promise<Assignment> {
