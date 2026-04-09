@@ -8,6 +8,15 @@ import toast from 'react-hot-toast';
 import { BookOpen, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import { Story } from '../../types';
 
+const DETAIL_ROUTE_BASE = '/story';
+
+const normalizeText = (value?: string) =>
+  (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const StoriesPage: React.FC = () => {
   const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
@@ -43,10 +52,10 @@ const StoriesPage: React.FC = () => {
           ageGroup: selectedAgeGroup,
           readingLevel: selectedLevel,
         });
-        setStories(response.data || []);
-        setTotalStories(response.pagination?.total || 0);
-        setTotalPages(response.pagination?.pages || 1);
-      } catch (error: any) {
+        setStories(response.stories || []);
+        setTotalStories(response.total || 0);
+        setTotalPages(response.pages || 1);
+      } catch (error) {
         toast.error('Failed to load stories');
         console.error(error);
       } finally {
@@ -57,7 +66,6 @@ const StoriesPage: React.FC = () => {
     loadStories();
   }, [currentPage, selectedAgeGroup, selectedLevel]);
 
-  // Filter stories by search query
   useEffect(() => {
     const filtered = stories.filter(
       (story) =>
@@ -71,7 +79,9 @@ const StoriesPage: React.FC = () => {
     setCurrentPage(1);
   }, [selectedAgeGroup, selectedLevel]);
 
-  const hasActiveFilters = Boolean(searchQuery.trim() || selectedAgeGroup || selectedLevel);
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() || selectedAgeGroup || selectedLevel
+  );
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -80,23 +90,120 @@ const StoriesPage: React.FC = () => {
     setCurrentPage(1);
   };
 
+  const findGooglePreviewForManualStory = async (
+    story: Partial<Story>
+  ): Promise<string | null> => {
+    const title = normalizeText(story.title);
+    const author = normalizeText(story.author);
+
+    const searchTerms = [
+      `${story.title || ''} ${story.author || ''}`.trim(),
+      `${story.title || ''}`.trim(),
+    ].filter(Boolean);
+
+    for (const term of searchTerms) {
+      const results = await StoryService.searchGoogle(term);
+
+      if (!Array.isArray(results) || results.length === 0) {
+        continue;
+      }
+
+      const exactMatch = results.find((item: any) => {
+        const itemTitle = normalizeText(item?.title);
+        const itemAuthor = normalizeText(item?.author);
+        return itemTitle === title && (!author || itemAuthor.includes(author));
+      });
+
+      if (exactMatch?.previewLink) {
+        return exactMatch.previewLink;
+      }
+
+      const strongMatch = results.find((item: any) => {
+        const itemTitle = normalizeText(item?.title);
+        const itemAuthor = normalizeText(item?.author);
+
+        const titleLooksClose =
+          itemTitle.includes(title) ||
+          title.includes(itemTitle) ||
+          itemTitle.split(' ').some((word: string) => title.includes(word));
+
+        const authorLooksClose =
+          !author || itemAuthor.includes(author) || author.includes(itemAuthor);
+
+        return titleLooksClose && authorLooksClose && item?.previewLink;
+      });
+
+      if (strongMatch?.previewLink) {
+        return strongMatch.previewLink;
+      }
+
+      const firstWithPreview = results.find((item: any) => item?.previewLink);
+      if (firstWithPreview?.previewLink && title.length > 0) {
+        return firstWithPreview.previewLink;
+      }
+    }
+
+    return null;
+  };
+
+  const handleStoryOpen = async (selectedStory: Partial<Story>) => {
+    try {
+      if (!selectedStory?.id) {
+        toast.error('Story id is missing');
+        return;
+      }
+
+      if (selectedStory.previewLink) {
+        window.open(selectedStory.previewLink, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      if (selectedStory.source === 'internal') {
+        const loadingToast = toast.loading('Checking for available preview...');
+
+        try {
+          const matchedPreview = await findGooglePreviewForManualStory(selectedStory);
+
+          toast.dismiss(loadingToast);
+
+          if (matchedPreview) {
+            toast.success('Preview found. Opening now...');
+            window.open(matchedPreview, '_blank', 'noopener,noreferrer');
+            return;
+          }
+
+          toast('No Google preview found. Opening story details instead.');
+        } catch (error) {
+          toast.dismiss(loadingToast);
+          console.error(error);
+          toast('Preview lookup failed. Opening story details instead.');
+        }
+      }
+
+      navigate(`${DETAIL_ROUTE_BASE}/${selectedStory.id}`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Unable to open this story');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar title="Story Library" />
 
       <div className="container-responsive py-8">
-        {/* Header */}
         <div className="mb-8 animate-fade-in flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Story Library</h1>
-            <p className="text-gray-600">Discover stories for your family by age and reading level</p>
+            <p className="text-gray-600">
+              Discover stories for your family by age and reading level
+            </p>
           </div>
           <p className="text-sm text-gray-500">
             {filteredStories.length} visible • {totalStories} total matches
           </p>
         </div>
 
-        {/* Search & Filters */}
         <div className="card mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -112,6 +219,7 @@ const StoriesPage: React.FC = () => {
               Reset Filters
             </button>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 text-gray-400" size={20} />
@@ -142,19 +250,24 @@ const StoriesPage: React.FC = () => {
           {hasActiveFilters && (
             <div className="mt-4 flex flex-wrap gap-2">
               {selectedAgeGroup && (
-                <span className="badge bg-blue-100 text-blue-800">Age: {selectedAgeGroup}</span>
+                <span className="badge bg-blue-100 text-blue-800">
+                  Age: {selectedAgeGroup}
+                </span>
               )}
               {selectedLevel && (
-                <span className="badge bg-purple-100 text-purple-800">Level: {selectedLevel}</span>
+                <span className="badge bg-purple-100 text-purple-800">
+                  Level: {selectedLevel}
+                </span>
               )}
               {searchQuery.trim() && (
-                <span className="badge bg-gray-100 text-gray-800">Search: {searchQuery.trim()}</span>
+                <span className="badge bg-gray-100 text-gray-800">
+                  Search: {searchQuery.trim()}
+                </span>
               )}
             </div>
           )}
         </div>
 
-        {/* Stories Grid */}
         {isLoading ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
@@ -163,25 +276,23 @@ const StoriesPage: React.FC = () => {
         ) : filteredStories.length === 0 ? (
           <div className="card text-center py-12">
             <BookOpen className="mx-auto mb-3 text-gray-400" size={28} />
-            <p className="text-gray-700 font-semibold mb-1">No stories found with your filters</p>
-            <p className="text-sm text-gray-600 mb-4">Try broadening age range or reading level filters.</p>
-            <button
-              onClick={clearFilters}
-              className="btn-primary"
-            >
+            <p className="text-gray-700 font-semibold mb-1">
+              No stories found with your filters
+            </p>
+            <p className="text-sm text-gray-600 mb-4">
+              Try broadening age range or reading level filters.
+            </p>
+            <button onClick={clearFilters} className="btn-primary">
               Clear Filters
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 mb-8">
             {filteredStories.map((story) => (
-              <div
-                key={story.id}
-                className="animate-slide-up"
-              >
+              <div key={story.id} className="animate-slide-up">
                 <StoryCard
                   story={story}
-                  onSelect={() => navigate(`/story/${story.id}`)}
+                  onSelect={handleStoryOpen}
                   clickable
                 />
               </div>
@@ -189,19 +300,20 @@ const StoriesPage: React.FC = () => {
           </div>
         )}
 
-        {/* Pagination */}
         {!isLoading && filteredStories.length > 0 && (
           <div className="flex items-center justify-center gap-2 py-8">
             <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
               className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
-            <span className="text-gray-600 px-2">Page {currentPage} of {totalPages}</span>
+            <span className="text-gray-600 px-2">
+              Page {currentPage} of {totalPages}
+            </span>
             <button
-              onClick={() => setCurrentPage(p => p + 1)}
+              onClick={() => setCurrentPage((p) => p + 1)}
               disabled={currentPage >= totalPages}
               className="btn-secondary"
             >
