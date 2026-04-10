@@ -126,11 +126,16 @@ const ParentDashboard: React.FC = () => {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string>('');
   const [weekActivity, setWeekActivity] = useState<ReadingActivitySummary | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    age: number;
+    avatar: string;
+    readingLevel: 'beginner' | 'intermediate' | 'advanced';
+  }>({
     name: '',
     age: 5,
     avatar: '👧',
-    readingLevel: 'beginner' as const,
+    readingLevel: 'beginner',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -495,7 +500,7 @@ const ParentDashboard: React.FC = () => {
     { value: 'advanced', label: 'Advanced' },
   ];
 
-  const parseReadingLevel = (value: string): Child['readingLevel'] => {
+  const parseReadingLevel = (value: string): 'beginner' | 'intermediate' | 'advanced' => {
     if (value === 'beginner' || value === 'intermediate' || value === 'advanced') {
       return value;
     }
@@ -625,6 +630,13 @@ const ParentDashboard: React.FC = () => {
             >
               <Book size={20} />
               Browse Stories
+            </button>
+            <button
+              onClick={() => navigate('/gamification')}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <Sparkles size={18} />
+              View Gamification
             </button>
           </div>
         </div>
