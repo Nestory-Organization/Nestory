@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ArrowLeft, BookOpen, CalendarDays, CheckCircle2, Clock3 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
@@ -9,6 +9,7 @@ import { Assignment, BookReadingProgress } from '../../types';
 
 const ChildAssignmentDetailPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { assignmentId } = useParams<{ assignmentId: string }>();
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
@@ -35,19 +36,6 @@ const ChildAssignmentDetailPage: React.FC = () => {
             ? await AssignmentService.updateMyAssignmentStatus(assignmentId, 'in_progress')
             : fetched;
         setAssignment(nextAssignment);
-
-        const storyOid = String(
-          nextAssignment.storyId || nextAssignment.story?._id || nextAssignment.story?.id || ''
-        );
-        if (storyOid) {
-          setBookReadingLoading(true);
-          ReadingService.getProgressByBook(storyOid)
-            .then(setBookReading)
-            .catch(() => setBookReading(null))
-            .finally(() => setBookReadingLoading(false));
-        } else {
-          setBookReading(null);
-        }
       } catch (error: unknown) {
         const message =
           typeof error === 'object' &&
@@ -65,6 +53,48 @@ const ChildAssignmentDetailPage: React.FC = () => {
 
     loadAssignment();
   }, [assignmentId, navigate]);
+
+  const storyOid = useMemo(
+    () =>
+      assignment
+        ? String(assignment.storyId || assignment.story?._id || assignment.story?.id || '')
+        : '',
+    [assignment]
+  );
+
+  useEffect(() => {
+    if (!storyOid) {
+      setBookReading(null);
+      return;
+    }
+
+    let cancelled = false;
+    const loadProgress = () => {
+      if (cancelled) return;
+      setBookReadingLoading(true);
+      ReadingService.getProgressByBook(storyOid)
+        .then((data) => {
+          if (!cancelled) setBookReading(data);
+        })
+        .catch(() => {
+          if (!cancelled) setBookReading(null);
+        })
+        .finally(() => {
+          if (!cancelled) setBookReadingLoading(false);
+        });
+    };
+
+    loadProgress();
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') loadProgress();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [location.key, storyOid]);
 
   const handleReadBook = async () => {
     const storyId =

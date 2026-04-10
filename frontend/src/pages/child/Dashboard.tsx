@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
@@ -21,6 +21,7 @@ const normalizeCoverImage = (url?: string) => {
 
 const ChildDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [stories, setStories] = useState<Story[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -87,7 +88,7 @@ const ChildDashboard: React.FC = () => {
     };
 
     loadStories();
-  }, []);
+  }, [location.key]);
 
   const beginnerCount = useMemo(
     () => stories.filter((story) => story.readingLevel === 'beginner').length,
