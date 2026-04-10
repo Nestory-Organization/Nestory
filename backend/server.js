@@ -24,14 +24,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
 // Routes
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/stories", require("./routes/storyLibrary/storyRoutes"));
-app.use("/api/sessions", require("./routes/readingRoutes"));
-app.use("/api/family", require("./routes/familyRoutes"));
-app.use("/api/children", require("./routes/childRoutes"));
-app.use("/api/assignments", require("./routes/assignmentRoutes"));
-app.use("/api/dashboard", require("./routes/dashboardRoutes"));
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/stories', require('./routes/storyLibrary/storyRoutes'));
+app.use('/api/sessions', require('./routes/readingRoutes'));
+app.use('/api/family', require('./routes/familyRoutes'));
+app.use('/api/children', require('./routes/childRoutes'));
+app.use('/api/assignments', require('./routes/assignmentRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/gamification', require('./routes/gamification/gamificationRoutes'));
 app.use("/api/chat", require("./routes/chatRoutes"));
+
 // Welcome Route
 app.get("/", (req, res) => {
   res.json({
