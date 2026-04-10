@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import SearchRequestService, { SearchRequestItem } from '../../services/searchRequestService';
+import SearchRequestService, {
+  SearchRequestItem,
+} from '../../services/searchRequestService';
+import StoryService from '../../services/storyService';
+import toast from 'react-hot-toast';
 
 const AdminSearchRequestPopup: React.FC = () => {
-  const navigate = useNavigate();
   const [requests, setRequests] = useState<SearchRequestItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const loadRequests = async () => {
     try {
@@ -28,17 +31,55 @@ const AdminSearchRequestPopup: React.FC = () => {
   const activeRequest = requests[0];
 
   const handleImport = async () => {
-    if (!activeRequest) return;
+    if (!activeRequest || !activeRequest.googleBookId) {
+      toast.error('Book information is incomplete');
+      return;
+    }
 
     try {
+      setIsImporting(true);
+
+      await StoryService.importFromGoogle(activeRequest.googleBookId, {
+        ageGroup: 'middle-grade',
+        genres: ['General'],
+        readingLevel: 'intermediate',
+        metadata: {
+          googleBookId: activeRequest.googleBookId,
+          title: activeRequest.suggestedBookName || activeRequest.query,
+          author: activeRequest.author || 'Unknown',
+          description: '',
+          coverImage: activeRequest.coverImage || '',
+          previewLink: activeRequest.previewLink || '',
+          pageCount: activeRequest.pageCount || 0,
+        },
+      });
+
       await SearchRequestService.markReviewing(activeRequest._id);
-      const prefill = encodeURIComponent(
-        activeRequest.suggestedBookName || activeRequest.query
+
+      toast.success('Book imported successfully');
+
+      setRequests((prev) =>
+        prev.filter((item) => item._id !== activeRequest._id)
       );
-      navigate(`/admin/google-import?prefill=${prefill}`);
-      setRequests((prev) => prev.filter((item) => item._id !== activeRequest._id));
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+
+      const message = error?.response?.data?.message || 'Import failed';
+
+      if (
+        typeof message === 'string' &&
+        message.toLowerCase().includes('already')
+      ) {
+        toast('This book is already imported');
+        setRequests((prev) =>
+          prev.filter((item) => item._id !== activeRequest._id)
+        );
+        return;
+      }
+
+      toast.error(message);
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -69,7 +110,9 @@ const AdminSearchRequestPopup: React.FC = () => {
         </p>
 
         {activeRequest.author && (
-          <p className="text-sm text-gray-600 mb-2">Author: {activeRequest.author}</p>
+          <p className="text-sm text-gray-600 mb-2">
+            Author: {activeRequest.author}
+          </p>
         )}
 
         <p className="text-sm text-gray-600 mb-6">
@@ -81,14 +124,16 @@ const AdminSearchRequestPopup: React.FC = () => {
             type="button"
             className="btn-primary"
             onClick={handleImport}
+            disabled={isImporting}
           >
-            Import
+            {isImporting ? 'Importing...' : 'Import'}
           </button>
 
           <button
             type="button"
             className="btn-secondary"
             onClick={handleIgnore}
+            disabled={isImporting}
           >
             Ignore
           </button>

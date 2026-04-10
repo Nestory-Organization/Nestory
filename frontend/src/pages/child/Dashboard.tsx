@@ -44,6 +44,44 @@ const ChildDashboard: React.FC = () => {
   const [isSearchingExternal, setIsSearchingExternal] = useState(false);
   const [externalResults, setExternalResults] = useState<Story[]>([]);
 
+  const loadDashboardData = async (showLoader = true) => {
+    try {
+      if (showLoader) setIsLoading(true);
+
+      const [response, childAssignments, sessions] = await Promise.all([
+        StoryService.getStories(1, 24),
+        AssignmentService.getMyAssignments(),
+        ReadingService.getMySessions('active').catch(
+          () => [] as MyReadingSessionRow[]
+        ),
+      ]);
+
+      const normalizedStories = (response.stories || []).map((story) => ({
+        ...story,
+        coverImage: normalizeCoverImage(story.coverImage),
+      }));
+
+      setStories(normalizedStories);
+      setAssignments(childAssignments || []);
+      setActiveSessions(sessions);
+    } catch (error: unknown) {
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (
+          error as { response?: { data?: { message?: string } } }
+        ).response?.data?.message === 'string'
+          ? (error as { response?: { data?: { message?: string } } }).response
+              ?.data?.message
+          : 'Failed to load child dashboard';
+
+      toast.error(message || 'Failed to load child dashboard');
+    } finally {
+      if (showLoader) setIsLoading(false);
+    }
+  };
+
   const beginReadByStoryId = async (
     storyId: string | undefined,
     loadingKey: string
@@ -76,45 +114,13 @@ const ChildDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    const loadStories = async () => {
-      try {
-        setIsLoading(true);
+    loadDashboardData(true);
 
-        const [response, childAssignments, sessions] = await Promise.all([
-          StoryService.getStories(1, 24),
-          AssignmentService.getMyAssignments(),
-          ReadingService.getMySessions('active').catch(
-            () => [] as MyReadingSessionRow[]
-          ),
-        ]);
+    const interval = setInterval(() => {
+      loadDashboardData(false);
+    }, 10000);
 
-        const normalizedStories = (response.stories || []).map((story) => ({
-          ...story,
-          coverImage: normalizeCoverImage(story.coverImage),
-        }));
-
-        setStories(normalizedStories);
-        setAssignments(childAssignments || []);
-        setActiveSessions(sessions);
-      } catch (error: unknown) {
-        const message =
-          typeof error === 'object' &&
-          error !== null &&
-          'response' in error &&
-          typeof (
-            error as { response?: { data?: { message?: string } } }
-          ).response?.data?.message === 'string'
-            ? (error as { response?: { data?: { message?: string } } }).response
-                ?.data?.message
-            : 'Failed to load child dashboard';
-
-        toast.error(message || 'Failed to load child dashboard');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadStories();
+    return () => clearInterval(interval);
   }, [location.key]);
 
   const beginnerCount = useMemo(
