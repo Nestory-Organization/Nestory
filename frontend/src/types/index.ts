@@ -37,7 +37,47 @@ export interface Family {
   familyName: string;
   parent: string;
   children: Child[];
+  chatGroup?: string | null;
   isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMember {
+  id: string;
+  displayName: string;
+  role: 'parent' | 'child';
+  avatar?: string;
+}
+
+export interface ChatGroupSummary {
+  id: string;
+  familyId: string;
+  name: string;
+  room: string;
+  lastMessageAt?: string;
+  lastMessagePreview?: string;
+  unreadCount: number;
+  members: ChatMember[];
+}
+
+export interface ChatMessageReadReceipt {
+  user: string;
+  readAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  _id?: string;
+  family: string;
+  senderUser: string | null;
+  senderChild: string | null;
+  senderName: string;
+  senderRole: 'parent' | 'child' | 'system';
+  messageType: 'text' | 'activity' | 'system';
+  content: string;
+  metadata?: Record<string, unknown>;
+  readBy: ChatMessageReadReceipt[];
   createdAt: string;
   updatedAt: string;
 }
