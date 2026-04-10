@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '../../../components/common/Navbar';
 import GoogleBookCard from '../../../components/storyLibrary/GoogleBookCard';
 import StoryService from '../../../services/storyService';
@@ -13,14 +13,19 @@ interface GoogleBook {
   description?: string;
   coverImage?: string;
   previewLink?: string;
+  pageCount?: number;
 }
 
 const GoogleBooksImportPage: React.FC = () => {
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+
+  const [query, setQuery] = useState(searchParams.get('prefill') || '');
   const [books, setBooks] = useState<GoogleBook[]>([]);
   const [loading, setLoading] = useState(false);
-  const [importedGoogleBookIds, setImportedGoogleBookIds] = useState<string[]>([]);
+  const [importedGoogleBookIds, setImportedGoogleBookIds] = useState<string[]>(
+    []
+  );
 
   const importedSet = useMemo(
     () => new Set(importedGoogleBookIds),
@@ -47,15 +52,17 @@ const GoogleBooksImportPage: React.FC = () => {
     loadImportedBooks();
   }, []);
 
-  const searchBooks = async () => {
-    if (!query.trim()) {
+  const searchBooks = async (overrideQuery?: string) => {
+    const finalQuery = (overrideQuery ?? query).trim();
+
+    if (!finalQuery) {
       toast.error('Enter a search term');
       return;
     }
 
     try {
       setLoading(true);
-      const results = await StoryService.searchGoogle(query.trim());
+      const results = await StoryService.searchGoogle(finalQuery);
       setBooks(results || []);
     } catch (error) {
       console.error(error);
@@ -65,13 +72,21 @@ const GoogleBooksImportPage: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const prefill = searchParams.get('prefill');
+    if (prefill) {
+      searchBooks(prefill);
+    }
+  }, [searchParams]);
+
   const handleImport = async (
     googleBookId: string,
     config: {
       ageGroup: string;
       genres: string[];
       readingLevel: string;
-    }
+    },
+    book: GoogleBook
   ) => {
     if (importedSet.has(googleBookId)) {
       toast('This book is already imported');
@@ -79,7 +94,19 @@ const GoogleBooksImportPage: React.FC = () => {
     }
 
     try {
-      await StoryService.importFromGoogle(googleBookId, config);
+      await StoryService.importFromGoogle(googleBookId, {
+        ...config,
+        metadata: {
+          googleBookId: book.googleBookId,
+          title: book.title,
+          author: book.author,
+          description: book.description || '',
+          coverImage: book.coverImage || '',
+          previewLink: book.previewLink || '',
+          pageCount: book.pageCount || 0,
+        },
+      });
+
       toast.success('Book imported successfully');
 
       setImportedGoogleBookIds((prev) =>
@@ -116,7 +143,8 @@ const GoogleBooksImportPage: React.FC = () => {
               Google Books Import
             </h1>
             <p className="text-gray-600">
-              Search Google Books and import selected titles into your story library.
+              Search Google Books and import selected titles into your story
+              library.
             </p>
           </div>
 
@@ -142,7 +170,11 @@ const GoogleBooksImportPage: React.FC = () => {
               className="input-base flex-1"
             />
 
-            <button onClick={searchBooks} className="btn-primary" type="button">
+            <button
+              onClick={() => searchBooks()}
+              className="btn-primary"
+              type="button"
+            >
               Search
             </button>
           </div>
@@ -154,9 +186,7 @@ const GoogleBooksImportPage: React.FC = () => {
           </div>
         ) : books.length === 0 ? (
           <div className="card text-center py-10">
-            <p className="text-gray-600">
-              Search for a book to start importing.
-            </p>
+            <p className="text-gray-600">Search for a book to start importing.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -166,7 +196,9 @@ const GoogleBooksImportPage: React.FC = () => {
                 book={book}
                 isImported={importedSet.has(book.googleBookId)}
                 onAlreadyImported={() => toast('This book is already imported')}
-                onImport={handleImport}
+                onImport={(googleBookId, config) =>
+                  handleImport(googleBookId, config, book)
+                }
               />
             ))}
           </div>

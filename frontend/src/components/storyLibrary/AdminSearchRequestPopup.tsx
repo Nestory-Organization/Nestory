@@ -1,0 +1,101 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import SearchRequestService, { SearchRequestItem } from '../../services/searchRequestService';
+
+const AdminSearchRequestPopup: React.FC = () => {
+  const navigate = useNavigate();
+  const [requests, setRequests] = useState<SearchRequestItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadRequests = async () => {
+    try {
+      setIsLoading(true);
+      const data = await SearchRequestService.getPendingRequests();
+      setRequests(data);
+    } catch (error) {
+      console.error('Failed to load search requests', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRequests();
+    const interval = setInterval(loadRequests, 12000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const activeRequest = requests[0];
+
+  const handleImport = async () => {
+    if (!activeRequest) return;
+
+    try {
+      await SearchRequestService.markReviewing(activeRequest._id);
+      const prefill = encodeURIComponent(
+        activeRequest.suggestedBookName || activeRequest.query
+      );
+      navigate(`/admin/google-import?prefill=${prefill}`);
+      setRequests((prev) => prev.filter((item) => item._id !== activeRequest._id));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleIgnore = async () => {
+    if (!activeRequest) return;
+
+    try {
+      await SearchRequestService.ignoreRequest(activeRequest._id);
+      setRequests((prev) => prev.filter((item) => item._id !== activeRequest._id));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  if (!activeRequest || isLoading) return null;
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
+      <div className="w-full max-w-lg mx-4 rounded-2xl bg-white/90 shadow-2xl border border-white/60 p-6">
+        <p className="text-sm text-gray-500 mb-2">Child search request</p>
+
+        <h3 className="text-xl font-bold text-gray-900 mb-3">
+          {activeRequest.requesterName} searched for
+        </h3>
+
+        <p className="text-lg text-nestory-700 font-semibold mb-2">
+          {activeRequest.suggestedBookName || activeRequest.query}
+        </p>
+
+        {activeRequest.author && (
+          <p className="text-sm text-gray-600 mb-2">Author: {activeRequest.author}</p>
+        )}
+
+        <p className="text-sm text-gray-600 mb-6">
+          Would you like to import this book into the Story Library?
+        </p>
+
+        <div className="flex justify-center gap-3">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleImport}
+          >
+            Import
+          </button>
+
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleIgnore}
+          >
+            Ignore
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminSearchRequestPopup;
