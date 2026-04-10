@@ -20,6 +20,11 @@ const familySchema = new mongoose.Schema(
         ref: "Child",
       },
     ],
+    chatGroup: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ChatGroup",
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,
