@@ -25,6 +25,7 @@ import {
   Sparkles,
   Copy,
   BarChart3,
+  MessageCircle,
 } from 'lucide-react';
 import { Family, Child, ChildAccountCredentials, ReadingActivitySummary } from '../../types';
 
@@ -637,6 +638,13 @@ const ParentDashboard: React.FC = () => {
             >
               <Sparkles size={18} />
               View Gamification
+            </button>
+            <button
+              onClick={() => navigate('/chat')}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <MessageCircle size={18} />
+              Family Chat
             </button>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
 import StoryCard from '../../components/common/StoryCard';
-import { BookOpen, Flame, Clock, Award, CalendarDays, BarChart3, Sparkles } from 'lucide-react';
+import { BookOpen, Flame, Clock, Award, CalendarDays, BarChart3, Sparkles, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StoryService from '../../services/storyService';
 import AssignmentService from '../../services/assignmentService';
@@ -161,6 +161,13 @@ const ChildDashboard: React.FC = () => {
             >
               <Sparkles size={18} />
               View Gamification
+            </button>
+            <button
+              onClick={() => navigate('/child/chat')}
+              className="btn-secondary inline-flex items-center gap-2"
+            >
+              <MessageCircle size={18} />
+              Family Chat
             </button>
           </div>
         </div>
