@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, MessageCircle, Send, Users } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Send, Users, Trash2 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import { useAuth } from '../../contexts/AuthContext';
 import chatService from '../../services/chatService';
@@ -21,6 +21,7 @@ const FamilyChatPage: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -253,6 +254,32 @@ const FamilyChatPage: React.FC = () => {
     }
   };
 
+  const handleClearChat = async () => {
+    if (!window.confirm('Are you sure you want to clear all chat messages? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setClearing(true);
+      await chatService.clearChat();
+      setMessages([]);
+      toast.success('Chat cleared successfully');
+    } catch (error: unknown) {
+      console.error("[Chat] Clear chat error:", error);
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message ===
+          'string'
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : 'Failed to clear chat';
+      toast.error(message || 'Failed to clear chat');
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar title="Family Chat" />
@@ -279,12 +306,26 @@ const FamilyChatPage: React.FC = () => {
               Chat with your family and get reading activity updates.
             </p>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-gray-900">{group?.members?.length || 0}</div>
-            <div className="text-xs text-gray-600 flex items-center gap-1 justify-end mt-1">
-              <Users size={14} />
-              <span>{group?.members?.length === 1 ? 'member' : 'members'}</span>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-gray-900">{group?.members?.length || 0}</div>
+              <div className="text-xs text-gray-600 flex items-center gap-1 justify-end mt-1">
+                <Users size={14} />
+                <span>{group?.members?.length === 1 ? 'member' : 'members'}</span>
+              </div>
             </div>
+            {myRole === 'parent' && (
+              <button
+                type="button"
+                onClick={handleClearChat}
+                disabled={clearing || messages.length === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                title="Clear all chat messages"
+              >
+                <Trash2 size={18} />
+                <span className="text-sm">Clear Chat</span>
+              </button>
+            )}
           </div>
         </div>
 

@@ -248,6 +248,21 @@ const serializeMessage = (message) => ({
     : [],
 });
 
+const clearFamilyMessages = async (familyId) => {
+  const familyObjectId = toObjectId(familyId);
+  if (!familyObjectId) {
+    throw new Error("Invalid family ID");
+  }
+
+  const result = await ChatMessage.deleteMany({
+    family: familyObjectId,
+  });
+
+  return {
+    deletedCount: result.deletedCount || 0,
+  };
+};
+
 module.exports = {
   resolveFamilyForUser,
   ensureChatGroupForFamily,
@@ -259,4 +274,5 @@ module.exports = {
   markFamilyMessagesRead,
   getFamilyRoomName,
   serializeMessage,
+  clearFamilyMessages,
 };

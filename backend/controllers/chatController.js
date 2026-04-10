@@ -7,6 +7,7 @@ const {
   markFamilyMessagesRead,
   getFamilyRoomName,
   serializeMessage,
+  clearFamilyMessages,
 } = require("../services/chatService");
 const { emitFamilyChatEvent } = require("../realtime/socketServer");
 
@@ -224,6 +225,45 @@ exports.getUnread = async (req, res) => {
       message: "Unread count retrieved successfully",
       data: {
         unreadCount,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.clearChat = async (req, res) => {
+  try {
+    const ctx = await ensureChatContext(req, res);
+    if (!ctx) return;
+
+    const userRole = normalizeRole(req.user.role);
+    if (userRole !== "parent") {
+      return res.status(403).json({
+        success: false,
+        message: "Only parents can clear the chat",
+      });
+    }
+
+    const { family } = ctx;
+
+    const result = await clearFamilyMessages(family._id);
+
+    emitFamilyChatEvent(family._id, "chat:cleared", {
+      clearedBy: String(req.user._id),
+      clearedAt: new Date(),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Chat cleared successfully",
+      data: {
+        deletedCount: result.deletedCount,
       },
     });
   } catch (error) {

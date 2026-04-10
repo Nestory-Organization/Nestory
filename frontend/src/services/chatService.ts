@@ -56,6 +56,14 @@ class ChatService {
     return Number(response.data.data?.unreadCount || 0);
   }
 
+  async clearChat(): Promise<{ deletedCount: number }> {
+    const response = await apiClient
+      .getInstance()
+      .delete<ApiResponse<{ deletedCount: number }>>('/chat/messages');
+
+    return response.data.data || { deletedCount: 0 };
+  }
+
   connectSocket(token: string): Socket {
     if (this.socket && this.socket.connected) {
       console.log("[ChatService] Socket already connected, returning:", this.socket.id);
