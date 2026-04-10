@@ -10,6 +10,7 @@ import FamilyService from '../../services/familyService';
 import ChildService from '../../services/childService';
 import DashboardService from '../../services/dashboardService';
 import ReadingService from '../../services/readingService';
+import chatService from '../../services/chatService';
 import toast from 'react-hot-toast';
 import {
   Book,
@@ -80,6 +81,7 @@ const ParentDashboard: React.FC = () => {
   const [deletingChildId, setDeletingChildId] = useState('');
   const [resettingChildId, setResettingChildId] = useState('');
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [newChildCredentials, setNewChildCredentials] = useState<ChildAccountCredentials | null>(null);
   const [summaryStats, setSummaryStats] = useState({
     totalAssignments: 0,
@@ -195,6 +197,14 @@ const ParentDashboard: React.FC = () => {
       }
 
       setFamily(familyData);
+
+      // Load unread messages
+      try {
+        const unreadCount = await chatService.getUnread();
+        setUnreadMessages(unreadCount);
+      } catch (error) {
+        console.error('Failed to load unread messages:', error);
+      }
 
       const [childrenData, summaryData, familyDashboardData] = await Promise.all([
         ChildService.getChildren(),
@@ -508,6 +518,22 @@ const ParentDashboard: React.FC = () => {
     return 'beginner';
   };
 
+  // Set up polling for unread messages
+  useEffect(() => {
+    if (!family) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const unreadCount = await chatService.getUnread();
+        setUnreadMessages(unreadCount);
+      } catch (error) {
+        console.error('Failed to check unread messages:', error);
+      }
+    }, 3000); // Check every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [family]);
+
   const outstandingAssignments = summaryStats.assigned + summaryStats.inProgress;
   const completionProgress =
     summaryStats.totalAssignments > 0
@@ -641,10 +667,15 @@ const ParentDashboard: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/chat')}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
+              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 relative"
             >
               <MessageCircle size={18} />
               Family Chat
+              {unreadMessages > 0 && (
+                <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
+                  {unreadMessages > 99 ? '99+' : unreadMessages}
+                </div>
+              )}
             </button>
           </div>
         </div>

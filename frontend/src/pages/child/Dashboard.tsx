@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import StoryService from '../../services/storyService';
 import AssignmentService from '../../services/assignmentService';
 import ReadingService from '../../services/readingService';
+import chatService from '../../services/chatService';
 import { Story, Assignment, MyReadingSessionRow } from '../../types';
 
 const FALLBACK_COVER =
@@ -28,6 +29,7 @@ const ChildDashboard: React.FC = () => {
   const [activeSessions, setActiveSessions] = useState<MyReadingSessionRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [startingReadKey, setStartingReadKey] = useState<string | null>(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   const beginReadByStoryId = async (storyId: string | undefined, loadingKey: string) => {
     if (!storyId?.trim()) {
@@ -89,6 +91,24 @@ const ChildDashboard: React.FC = () => {
 
     loadStories();
   }, [location.key]);
+
+  // Load and poll for unread messages
+  useEffect(() => {
+    const loadUnread = async () => {
+      try {
+        const unreadCount = await chatService.getUnread();
+        setUnreadMessages(unreadCount);
+      } catch (error) {
+        console.error('Failed to load unread messages:', error);
+      }
+    };
+
+    loadUnread();
+
+    // Poll every 3 seconds
+    const interval = setInterval(loadUnread, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const beginnerCount = useMemo(
     () => stories.filter((story) => story.readingLevel === 'beginner').length,
@@ -164,10 +184,15 @@ const ChildDashboard: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/child/chat')}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
+              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 relative"
             >
               <MessageCircle size={18} />
               Family Chat
+              {unreadMessages > 0 && (
+                <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
+                  {unreadMessages > 99 ? '99+' : unreadMessages}
+                </div>
+              )}
             </button>
           </div>
         </div>
