@@ -164,7 +164,7 @@ const ChildDashboard: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/child/chat')}
-              className="btn-secondary inline-flex items-center gap-2"
+              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
             >
               <MessageCircle size={18} />
               Family Chat
