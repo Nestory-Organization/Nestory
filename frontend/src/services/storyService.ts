@@ -37,21 +37,32 @@ interface StoryListPayload {
   };
 }
 
+type GoogleBookImportPayload = {
+  ageGroup: string;
+  genres: string[];
+  readingLevel: string;
+  metadata?: {
+    googleBookId: string;
+    title: string;
+    author: string;
+    description?: string;
+    coverImage?: string;
+    previewLink?: string;
+    pageCount?: number;
+  };
+};
+
 class StoryService {
   async searchGoogle(query: string): Promise<any[]> {
-    const response = await apiClient.getInstance().get(
-      `/stories/google/search?q=${encodeURIComponent(query)}`
-    );
+    const response = await apiClient
+      .getInstance()
+      .get(`/stories/google/search?q=${encodeURIComponent(query)}`);
     return response.data.data || [];
   }
 
   async importFromGoogle(
     googleBookId: string,
-    body: {
-      ageGroup: string;
-      genres: string[];
-      readingLevel: string;
-    }
+    body: GoogleBookImportPayload
   ): Promise<Story> {
     const response = await apiClient.getInstance().post<ApiResponse<any>>(
       `/stories/google/import/${googleBookId}`,
@@ -78,7 +89,9 @@ class StoryService {
 
     if (filters?.search) params.append('search', filters.search);
     if (filters?.ageGroup) params.append('ageGroup', filters.ageGroup);
-    if (filters?.readingLevel) params.append('readingLevel', filters.readingLevel);
+    if (filters?.readingLevel) {
+      params.append('readingLevel', filters.readingLevel);
+    }
     if (filters?.genre) params.append('genre', filters.genre);
     if (filters?.source) params.append('source', filters.source);
 
@@ -95,7 +108,6 @@ class StoryService {
       : [];
 
     const stories = rawStories.map(normalizeStory);
-
     const meta = payload.pagination || payload.meta;
 
     return {

@@ -2,12 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Navbar from '../../../components/common/Navbar';
-import InputField from '../../../components/common/InputField';
-import SelectField from '../../../components/common/SelectField';
 import StoryLibraryTable from '../../../components/storyLibrary/StoryLibraryTable';
 import StoryFormModal, {
   StoryFormValues,
 } from '../../../components/storyLibrary/StoryFormModal';
+import StoryLibraryFilters from '../../../components/storyLibrary/StoryLibraryFilters';
 import StoryService from '../../../services/storyService';
 import { Story } from '../../../types';
 
@@ -27,6 +26,7 @@ const StoryLibraryCrudPage: React.FC = () => {
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [syncingStoryId, setSyncingStoryId] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -34,9 +34,12 @@ const StoryLibraryCrudPage: React.FC = () => {
 
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
+
   const [search, setSearch] = useState('');
   const [ageGroup, setAgeGroup] = useState('');
   const [readingLevel, setReadingLevel] = useState('');
+  const [genre, setGenre] = useState('');
+  const [source, setSource] = useState('');
 
   const ageGroupOptions = useMemo(
     () => [
@@ -59,6 +62,31 @@ const StoryLibraryCrudPage: React.FC = () => {
     []
   );
 
+  const genreOptions = useMemo(
+    () => [
+      { value: '', label: 'All Genres' },
+      { value: 'Fantasy', label: 'Fantasy' },
+      { value: 'Adventure', label: 'Adventure' },
+      { value: 'Animals', label: 'Animals' },
+      { value: 'Fairy Tale', label: 'Fairy Tale' },
+      { value: 'Education', label: 'Education' },
+      { value: 'General', label: 'General' },
+      { value: 'Romance', label: 'Romance' },
+      { value: 'Mystery', label: 'Mystery' },
+      { value: 'Science', label: 'Science' },
+    ],
+    []
+  );
+
+  const sourceOptions = useMemo(
+    () => [
+      { value: '', label: 'All Sources' },
+      { value: 'internal', label: 'Manual / Internal' },
+      { value: 'google', label: 'Google Imported' },
+    ],
+    []
+  );
+
   const loadStories = async () => {
     try {
       setIsLoading(true);
@@ -67,6 +95,8 @@ const StoryLibraryCrudPage: React.FC = () => {
         search: search.trim() || undefined,
         ageGroup: ageGroup || undefined,
         readingLevel: readingLevel || undefined,
+        genre: genre || undefined,
+        source: source || undefined,
       });
 
       setStories(response.stories);
@@ -80,7 +110,7 @@ const StoryLibraryCrudPage: React.FC = () => {
 
   useEffect(() => {
     loadStories();
-  }, [page, search, ageGroup, readingLevel]);
+  }, [page, search, ageGroup, readingLevel, genre, source]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -99,18 +129,25 @@ const StoryLibraryCrudPage: React.FC = () => {
         description: fullStory.description || '',
         ageGroup: fullStory.ageGroup || 'early-reader',
         readingLevel: fullStory.readingLevel || 'beginner',
-        genres: Array.isArray(fullStory.genres) ? fullStory.genres.join(', ') : '',
+        genres: Array.isArray(fullStory.genres)
+          ? fullStory.genres.join(', ')
+          : '',
         pageCount: fullStory.pageCount || 1,
         coverImage: fullStory.coverImage || '',
       });
 
       setIsModalOpen(true);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to load story details');
+      toast.error(
+        error?.response?.data?.message || 'Failed to load story details'
+      );
     }
   };
 
-  const handleFormChange = (field: keyof StoryFormValues, value: string | number) => {
+  const handleFormChange = (
+    field: keyof StoryFormValues,
+    value: string | number
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -118,7 +155,11 @@ const StoryLibraryCrudPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.title.trim() || !formData.author.trim() || !formData.genres.trim()) {
+    if (
+      !formData.title.trim() ||
+      !formData.author.trim() ||
+      !formData.genres.trim()
+    ) {
       toast.error('Title, author and at least one genre are required');
       return;
     }
@@ -159,7 +200,9 @@ const StoryLibraryCrudPage: React.FC = () => {
   };
 
   const handleDelete = async (storyId: string) => {
-    const confirmed = window.confirm('Are you sure you want to delete this story?');
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this story?'
+    );
     if (!confirmed) return;
 
     try {
@@ -173,6 +216,21 @@ const StoryLibraryCrudPage: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to delete story');
+    }
+  };
+
+  const handleSync = async (storyId: string) => {
+    try {
+      setSyncingStoryId(storyId);
+      await StoryService.syncStoryMetadata(storyId);
+      toast.success('Google metadata synced successfully');
+      await loadStories();
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || 'Failed to sync story metadata'
+      );
+    } finally {
+      setSyncingStoryId(null);
     }
   };
 
@@ -195,58 +253,57 @@ const StoryLibraryCrudPage: React.FC = () => {
             <button
               className="btn-secondary"
               onClick={() => navigate('/admin/google-import')}
+              type="button"
             >
               Import from Google
             </button>
-            <button className="btn-primary" onClick={openCreate}>
+
+            <button className="btn-primary" onClick={openCreate} type="button">
               Add New Story
             </button>
           </div>
         </div>
 
-        <div className="card mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <InputField
-              label="Search"
-              name="search"
-              value={search}
-              onChange={(e) => {
-                setPage(1);
-                setSearch(e.target.value);
-              }}
-              placeholder="Search by title, author or description"
-            />
-
-            <SelectField
-              label="Age Group"
-              name="ageGroup"
-              value={ageGroup}
-              onChange={(e) => {
-                setPage(1);
-                setAgeGroup(e.target.value);
-              }}
-              options={ageGroupOptions}
-            />
-
-            <SelectField
-              label="Reading Level"
-              name="readingLevel"
-              value={readingLevel}
-              onChange={(e) => {
-                setPage(1);
-                setReadingLevel(e.target.value);
-              }}
-              options={readingLevelOptions}
-            />
-          </div>
-        </div>
+        <StoryLibraryFilters
+          search={search}
+          ageGroup={ageGroup}
+          readingLevel={readingLevel}
+          genre={genre}
+          source={source}
+          ageGroupOptions={ageGroupOptions}
+          readingLevelOptions={readingLevelOptions}
+          genreOptions={genreOptions}
+          sourceOptions={sourceOptions}
+          onSearchChange={(value) => {
+            setPage(1);
+            setSearch(value);
+          }}
+          onAgeGroupChange={(value) => {
+            setPage(1);
+            setAgeGroup(value);
+          }}
+          onReadingLevelChange={(value) => {
+            setPage(1);
+            setReadingLevel(value);
+          }}
+          onGenreChange={(value) => {
+            setPage(1);
+            setGenre(value);
+          }}
+          onSourceChange={(value) => {
+            setPage(1);
+            setSource(value);
+          }}
+        />
 
         <div className="card">
           <StoryLibraryTable
             stories={stories}
             isLoading={isLoading}
+            syncingStoryId={syncingStoryId}
             onEdit={openEdit}
             onDelete={handleDelete}
+            onSync={handleSync}
           />
 
           {!isLoading && pages > 1 && (
@@ -255,6 +312,7 @@ const StoryLibraryCrudPage: React.FC = () => {
                 className="btn-secondary disabled:opacity-50"
                 disabled={page === 1}
                 onClick={() => setPage((prev) => prev - 1)}
+                type="button"
               >
                 Previous
               </button>
@@ -267,6 +325,7 @@ const StoryLibraryCrudPage: React.FC = () => {
                 className="btn-secondary disabled:opacity-50"
                 disabled={page === pages}
                 onClick={() => setPage((prev) => prev + 1)}
+                type="button"
               >
                 Next
               </button>
