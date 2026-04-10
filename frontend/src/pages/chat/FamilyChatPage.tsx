@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, MessageCircle, Send, Users } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Send, Users, Trash2 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import { useAuth } from '../../contexts/AuthContext';
 import chatService from '../../services/chatService';
@@ -21,6 +21,7 @@ const FamilyChatPage: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -253,6 +254,32 @@ const FamilyChatPage: React.FC = () => {
     }
   };
 
+  const handleClearChat = async () => {
+    if (!window.confirm('Are you sure you want to clear all chat messages? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setClearing(true);
+      await chatService.clearChat();
+      setMessages([]);
+      toast.success('Chat cleared successfully');
+    } catch (error: unknown) {
+      console.error("[Chat] Clear chat error:", error);
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message ===
+          'string'
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : 'Failed to clear chat';
+      toast.error(message || 'Failed to clear chat');
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar title="Family Chat" />
@@ -261,47 +288,74 @@ const FamilyChatPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(user?.role === 'child' ? '/child' : '/dashboard')}
-          className="btn-secondary mb-4 inline-flex items-center gap-2"
+          className="btn-secondary mb-6 inline-flex items-center gap-2 transition-all hover:drop-shadow-md"
         >
           <ArrowLeft size={18} />
           Back
         </button>
 
-        <div className="card mb-4 flex items-center justify-between gap-4">
+        <div className="card mb-6 flex items-center justify-between gap-4 bg-gradient-to-r from-white to-nestory-50/30 border-nestory-200">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <MessageCircle size={24} className="text-nestory-600" />
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                <MessageCircle size={24} className="text-white" />
+              </div>
               {group?.name || 'Family Chat'}
             </h1>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 mt-2">
               Chat with your family and get reading activity updates.
             </p>
           </div>
-          <div className="text-sm text-gray-600 flex items-center gap-2">
-            <Users size={16} />
-            <span>{group?.members?.length || 0} members</span>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-gray-900">{group?.members?.length || 0}</div>
+              <div className="text-xs text-gray-600 flex items-center gap-1 justify-end mt-1">
+                <Users size={14} />
+                <span>{group?.members?.length === 1 ? 'member' : 'members'}</span>
+              </div>
+            </div>
+            {myRole === 'parent' && (
+              <button
+                type="button"
+                onClick={handleClearChat}
+                disabled={clearing || messages.length === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                title="Clear all chat messages"
+              >
+                <Trash2 size={18} />
+                <span className="text-sm">Clear Chat</span>
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="card p-0 overflow-hidden">
-          <div className="h-[60vh] overflow-y-auto p-4 bg-gradient-to-b from-white to-gray-50">
+        <div className="card p-0 overflow-hidden border-nestory-200 shadow-lg">
+          <div className="h-[60vh] overflow-y-auto p-5 bg-gradient-to-b from-white via-white to-gray-50/30">
             {loading ? (
-              <p className="text-gray-600">Loading chat...</p>
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin"></div>
+                  <p className="text-gray-600 font-medium">Loading chat...</p>
+                </div>
+              </div>
             ) : messages.length === 0 ? (
-              <div className="text-center py-16 text-gray-600">
-                <MessageCircle className="mx-auto mb-3 text-gray-400" size={28} />
-                <p>No messages yet. Start the conversation.</p>
+              <div className="text-center py-20 text-gray-600 h-full flex flex-col items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-nestory-100 flex items-center justify-center mb-4">
+                  <MessageCircle className="text-nestory-400" size={32} />
+                </div>
+                <p className="text-lg font-semibold text-gray-900 mb-2">No messages yet</p>
+                <p className="text-sm">Start the conversation with your family!</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {messages.map((message) => {
                   const isMine = message.senderUser === user?.id;
                   const isSystem = message.senderRole === 'system';
 
                   if (isSystem) {
                     return (
-                      <div key={message.id} className="text-center">
-                        <span className="inline-block rounded-full bg-nestory-100 px-3 py-1 text-xs text-nestory-700">
+                      <div key={message.id} className="flex justify-center my-2">
+                        <span className="inline-block rounded-full bg-gradient-to-r from-nestory-50 to-blue-50 border border-nestory-200 px-4 py-2 text-xs font-medium text-nestory-700 shadow-sm">
                           {message.content}
                         </span>
                       </div>
@@ -311,22 +365,24 @@ const FamilyChatPage: React.FC = () => {
                   return (
                     <div
                       key={message.id}
-                      className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${isMine ? 'justify-end' : 'justify-start'} animate-fade-in`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-2 shadow-sm ${
+                        className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-md transition-all duration-200 hover:shadow-lg ${
                           isMine
-                            ? 'bg-nestory-600 text-white rounded-br-md'
-                            : 'bg-white border border-gray-200 text-gray-900 rounded-bl-md'
+                            ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-br-sm'
+                            : 'bg-white border border-gray-200 text-gray-900 rounded-bl-sm hover:border-gray-300'
                         }`}
                       >
                         {!isMine && (
-                          <p className="text-xs font-semibold text-nestory-700 mb-1">
+                          <p className="text-xs font-bold text-nestory-700 mb-2 uppercase tracking-wide">
                             {message.senderName}
                           </p>
                         )}
-                        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                        <p className={`text-[11px] mt-1 ${isMine ? 'text-nestory-100' : 'text-gray-500'}`}>
+                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+                        <p className={`text-[11px] mt-2 font-medium ${
+                          isMine ? 'text-blue-100 opacity-80' : 'text-gray-500'
+                        }`}>
                           {formatTime(message.createdAt)}
                         </p>
                       </div>
@@ -338,35 +394,43 @@ const FamilyChatPage: React.FC = () => {
             )}
           </div>
 
-          <div className="border-t border-gray-200 p-3 bg-white">
+          <div className="border-t border-gray-200 p-4 bg-gradient-to-b from-white to-gray-50 space-y-3">
             {typingUsers.length > 0 && (
-              <p className="text-xs text-gray-500 mb-2">{typingUsers.join(', ')} typing...</p>
+              <div className="flex items-center gap-2 px-3 py-1">
+                <div className="flex gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-nestory-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-nestory-500 animate-bounce" style={{ animationDelay: '100ms' }}></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-nestory-500 animate-bounce" style={{ animationDelay: '200ms' }}></div>
+                </div>
+                <span className="text-xs text-gray-600 font-medium">{typingUsers.join(', ')} typing...</span>
+              </div>
             )}
-            <div className="flex gap-2">
-              <input
-                value={newMessage}
-                onChange={(event) => {
-                  setNewMessage(event.target.value);
-                  notifyTyping();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    handleSend();
-                  }
-                }}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nestory-500"
-                placeholder="Type a message..."
-                maxLength={1500}
-              />
+            <div className="flex gap-3 items-end">
+              <div className="flex-1 relative">
+                <input
+                  value={newMessage}
+                  onChange={(event) => {
+                    setNewMessage(event.target.value);
+                    notifyTyping();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-0 focus:border-nestory-500 transition-colors duration-200 placeholder-gray-400"
+                  placeholder="Type a message..."
+                  maxLength={1500}
+                />
+              </div>
               <button
                 type="button"
                 onClick={handleSend}
                 disabled={sending || !newMessage.trim()}
-                className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
+                className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:-translate-y-0"
               >
-                <Send size={16} />
-                Send
+                <Send size={18} />
               </button>
             </div>
           </div>
