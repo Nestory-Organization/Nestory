@@ -14,6 +14,7 @@ import StoryDetailPage from './pages/parent/StoryDetailPage';
 import ChildDetailPage from './pages/parent/ChildDetailPage';
 import AssignmentsPage from './pages/parent/AssignmentsPage';
 import FamilySettingsPage from './pages/parent/FamilySettingsPage';
+import ParentProgressPage from './pages/parent/ProgressPage';
 import AdminDashboard from './pages/admin/Dashboard';
 import StoryLibraryCrudPage from './pages/admin/storyLibrary/StoryLibraryCrudPage';
 import ChildDashboard from './pages/child/Dashboard';
@@ -23,6 +24,8 @@ import GamificationPage from './pages/gamification/GamificationPage';
 import GamificationAdminPage from './pages/admin/gamification/GamificationAdminPage';
 import ReaderPage from './pages/child/ReaderPage';
 import GoogleBooksImportPage from './pages/admin/storyLibrary/GoogleBooksImportPage';
+import ReadingPage from './pages/child/ReadingPage';
+import ChildProgressPage from './pages/child/ProgressPage';
 
 // Loading component
 const LoadingScreen: React.FC = () => (
@@ -118,6 +121,7 @@ const AppContent: React.FC = () => {
             }
           />
           <Route path="/family-settings" element={<FamilySettingsPage />} />
+          <Route path="/progress" element={<ParentProgressPage />} />
           <Route path="/gamification" element={<GamificationPage />} />
         </>
       )}
@@ -143,9 +147,11 @@ const AppContent: React.FC = () => {
           />
           <Route path="/child/change-password" element={<ChildChangePasswordPage />} />
           <Route path="/child/assignments/:assignmentId" element={<ChildAssignmentDetailPage />} />
+          <Route path="/story/:storyId" element={<StoryDetailPage />} />
           <Route path="/child/gamification" element={<GamificationPage />} />
           <Route path="/reader/:storyId" element={<ReaderPage />} />
-          <Route path='/story/:storyId' element={<StoryDetailPage />} />
+          <Route path="/child/read/:sessionId" element={<ReadingPage />} />
+          <Route path="/child/progress" element={<ChildProgressPage />} />
         </>
       )}
 

@@ -142,6 +142,7 @@ exports.getMe = async (req, res) => {
           name: user.name,
           email: user.email,
           role: user.role,
+          childProfile: user.childProfile || null,
           profilePicture: user.profilePicture,
           phoneNumber: user.phoneNumber,
           isActive: user.isActive,

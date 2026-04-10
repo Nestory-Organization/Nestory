@@ -5,6 +5,7 @@ import Modal from '../../components/common/Modal';
 import InputField from '../../components/common/InputField';
 import SelectField from '../../components/common/SelectField';
 import StoryService from '../../services/storyService';
+import { Story } from '../../types';
 
 interface StoryFormData {
   title: string;
@@ -65,7 +66,7 @@ const StoryManagementPage: React.FC = () => {
     try {
       setIsLoading(true);
       const response = await StoryService.getStories(1, 100);
-      const normalized = response.stories.map((story: any) => ({
+      const normalized = (response.stories || []).map((story: any) => ({
         id: normalizeId(story),
         title: story.title || 'Untitled',
         author: story.author || 'Unknown',
@@ -113,7 +114,7 @@ const StoryManagementPage: React.FC = () => {
       return;
     }
 
-    const payload = {
+    const basePayload: Partial<Story> = {
       title: formData.title.trim(),
       author: formData.author.trim(),
       description: formData.description.trim(),
@@ -121,16 +122,15 @@ const StoryManagementPage: React.FC = () => {
       readingLevel: formData.readingLevel,
       genres: formData.genres.split(',').map((item) => item.trim()).filter(Boolean),
       coverImage: formData.coverImage.trim(),
-      previewLink: '',
     };
 
     try {
       setIsSaving(true);
       if (editingId) {
-        await StoryService.updateStory(editingId, payload);
+        await StoryService.updateStory(editingId, basePayload);
         toast.success('Story updated');
       } else {
-        await StoryService.createStory(payload);
+        await StoryService.createStory({ ...basePayload, previewLink: '' });
         toast.success('Story created');
       }
       setIsModalOpen(false);

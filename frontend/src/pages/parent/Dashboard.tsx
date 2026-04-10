@@ -24,8 +24,9 @@ import {
   ChevronRight,
   Sparkles,
   Copy,
+  BarChart3,
 } from 'lucide-react';
-import { Family, Child, ChildAccountCredentials } from '../../types';
+import { Family, Child, ChildAccountCredentials, ReadingActivitySummary } from '../../types';
 
 const avatarEmojiRegex = /^(\p{Extended_Pictographic}|\uFE0F|\u200D)+$/u;
 
@@ -123,6 +124,7 @@ const ParentDashboard: React.FC = () => {
     };
   }>>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string>('');
+  const [weekActivity, setWeekActivity] = useState<ReadingActivitySummary | null>(null);
 
   const [formData, setFormData] = useState<{
     name: string;
@@ -170,6 +172,7 @@ const ParentDashboard: React.FC = () => {
     setRecentCompletions([]);
     setChildPerformance([]);
     setLastUpdatedAt('');
+    setWeekActivity(null);
   };
 
   const loadData = async () => {
@@ -285,6 +288,17 @@ const ParentDashboard: React.FC = () => {
         setReadingStats({ weeklyMinutes: totalWeekly, topStreak });
       } else {
         setReadingStats({ weeklyMinutes: 0, topStreak: 0 });
+      }
+
+      if (childrenData.length > 0) {
+        try {
+          const wa = await ReadingService.getFamilyActivitySummary(7);
+          setWeekActivity(wa);
+        } catch {
+          setWeekActivity(null);
+        }
+      } else {
+        setWeekActivity(null);
       }
 
       setLastUpdatedAt(new Date().toISOString());
@@ -666,6 +680,68 @@ const ParentDashboard: React.FC = () => {
           />
         </div>
 
+        {weekActivity && children.length > 0 && (
+          <div className="card mb-8 border-nestory-200 bg-gradient-to-br from-white to-nestory-50/40">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <BarChart3 className="text-nestory-600" size={20} />
+                  Week in review
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Pages and minutes from children tapping Save progress (last {weekActivity.days} days).
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {new Date(weekActivity.periodStart).toLocaleDateString()} –{' '}
+                  {new Date(weekActivity.periodEnd).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary text-sm shrink-0 self-start"
+                onClick={() => navigate('/progress')}
+              >
+                Full progress report
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
+                <p className="text-xs text-gray-500">Pages logged</p>
+                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalPagesLogged}</p>
+              </div>
+              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
+                <p className="text-xs text-gray-500">Minutes logged</p>
+                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalMinutesLogged}</p>
+              </div>
+              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
+                <p className="text-xs text-gray-500">Progress saves</p>
+                <p className="text-2xl font-bold text-gray-900">{weekActivity.progressSaveCount}</p>
+              </div>
+              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
+                <p className="text-xs text-gray-500">Children with activity</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {weekActivity.byChild?.filter((c) => c.progressSaveCount > 0).length ?? 0}
+                </p>
+              </div>
+            </div>
+            {weekActivity.byChild && weekActivity.byChild.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-sm font-semibold text-gray-800 mb-2">By child</p>
+                <ul className="grid sm:grid-cols-2 gap-2 text-sm text-gray-700">
+                  {weekActivity.byChild.map((c) => (
+                    <li key={c.childId} className="flex flex-col sm:flex-row sm:justify-between gap-1 rounded-lg bg-gray-50 px-3 py-2">
+                      <span className="font-medium">{c.childName}</span>
+                      <span className="text-gray-600">
+                        {c.pages} pg · {c.minutes} min · {c.progressSaveCount} saves
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="card mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
@@ -811,6 +887,13 @@ const ParentDashboard: React.FC = () => {
               >
                 <TrendingUp size={18} />
                 Manage Assignments
+              </button>
+              <button
+                onClick={() => navigate('/progress')}
+                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+              >
+                <BarChart3 size={18} />
+                Reading progress
               </button>
               <button
                 onClick={() => navigate('/family-settings')}

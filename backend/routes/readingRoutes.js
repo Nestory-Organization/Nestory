@@ -2,46 +2,59 @@ const express = require("express");
 const router = express.Router();
 const {
   startSession,
+  startMySession,
   updateSession,
   getWeeklyReadingTime,
   getReadingStreak,
+  getMySessions,
+  getProgressByBook,
+  deleteSession,
+  getMonthlyAnalytics,
+  getTopBooks,
+  getAchievements,
+  getMyActivitySummary,
+  getFamilyActivitySummary,
 } = require("../controllers/readingController");
-const { protect, parentOnly } = require("../middleware/authMiddleware");
+const { protect, parentOnly, authorize } = require("../middleware/authMiddleware");
 const {
   handleValidationErrors,
 } = require("../middleware/validationMiddleware");
 const {
   startSessionValidation,
+  startMySessionValidation,
   updateSessionValidation,
   childIdParamValidation,
 } = require("../validators/readingValidator");
 
-// GET /api/sessions — quick check that sessions router is mounted
 router.get("/", (req, res) =>
   res.json({ success: true, message: "Reading sessions API" }),
 );
 
-// POST /api/sessions/start — start a reading session for the authenticated user (or specified child)
 router.post(
   "/start",
   protect,
-  parentOnly,
   startSessionValidation,
   handleValidationErrors,
   startSession,
 );
 
-// POST /api/sessions/update — update pages read, time spent; returns progress %, marks completion
+router.post(
+  "/start-me",
+  protect,
+  authorize("child"),
+  startMySessionValidation,
+  handleValidationErrors,
+  startMySession,
+);
+
 router.post(
   "/update",
   protect,
-  parentOnly,
   updateSessionValidation,
   handleValidationErrors,
   updateSession,
 );
 
-// GET /api/sessions/weekly/:childId — total reading time in last 7 days
 router.get(
   "/weekly/:childId",
   protect,
@@ -51,7 +64,6 @@ router.get(
   getWeeklyReadingTime,
 );
 
-// GET /api/sessions/streak/:childId — consecutive days with reading
 router.get(
   "/streak/:childId",
   protect,
@@ -60,5 +72,31 @@ router.get(
   handleValidationErrors,
   getReadingStreak,
 );
+
+router.get("/my-sessions", protect, getMySessions);
+
+router.get(
+  "/me/activity-summary",
+  protect,
+  authorize("child"),
+  getMyActivitySummary,
+);
+
+router.get(
+  "/activity-summary/family",
+  protect,
+  parentOnly,
+  getFamilyActivitySummary,
+);
+
+router.get("/progress/:bookId", protect, getProgressByBook);
+
+router.delete("/:sessionId", protect, deleteSession);
+
+router.get("/monthly/:childId", protect, getMonthlyAnalytics);
+
+router.get("/top-books/:childId", protect, getTopBooks);
+
+router.get("/achievements/:childId", protect, getAchievements);
 
 module.exports = router;

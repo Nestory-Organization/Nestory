@@ -37,7 +37,13 @@ exports.getStoryById = async (req, res, next) => {
         const story = await storyService.getStoryById(req.params.id);
         if (!story) return res.status(404).json({ success: false, message: 'Story not found' });
 
-        return successResponse(res, 200, 'Story fetched successfully', story);
+        const plain = story.toObject ? story.toObject() : { ...story };
+        const gid = plain.googleBookId && String(plain.googleBookId).trim();
+        if (gid && !String(plain.previewLink || '').trim()) {
+            plain.previewLink = `https://books.google.com/books?id=${encodeURIComponent(gid)}&printsec=frontcover`;
+        }
+
+        return successResponse(res, 200, 'Story fetched successfully', plain);
     } catch (err) {
         next(err);
     }

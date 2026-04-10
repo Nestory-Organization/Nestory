@@ -4,6 +4,7 @@ export interface User {
   name: string;
   email: string;
   role: 'parent' | 'admin' | 'child';
+  childProfile?: string | null;
   mustChangePassword?: boolean;
   profilePicture?: string;
   phoneNumber?: string;
@@ -109,6 +110,27 @@ export interface ReadingSession {
   updatedAt: string;
 }
 
+/** Row from GET /sessions/my-sessions (bookId may be populated). */
+export interface MyReadingSessionRow {
+  _id: string;
+  bookId:
+    | string
+    | {
+        _id: string;
+        title?: string;
+        author?: string;
+        coverImage?: string;
+        pageCount?: number;
+      };
+  pagesRead: number;
+  totalPages: number;
+  progress: number;
+  timeSpent: number;
+  completed: boolean;
+  startedAt: string;
+  lastUpdatedAt: string;
+}
+
 // Assignment Types
 export interface Assignment {
   id: string;
@@ -174,6 +196,99 @@ export interface AssignmentListResult {
   data: Assignment[];
   pagination: AssignmentPagination;
   metadata: AssignmentListMetadata;
+}
+
+export type DeadlineVsCompletionOutcome =
+  | 'on_time'
+  | 'early'
+  | 'late'
+  | 'no_due_date'
+  | 'incomplete';
+
+export interface AssignmentProgressDeadlineVsCompletion {
+  outcome: DeadlineVsCompletionOutcome;
+  daysDifference?: number;
+  label: string;
+}
+
+export interface AssignmentProgressReading {
+  totalPages: number;
+  pagesRead: number;
+  pagesRemaining: number;
+  progressPercent: number;
+  timeSpentMinutes: number;
+  sessionStartedAt: string | null;
+}
+
+export interface AssignmentProgressPace {
+  pagesPerDayActual: number;
+  avgMinutesPerPage: number | null;
+  projectedCompletionDate: string | null;
+}
+
+export interface AssignmentProgressDeadlinePace {
+  hasDeadline: boolean;
+  daysUntilDue: number | null;
+  isOverdue: boolean;
+  pagesPerDayNeeded: number | null;
+  minutesPerDayNeeded: number | null;
+  onTrack: boolean | null;
+}
+
+export interface AssignmentProgressRow {
+  childId: string;
+  childName: string;
+  assignmentId: string;
+  storyTitle: string;
+  status: AssignmentStatus;
+  dueDate: string | null;
+  completedAt: string | null;
+  deadlineVsCompletion: AssignmentProgressDeadlineVsCompletion | null;
+  reading: AssignmentProgressReading;
+  pace: AssignmentProgressPace;
+  deadlinePace: AssignmentProgressDeadlinePace;
+}
+
+export interface AssignmentProgressSummary {
+  activeWithDeadline: number;
+  overdueCount: number;
+  completedOnTime: number;
+  completedEarly: number;
+  completedLate: number;
+}
+
+export interface AssignmentProgressOverview {
+  generatedAt: string;
+  summary: AssignmentProgressSummary;
+  assignments: AssignmentProgressRow[];
+}
+
+export interface ChildActivitySlice {
+  childId: string;
+  childName: string;
+  pages: number;
+  minutes: number;
+  progressSaveCount: number;
+}
+
+export interface ReadingActivitySummary {
+  days: number;
+  periodStart: string;
+  periodEnd: string;
+  totalPagesLogged: number;
+  totalMinutesLogged: number;
+  progressSaveCount: number;
+  byChild?: ChildActivitySlice[];
+}
+
+export interface BookReadingProgress {
+  session: string | null;
+  bookId?: unknown;
+  pagesRead?: number;
+  totalPages: number | null;
+  progress?: number;
+  completed?: boolean;
+  lastUpdatedAt?: string;
 }
 
 export interface AssignmentStats {
