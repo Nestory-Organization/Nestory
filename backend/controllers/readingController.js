@@ -74,6 +74,25 @@ const buildReadingActivityByDay = (start, end, dayMap) => {
   return byDay;
 };
 
+/** Append any dayMap keys outside the UTC range loop (edge timezones) so totals match sum(byDay). */
+const buildCompleteActivityByDay = (start, end, dayMap) => {
+  const byDay = buildReadingActivityByDay(start, end, dayMap);
+  const seen = new Set(byDay.map((d) => d.date));
+  for (const [key, val] of Object.entries(dayMap)) {
+    if (!seen.has(key)) {
+      seen.add(key);
+      byDay.push({
+        date: key,
+        pages: val.pages,
+        minutes: val.minutes,
+        progressSaveCount: val.saves,
+      });
+    }
+  }
+  byDay.sort((a, b) => a.date.localeCompare(b.date));
+  return byDay;
+};
+
 /** Sessions use Child document id; child users have it on user.childProfile */
 const resolveReadingChildId = (user) => {
   if (user.role === "child") {
@@ -559,25 +578,6 @@ exports.getMyActivitySummary = async (req, res) => {
     start.setHours(0, 0, 0, 0);
 
     const childId = req.user.childProfile;
-    const rows = await ReadingActivity.aggregate([
-      {
-        $match: {
-          childId: new mongoose.Types.ObjectId(childId),
-          createdAt: { $gte: start, $lte: end },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          pages: { $sum: "$pagesAdded" },
-          minutes: { $sum: "$minutesAdded" },
-          entries: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const row = rows[0] || { pages: 0, minutes: 0, entries: 0 };
-
     const dailyRows = await ReadingActivity.aggregate([
       {
         $match: {
@@ -604,7 +604,10 @@ exports.getMyActivitySummary = async (req, res) => {
       ]),
     );
 
-    const byDay = buildReadingActivityByDay(start, end, dayMap);
+    const totalPagesLogged = dailyRows.reduce((a, r) => a + r.pages, 0);
+    const totalMinutesLogged = dailyRows.reduce((a, r) => a + r.minutes, 0);
+    const progressSaveCount = dailyRows.reduce((a, r) => a + r.saves, 0);
+    const byDay = buildCompleteActivityByDay(start, end, dayMap);
 
     return res.status(200).json({
       success: true,
@@ -613,9 +616,9 @@ exports.getMyActivitySummary = async (req, res) => {
         days,
         periodStart: start.toISOString(),
         periodEnd: end.toISOString(),
-        totalPagesLogged: row.pages,
-        totalMinutesLogged: row.minutes,
-        progressSaveCount: row.entries,
+        totalPagesLogged,
+        totalMinutesLogged,
+        progressSaveCount,
         byDay,
       },
     });
@@ -688,15 +691,6 @@ exports.getFamilyActivitySummary = async (req, res) => {
       progressSaveCount: a.entries,
     }));
 
-    const totals = byChild.reduce(
-      (acc, c) => ({
-        pages: acc.pages + c.pages,
-        minutes: acc.minutes + c.minutes,
-        entries: acc.entries + c.progressSaveCount,
-      }),
-      { pages: 0, minutes: 0, entries: 0 }
-    );
-
     const familyDailyRows = await ReadingActivity.aggregate([
       {
         $match: {
@@ -722,7 +716,10 @@ exports.getFamilyActivitySummary = async (req, res) => {
         { pages: r.pages, minutes: r.minutes, saves: r.saves },
       ]),
     );
-    const byDay = buildReadingActivityByDay(start, end, familyDayMap);
+    const totalPagesFromDays = familyDailyRows.reduce((a, r) => a + r.pages, 0);
+    const totalMinutesFromDays = familyDailyRows.reduce((a, r) => a + r.minutes, 0);
+    const savesFromDays = familyDailyRows.reduce((a, r) => a + r.saves, 0);
+    const byDay = buildCompleteActivityByDay(start, end, familyDayMap);
 
     return res.status(200).json({
       success: true,
@@ -731,9 +728,9 @@ exports.getFamilyActivitySummary = async (req, res) => {
         days,
         periodStart: start.toISOString(),
         periodEnd: end.toISOString(),
-        totalPagesLogged: totals.pages,
-        totalMinutesLogged: totals.minutes,
-        progressSaveCount: totals.entries,
+        totalPagesLogged: totalPagesFromDays,
+        totalMinutesLogged: totalMinutesFromDays,
+        progressSaveCount: savesFromDays,
         byChild,
         byDay,
       },
