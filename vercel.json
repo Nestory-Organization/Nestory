@@ -17,7 +17,7 @@
     }
   ],
   "env": {
-    "MONGODB_URI": "@MONGODB_URI",
+    "MONGO_URI": "@MONGO_URI",
     "JWT_SECRET": "@JWT_SECRET",
     "JWT_EXPIRE": "@JWT_EXPIRE",
     "NODE_ENV": "production"
