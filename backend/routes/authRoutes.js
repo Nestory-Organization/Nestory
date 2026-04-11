@@ -8,6 +8,8 @@ const {
   getAllUsers,
   deleteUser,
   changePassword,
+  forgotPassword,
+  resetPassword,
 } = require("../controllers/authController");
 const { protect, admin } = require("../middleware/authMiddleware");
 const {
@@ -18,11 +20,25 @@ const {
   loginValidation,
   updateProfileValidation,
   changePasswordValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation,
 } = require("../validators/authValidator");
 
 // Public routes
 router.post("/register", registerValidation, handleValidationErrors, register);
 router.post("/login", loginValidation, handleValidationErrors, login);
+router.post(
+  "/forgot-password",
+  forgotPasswordValidation,
+  handleValidationErrors,
+  forgotPassword
+);
+router.post(
+  "/reset-password/:token",
+  resetPasswordValidation,
+  handleValidationErrors,
+  resetPassword
+);
 
 // Protected routes
 router.get("/me", protect, getMe);
