@@ -16,6 +16,7 @@ const {
   test
 } = require('../../controllers/gamification/gamificationController');
 const { protect } = require('../../middleware/authMiddleware');
+const { admin } = require('../../middleware/authMiddleware');
 
 // Progress routes
 router.get('/progress/:userId', protect, getUserProgress);
@@ -30,14 +31,13 @@ router.get('/leaderboard', protect, getLeaderboard);
 // Badge routes
 router.get('/badges', protect, getAllBadges);
 router.get('/test', protect, test);
-router.get('/badges', protect, getAllBadges);
-router.post('/badges', protect, createBadge);
+router.post('/badges', protect, admin, createBadge);
 router.post('/badges/award', protect, awardBadge);
 router.get('/user-badges/:userId', protect, getUserBadges);
 
 // Achievement routes
 router.get('/achievements', protect, getAllAchievements);
-router.post('/achievements', protect, createAchievement);
+router.post('/achievements', protect, admin, createAchievement);
 router.post('/achievements/progress', protect, updateAchievementProgress);
 router.get('/user-achievements/:userId', protect, getUserAchievements);
 
