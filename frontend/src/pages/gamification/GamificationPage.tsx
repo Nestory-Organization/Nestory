@@ -229,7 +229,7 @@ const GamificationPage: React.FC = () => {
             ) : (
               <div className="space-y-4">
                 {[...activeAchievements, ...completedAchievements].map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-gray-200 p-4 bg-white">
+                  <div key={`${item.achievement.id}-${item.completed ? 'completed' : 'active'}`} className="rounded-2xl border border-gray-200 p-4 bg-white">
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <div>
                         <p className="font-semibold text-gray-900">{item.achievement.name}</p>
