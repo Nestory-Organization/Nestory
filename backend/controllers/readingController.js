@@ -3,6 +3,7 @@ const ReadingSession = require("../models/ReadingSession");
 const ReadingActivity = require("../models/ReadingActivity");
 const Story = require("../models/storyLibrary/Story");
 const Child = require("../models/Child");
+const { awardPointsForStoryRead, updateReadingProgressMidSession } = require('../helpers/gamificationHelper');
 
 // Normalize date to start of day (for streak: unique days with reading)
 const getDateKey = (date) => {
@@ -422,9 +423,45 @@ exports.updateSession = async (req, res) => {
     session.pagesRead += pagesToAdd;
     session.timeSpent += timeToAdd;
 
+    const progress = (session.pagesRead / session.totalPages) * 100;
+
+    // Update achievement progress in real-time as user reads (even before completion)
+    if (pagesToAdd > 0) {
+      try {
+        await updateReadingProgressMidSession(
+          req.user.role === "child" ? req.user.parentAccount : req.user._id,
+          req.user.role === "child" ? session.childId : null,
+          progress
+        );
+      } catch (progressError) {
+        console.error('Error updating mid-session progress:', progressError);
+        // Don't fail the session update if progress update fails
+      }
+    }
+
     if (session.pagesRead >= session.totalPages) {
       session.pagesRead = session.totalPages;
       session.completed = true;
+
+      // Award gamification points for completing a story
+      try {
+        const story = await Story.findById(session.bookId).select('genres category');
+        const storyCategory = story?.category || story?.genres?.[0] || 'General';
+        const readingTime = Math.ceil(session.timeSpent / 60); // Convert to minutes
+
+        const gamificationResult = await awardPointsForStoryRead(
+          req.user.role === "child" ? req.user.parentAccount : req.user._id,
+          session.bookId,
+          req.user.role === "child" ? session.childId : null,
+          storyCategory,
+          readingTime
+        );
+
+        console.log('Gamification awarded for story completion:', gamificationResult);
+      } catch (gamificationError) {
+        console.error('Gamification error:', gamificationError);
+        // Don't fail the session update if gamification fails
+      }
     }
 
     session.lastUpdatedAt = new Date();
@@ -443,8 +480,6 @@ exports.updateSession = async (req, res) => {
         console.error("ReadingActivity log failed", logErr);
       }
     }
-
-    const progress = (session.pagesRead / session.totalPages) * 100;
 
     return res.status(200).json({
       success: true,

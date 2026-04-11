@@ -8,6 +8,7 @@ const {
   normalizeAssignmentStats,
   getId,
 } = require("../utils/contractTransformers");
+const { awardPointsForAssignmentCompletion } = require('../helpers/gamificationHelper');
 
 const ensureParentOwnsFamily = async (familyId, userId) => {
   const family = await Family.findById(familyId).select("parent");
@@ -733,6 +734,20 @@ exports.updateAssignmentStatus = async (req, res) => {
     // Auto-set completedAt when marked completed
     if (status === "completed") {
       assignment.completedAt = new Date();
+
+      // Award gamification points for completing an assignment
+      try {
+        const gamificationResult = await awardPointsForAssignmentCompletion(
+          assignment.assignedBy,
+          assignment._id,
+          assignment.child
+        );
+
+        console.log('Gamification awarded for assignment completion:', gamificationResult);
+      } catch (gamificationError) {
+        console.error('Gamification error:', gamificationError);
+        // Don't fail the assignment update if gamification fails
+      }
     } else {
       assignment.completedAt = null;
     }
@@ -787,6 +802,23 @@ exports.bulkUpdateAssignmentStatus = async (req, res) => {
       assignments.map(async (assignment) => {
         assignment.status = status;
         assignment.completedAt = status === "completed" ? new Date() : null;
+
+        // Award gamification points for completing assignments
+        if (status === "completed") {
+          try {
+            const gamificationResult = await awardPointsForAssignmentCompletion(
+              assignment.assignedBy,
+              assignment._id,
+              assignment.child
+            );
+
+            console.log('Gamification awarded for assignment completion:', gamificationResult);
+          } catch (gamificationError) {
+            console.error('Gamification error for assignment', assignment._id, ':', gamificationError);
+            // Don't fail the assignment update if gamification fails
+          }
+        }
+
         await assignment.save();
       }),
     );
