@@ -55,10 +55,15 @@ app.use((req, res, next) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Start Server
-const PORT = process.env.PORT || 5000;
-initSocketServer(server);
+// Export app for Vercel
+module.exports = app;
 
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// Start Server (for local development)
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  initSocketServer(server);
+
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
