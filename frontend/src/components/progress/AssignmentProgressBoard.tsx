@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   AssignmentProgressOverview,
   AssignmentProgressRow,
@@ -11,6 +11,7 @@ import {
   Clock,
   Download,
   Printer,
+  Search,
   Target,
   TrendingUp,
 } from 'lucide-react';
@@ -244,7 +245,25 @@ interface AssignmentProgressBoardProps {
   childOptions: { id: string; name: string }[];
   enableExportPrint?: boolean;
   documentTitle?: string;
+  /** Search box to filter assignment cards by title, status, dates, and child name (parent view). */
+  enableAssignmentSearch?: boolean;
 }
+
+const rowMatchesQuery = (row: AssignmentProgressRow, showChild: boolean, q: string) => {
+  if (!q.trim()) return true;
+  const n = q.trim().toLowerCase();
+  const parts = [
+    row.storyTitle,
+    row.status,
+    statusLabel(row.status),
+    formatDate(row.dueDate),
+    formatDate(row.completedAt),
+    String(row.reading.progressPercent),
+    `${row.reading.pagesRead}/${row.reading.totalPages}`,
+  ];
+  if (showChild) parts.push(row.childName);
+  return parts.some((p) => p.toLowerCase().includes(n));
+};
 
 const AssignmentProgressBoard: React.FC<AssignmentProgressBoardProps> = ({
   data,
@@ -255,7 +274,24 @@ const AssignmentProgressBoard: React.FC<AssignmentProgressBoardProps> = ({
   childOptions,
   enableExportPrint = false,
   documentTitle = 'Nestory reading progress',
+  enableAssignmentSearch = false,
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredAssignments = useMemo(() => {
+    if (!data) return [];
+    if (!enableAssignmentSearch) return data.assignments;
+    return data.assignments.filter((row) => rowMatchesQuery(row, showChildColumn, searchQuery));
+  }, [data, enableAssignmentSearch, showChildColumn, searchQuery]);
+
+  const dataForExport = useMemo(() => {
+    if (!data) return data;
+    if (enableAssignmentSearch && searchQuery.trim()) {
+      return { ...data, assignments: filteredAssignments };
+    }
+    return data;
+  }, [data, enableAssignmentSearch, searchQuery, filteredAssignments]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-600">
@@ -297,7 +333,7 @@ const AssignmentProgressBoard: React.FC<AssignmentProgressBoardProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => downloadProgressCsv(data, documentTitle)}
+            onClick={() => downloadProgressCsv(dataForExport, documentTitle)}
             className="btn-secondary inline-flex items-center gap-2 text-sm"
           >
             <Download size={16} />
@@ -347,6 +383,36 @@ const AssignmentProgressBoard: React.FC<AssignmentProgressBoardProps> = ({
         </div>
       )}
 
+      {enableAssignmentSearch && assignments.length > 0 && (
+        <div className="no-print card py-3 px-4">
+          <label htmlFor="assignment-progress-search" className="sr-only">
+            Search assignments
+          </label>
+          <div className="relative">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+              size={18}
+              aria-hidden
+            />
+            <input
+              id="assignment-progress-search"
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by book title, status, or date…"
+              className="w-full rounded-lg border border-gray-300 pl-10 pr-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-nestory-500 focus:border-nestory-500 outline-none"
+              autoComplete="off"
+            />
+          </div>
+          {searchQuery.trim() ? (
+            <p className="text-xs text-gray-500 mt-2">
+              Showing {filteredAssignments.length} of {assignments.length} assignment
+              {assignments.length === 1 ? '' : 's'}
+            </p>
+          ) : null}
+        </div>
+      )}
+
       <p className="text-xs text-gray-500 flex items-center gap-1 print:text-gray-700">
         <BookOpen size={14} />
         Updated {generatedLabel} — reading stats come from logged sessions for each book.
@@ -354,9 +420,13 @@ const AssignmentProgressBoard: React.FC<AssignmentProgressBoardProps> = ({
 
       {assignments.length === 0 ? (
         <div className="card text-center py-12 text-gray-600">No assignments yet.</div>
+      ) : filteredAssignments.length === 0 ? (
+        <div className="card text-center py-12 text-gray-600">
+          No assignments match your search. Try a different title, status, or date.
+        </div>
       ) : (
         <div className="space-y-4">
-          {assignments.map((row) => (
+          {filteredAssignments.map((row) => (
             <RowCard key={row.assignmentId} row={row} showChild={showChildColumn} />
           ))}
         </div>

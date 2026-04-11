@@ -8,6 +8,9 @@ const {
   normalizeAssignmentStats,
   getId,
 } = require("../utils/contractTransformers");
+const {
+  deleteOrphanAssignmentsForParent,
+} = require("../utils/orphanAssignmentCleanup");
 
 const ensureParentOwnsFamily = async (familyId, userId) => {
   const family = await Family.findById(familyId).select("parent");
@@ -155,6 +158,8 @@ exports.createAssignment = async (req, res) => {
 // @access  Private
 exports.listAssignments = async (req, res) => {
   try {
+    await deleteOrphanAssignmentsForParent(req.user._id);
+
     const {
       childId,
       status,

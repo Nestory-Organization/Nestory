@@ -3,13 +3,13 @@ const ReadingSession = require("../models/ReadingSession");
 const ReadingActivity = require("../models/ReadingActivity");
 const Story = require("../models/storyLibrary/Story");
 const Child = require("../models/Child");
-
-// Normalize date to start of day (for streak: unique days with reading)
-const getDateKey = (date) => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-};
+const Assignment = require("../models/Assignment");
+const {
+  getDateKey,
+  readingProgressPercentRounded,
+  currentStreakFromSortedDayKeys,
+  MS_PER_DAY,
+} = require("../utils/readingAnalytics");
 
 const ensureOwnedChild = async (childId, userId) => {
   const child = await Child.findById(childId).select("parent isActive");
@@ -30,6 +30,48 @@ const ensureOwnedChild = async (childId, userId) => {
   }
 
   return { ok: true, child };
+};
+
+/** Child may read only stories with an active assignment (assigned or in_progress). */
+const childHasActiveAssignmentToStory = async (childId, storyId) => {
+  if (!childId || !storyId || !mongoose.Types.ObjectId.isValid(storyId)) {
+    return false;
+  }
+  const doc = await Assignment.findOne({
+    child: new mongoose.Types.ObjectId(childId),
+    story: new mongoose.Types.ObjectId(storyId),
+    status: { $in: ["assigned", "in_progress"] },
+  })
+    .select("_id")
+    .lean();
+  return !!doc;
+};
+
+/** Full UTC day list for charts from a map of YYYY-MM-DD → aggregates. */
+const buildReadingActivityByDay = (start, end, dayMap) => {
+  const byDay = [];
+  let t = Date.UTC(
+    start.getUTCFullYear(),
+    start.getUTCMonth(),
+    start.getUTCDate(),
+  );
+  const endDayUtc = Date.UTC(
+    end.getUTCFullYear(),
+    end.getUTCMonth(),
+    end.getUTCDate(),
+  );
+  while (t <= endDayUtc) {
+    const key = new Date(t).toISOString().slice(0, 10);
+    const d = dayMap[key] || { pages: 0, minutes: 0, saves: 0 };
+    byDay.push({
+      date: key,
+      pages: d.pages,
+      minutes: d.minutes,
+      progressSaveCount: d.saves,
+    });
+    t += MS_PER_DAY;
+  }
+  return byDay;
 };
 
 /** Sessions use Child document id; child users have it on user.childProfile */
@@ -92,6 +134,18 @@ exports.startMySession = async (req, res) => {
         success: false,
         message:
           "Total pages could not be determined. Provide totalPages in the request or set pageCount on the Story.",
+      });
+    }
+
+    const assigned = await childHasActiveAssignmentToStory(
+      childId,
+      effectiveStoryId,
+    );
+    if (!assigned) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "This book is not on your assignments. Ask a parent to assign it before reading.",
       });
     }
 
@@ -229,6 +283,18 @@ exports.startSession = async (req, res) => {
       });
     }
 
+    const assigned = await childHasActiveAssignmentToStory(
+      effectiveChildId,
+      effectiveStoryId,
+    );
+    if (!assigned) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "This story must be assigned to the child before starting a reading session.",
+      });
+    }
+
     const session = await ReadingSession.create({
       childId: new mongoose.Types.ObjectId(effectiveChildId),
       bookId: new mongoose.Types.ObjectId(effectiveStoryId),
@@ -347,12 +413,7 @@ exports.getReadingStreak = async (req, res) => {
     sessions.forEach((s) => daySet.add(getDateKey(s.startedAt)));
     const days = Array.from(daySet).sort((a, b) => a - b);
 
-    let currentStreak = 1;
-    for (let i = days.length - 2; i >= 0; i--) {
-      const diffInDays = (days[i + 1] - days[i]) / (1000 * 60 * 60 * 24);
-      if (diffInDays === 1) currentStreak += 1;
-      else if (diffInDays > 1) break;
-    }
+    const currentStreak = currentStreakFromSortedDayKeys(days);
 
     return res.status(200).json({
       success: true,
@@ -406,6 +467,18 @@ exports.updateSession = async (req, res) => {
           message: "Not allowed to update this session",
         });
       }
+      const storyIdForPolicy = session.bookId?.toString?.() ?? String(session.bookId);
+      const allowed = await childHasActiveAssignmentToStory(
+        req.user.childProfile,
+        storyIdForPolicy,
+      );
+      if (!allowed) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "This book is not on your assignments. You cannot update this session.",
+        });
+      }
     } else {
       const childAccess = await ensureOwnedChild(session.childId, req.user._id);
       if (!childAccess.ok) {
@@ -444,14 +517,17 @@ exports.updateSession = async (req, res) => {
       }
     }
 
-    const progress = (session.pagesRead / session.totalPages) * 100;
+    const progress = readingProgressPercentRounded(
+      session.pagesRead,
+      session.totalPages,
+    );
 
     return res.status(200).json({
       success: true,
       message: "Session updated",
       data: {
         session,
-        progress: Number(progress.toFixed(2)),
+        progress,
       },
     });
   } catch (error) {
@@ -502,6 +578,34 @@ exports.getMyActivitySummary = async (req, res) => {
 
     const row = rows[0] || { pages: 0, minutes: 0, entries: 0 };
 
+    const dailyRows = await ReadingActivity.aggregate([
+      {
+        $match: {
+          childId: new mongoose.Types.ObjectId(childId),
+          createdAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          },
+          pages: { $sum: "$pagesAdded" },
+          minutes: { $sum: "$minutesAdded" },
+          saves: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const dayMap = Object.fromEntries(
+      dailyRows.map((r) => [
+        r._id,
+        { pages: r.pages, minutes: r.minutes, saves: r.saves },
+      ]),
+    );
+
+    const byDay = buildReadingActivityByDay(start, end, dayMap);
+
     return res.status(200).json({
       success: true,
       message: "Activity summary",
@@ -512,6 +616,7 @@ exports.getMyActivitySummary = async (req, res) => {
         totalPagesLogged: row.pages,
         totalMinutesLogged: row.minutes,
         progressSaveCount: row.entries,
+        byDay,
       },
     });
   } catch (error) {
@@ -548,6 +653,7 @@ exports.getFamilyActivitySummary = async (req, res) => {
           totalMinutesLogged: 0,
           progressSaveCount: 0,
           byChild: [],
+          byDay: [],
         },
       });
     }
@@ -591,6 +697,33 @@ exports.getFamilyActivitySummary = async (req, res) => {
       { pages: 0, minutes: 0, entries: 0 }
     );
 
+    const familyDailyRows = await ReadingActivity.aggregate([
+      {
+        $match: {
+          childId: { $in: childIds },
+          createdAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          },
+          pages: { $sum: "$pagesAdded" },
+          minutes: { $sum: "$minutesAdded" },
+          saves: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const familyDayMap = Object.fromEntries(
+      familyDailyRows.map((r) => [
+        r._id,
+        { pages: r.pages, minutes: r.minutes, saves: r.saves },
+      ]),
+    );
+    const byDay = buildReadingActivityByDay(start, end, familyDayMap);
+
     return res.status(200).json({
       success: true,
       message: "Activity summary",
@@ -602,6 +735,7 @@ exports.getFamilyActivitySummary = async (req, res) => {
         totalMinutesLogged: totals.minutes,
         progressSaveCount: totals.entries,
         byChild,
+        byDay,
       },
     });
   } catch (error) {
@@ -639,12 +773,33 @@ exports.getMySessions = async (req, res) => {
       .sort({ lastUpdatedAt: -1 })
       .lean();
 
-    const data = sessions.map((s) => ({
+    const activeAssignments = await Assignment.find({
+      child: readerChildId,
+      status: { $in: ["assigned", "in_progress"] },
+    })
+      .select("story")
+      .lean();
+
+    const allowedStoryIds = new Set(
+      activeAssignments.map((a) => a.story.toString()),
+    );
+
+    const filtered = sessions.filter((s) => {
+      const bid =
+        s.bookId && typeof s.bookId === "object" && s.bookId._id != null
+          ? s.bookId._id.toString()
+          : s.bookId != null
+            ? String(s.bookId)
+            : "";
+      return bid && allowedStoryIds.has(bid);
+    });
+
+    const data = filtered.map((s) => ({
       _id: s._id,
       bookId: s.bookId,
       pagesRead: s.pagesRead,
       totalPages: s.totalPages,
-      progress: s.totalPages ? Number(((s.pagesRead / s.totalPages) * 100).toFixed(2)) : 0,
+      progress: readingProgressPercentRounded(s.pagesRead, s.totalPages),
       timeSpent: s.timeSpent,
       completed: s.completed,
       startedAt: s.startedAt,
@@ -698,9 +853,26 @@ exports.getProgressByBook = async (req, res) => {
       });
     }
 
-    const progress = session.totalPages
-      ? Number(((session.pagesRead / session.totalPages) * 100).toFixed(2))
-      : 0;
+    const storyKey =
+      session.bookId && typeof session.bookId === "object" && session.bookId._id
+        ? session.bookId._id.toString()
+        : String(session.bookId);
+    const allowed = await childHasActiveAssignmentToStory(
+      readerChildId,
+      storyKey,
+    );
+    if (!allowed) {
+      return res.status(200).json({
+        success: true,
+        message: "No session found for this book",
+        data: { session: null, progress: 0, pagesRead: 0, totalPages: null },
+      });
+    }
+
+    const progress = readingProgressPercentRounded(
+      session.pagesRead,
+      session.totalPages,
+    );
 
     return res.status(200).json({
       success: true,
@@ -875,15 +1047,7 @@ exports.getAchievements = async (req, res) => {
     sessions.forEach((s) => daySet.add(getDateKey(s.startedAt)));
     const days = Array.from(daySet).sort((a, b) => a - b);
 
-    let currentStreak = 0;
-    if (days.length) {
-      currentStreak = 1;
-      for (let i = days.length - 2; i >= 0; i--) {
-        const diffInDays = (days[i + 1] - days[i]) / (1000 * 60 * 60 * 24);
-        if (diffInDays === 1) currentStreak += 1;
-        else if (diffInDays > 1) break;
-      }
-    }
+    const currentStreak = currentStreakFromSortedDayKeys(days);
 
     const now = new Date();
     const sevenDaysAgo = new Date();

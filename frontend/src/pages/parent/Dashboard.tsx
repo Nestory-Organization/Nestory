@@ -27,6 +27,9 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { Family, Child, ChildAccountCredentials, ReadingActivitySummary } from '../../types';
+import ReadingWeeklyBarChart from '../../components/progress/ReadingWeeklyBarChart';
+
+type ChildReadingLevel = NonNullable<Child['readingLevel']>;
 
 const avatarEmojiRegex = /^(\p{Extended_Pictographic}|\uFE0F|\u200D)+$/u;
 
@@ -126,11 +129,16 @@ const ParentDashboard: React.FC = () => {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string>('');
   const [weekActivity, setWeekActivity] = useState<ReadingActivitySummary | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    age: number;
+    avatar: string;
+    readingLevel: ChildReadingLevel;
+  }>({
     name: '',
     age: 5,
     avatar: '👧',
-    readingLevel: 'beginner' as const,
+    readingLevel: 'beginner',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -495,7 +503,7 @@ const ParentDashboard: React.FC = () => {
     { value: 'advanced', label: 'Advanced' },
   ];
 
-  const parseReadingLevel = (value: string): Child['readingLevel'] => {
+  const parseReadingLevel = (value: string): ChildReadingLevel => {
     if (value === 'beginner' || value === 'intermediate' || value === 'advanced') {
       return value;
     }
@@ -712,6 +720,14 @@ const ParentDashboard: React.FC = () => {
                 </p>
               </div>
             </div>
+            {weekActivity.byDay && weekActivity.byDay.length > 0 ? (
+              <div className="mt-6 rounded-xl bg-white/80 border border-gray-100 p-4">
+                <ReadingWeeklyBarChart
+                  byDay={weekActivity.byDay}
+                  title={`Family minutes & pages per day (last ${weekActivity.days} days)`}
+                />
+              </div>
+            ) : null}
             {weekActivity.byChild && weekActivity.byChild.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <p className="text-sm font-semibold text-gray-800 mb-2">By child</p>
@@ -835,10 +851,17 @@ const ParentDashboard: React.FC = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {children.map((child) => (
+                {children.map((child) => {
+                  const cid = String(child.id || child._id || '');
+                  const perf = childPerformance.find(
+                    (p) => String(p.childId) === cid || String(p.id) === cid,
+                  );
+                  const assignedStoryCount = perf?.assignments.total ?? 0;
+                  return (
                   <ChildCard
                     key={child.id}
                     child={child}
+                    assignedStoryCount={assignedStoryCount}
                     onEdit={handleEditChild}
                     onResetPassword={handleResetChildPassword}
                     onDelete={handleDeleteChild}
@@ -846,7 +869,8 @@ const ParentDashboard: React.FC = () => {
                     isResettingPassword={resettingChildId === child.id}
                     onClick={() => navigate(`/child/${child.id}`)}
                   />
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

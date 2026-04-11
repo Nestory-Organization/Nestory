@@ -67,7 +67,10 @@ class AuthService {
   async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await apiClient.getInstance().post<ApiResponse<BackendAuthPayload>>(
       '/auth/login',
-      data
+      {
+        ...data,
+        email: data.email.trim().toLowerCase(),
+      }
     );
 
     const payload = response.data.data!;

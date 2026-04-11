@@ -1,6 +1,11 @@
 const Child = require("../models/Child");
 const Family = require("../models/Family");
 const User = require("../models/User");
+const Assignment = require("../models/Assignment");
+const ReadingSession = require("../models/ReadingSession");
+const ReadingActivity = require("../models/ReadingActivity");
+const UserProgress = require("../models/gamification/UserProgress");
+const PointTransaction = require("../models/gamification/PointTransaction");
 const mongoose = require("mongoose");
 const { normalizeChild } = require("../utils/contractTransformers");
 
@@ -290,15 +295,23 @@ exports.deleteChild = async (req, res) => {
       });
     }
 
-    // Remove child reference from the family's children array
+    const childObjectId = child._id;
+
+    await Promise.all([
+      Assignment.deleteMany({ child: childObjectId }),
+      ReadingSession.deleteMany({ childId: childObjectId }),
+      ReadingActivity.deleteMany({ childId: childObjectId }),
+      UserProgress.deleteMany({ child: childObjectId }),
+      PointTransaction.deleteMany({ child: childObjectId }),
+    ]);
+
     await Family.findByIdAndUpdate(child.family, {
-      $pull: { children: child._id },
+      $pull: { children: childObjectId },
     });
 
-    // Remove linked child user account if one exists.
-    await User.deleteOne({ childProfile: child._id });
+    await User.deleteOne({ childProfile: childObjectId });
 
-    await Child.findByIdAndDelete(req.params.id);
+    await Child.findByIdAndDelete(childObjectId);
 
     res.status(200).json({
       success: true,

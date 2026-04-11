@@ -66,6 +66,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setToken(storedToken);
           setUser(freshUser);
           localStorage.setItem('user', JSON.stringify(freshUser));
+          sessionStorage.removeItem('nestory_role_sync');
+          sessionStorage.removeItem('nestory_role_redirect');
         } catch {
           authService.logout();
           setToken(null);
@@ -99,6 +101,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setToken(response.token);
       setUser(finalUser);
+      sessionStorage.removeItem('nestory_role_sync');
+      sessionStorage.removeItem('nestory_role_redirect');
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +124,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setToken(response.token);
       setUser(finalUser);
+      sessionStorage.removeItem('nestory_role_sync');
+      sessionStorage.removeItem('nestory_role_redirect');
     } finally {
       setIsLoading(false);
     }
@@ -129,6 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     authService.logout();
     setToken(null);
     setUser(null);
+    sessionStorage.removeItem('nestory_role_sync');
+    sessionStorage.removeItem('nestory_role_redirect');
   };
 
   const updateUserProfile = async (data: Partial<User>) => {

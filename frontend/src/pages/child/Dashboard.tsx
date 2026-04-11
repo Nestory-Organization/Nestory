@@ -3,8 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
-import StoryCard from '../../components/common/StoryCard';
-import { BookOpen, Flame, Clock, Award, CalendarDays, BarChart3 } from 'lucide-react';
+import { BookOpen, Flame, Award, CalendarDays, BarChart3, ListChecks } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StoryService from '../../services/storyService';
 import AssignmentService from '../../services/assignmentService';
@@ -100,8 +99,6 @@ const ChildDashboard: React.FC = () => {
     [stories]
   );
 
-  const quickPicks = useMemo(() => stories.slice(0, 6), [stories]);
-
   const assignmentStats = useMemo(() => {
     const assigned = assignments.filter((item) => item.status === 'assigned').length;
     const inProgress = assignments.filter((item) => item.status === 'in_progress').length;
@@ -136,7 +133,7 @@ const ChildDashboard: React.FC = () => {
             Welcome, {user?.name || 'Reader'}
           </h1>
           <p className="text-gray-600">
-            Track your progress and continue your reading journey.
+            You can open and read only books your parent assigns. Start from My Assigned Stories below.
           </p>
           <button
             type="button"
@@ -171,11 +168,11 @@ const ChildDashboard: React.FC = () => {
             subtext="Age-fit picks"
           />
           <StatCard
-            title="Quick Picks"
-            value={isLoading ? '...' : quickPicks.length}
-            icon={Clock}
+            title="Assigned to you"
+            value={isLoading ? '...' : assignmentStats.total}
+            icon={ListChecks}
             color="purple"
-            subtext="Ready to read"
+            subtext="From your parent"
           />
         </div>
 
@@ -218,8 +215,7 @@ const ChildDashboard: React.FC = () => {
                 <p className="text-gray-600">Loading progress...</p>
               ) : activeSessions.length === 0 ? (
                 <p className="text-gray-600">
-                  Open a book below to start a reading session. Books need a page count in the library
-                  to open in the reader.
+                  When you open an assigned book, it appears here so you can continue reading.
                 </p>
               ) : (
                 <ul className="space-y-4">
@@ -316,34 +312,6 @@ const ChildDashboard: React.FC = () => {
                           {startingReadKey === readKey ? 'Opening…' : 'Read book'}
                         </button>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="card">
-              <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">Story Picks</h2>
-              </div>
-
-              {isLoading ? (
-                <p className="text-gray-600">Loading story recommendations...</p>
-              ) : quickPicks.length === 0 ? (
-                <p className="text-gray-600">No stories available yet.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {quickPicks.map((story) => {
-                    const sid = story.id || story._id;
-                    const readKey = `s-${sid}`;
-                    return (
-                      <StoryCard
-                        key={sid || story.title}
-                        story={story}
-                        onSelect={() => beginReadByStoryId(sid ? String(sid) : undefined, readKey)}
-                        disabled={startingReadKey !== null}
-                      />
                     );
                   })}
                 </div>
