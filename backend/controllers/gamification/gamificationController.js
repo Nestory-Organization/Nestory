@@ -257,9 +257,53 @@ exports.getAllBadges = async (req, res) => {
 // @desc    Create new badge
 // @route   POST /api/gamification/badges
 // @access  Private/Admin
+// @desc    Create a new badge (Admin only)
+// @route   POST /api/gamification/badges
+// @access  Private (Admin)
 exports.createBadge = async (req, res) => {
   try {
-    const badge = await Badge.create(req.body);
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can create badges'
+      });
+    }
+
+    const { name, description, icon, category, tier, points, criteria, rarity, isActive } = req.body;
+
+    // Validate required fields
+    if (!name || !description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name and description are required'
+      });
+    }
+
+    if (!criteria || !criteria.type || criteria.threshold === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Criteria with type and threshold are required'
+      });
+    }
+
+    // Prepare badge data with defaults
+    const badgeData = {
+      name: name.trim(),
+      description: description.trim(),
+      icon: icon || '🏆',
+      category: category || 'achievement',
+      tier: tier || 'bronze',
+      points: points || 10,
+      criteria: {
+        type: criteria.type,
+        threshold: criteria.threshold
+      },
+      rarity: rarity || 'common',
+      isActive: isActive !== undefined ? isActive : true
+    };
+
+    const badge = await Badge.create(badgeData);
 
     res.status(201).json({
       success: true,
@@ -271,6 +315,14 @@ exports.createBadge = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Badge with this name already exists'
+      });
+    }
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: messages
       });
     }
     res.status(500).json({
@@ -402,9 +454,68 @@ exports.getAllAchievements = async (req, res) => {
 // @desc    Create new achievement
 // @route   POST /api/gamification/achievements
 // @access  Private/Admin
+// @desc    Create a new achievement (Admin only)
+// @route   POST /api/gamification/achievements
+// @access  Private (Admin)
 exports.createAchievement = async (req, res) => {
   try {
-    const achievement = await Achievement.create(req.body);
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin users can create achievements'
+      });
+    }
+
+    const { name, description, icon, category, type, targetValue, reward, difficulty, prerequisites, order, isActive } = req.body;
+
+    // Validate required fields
+    if (!name || !description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name and description are required'
+      });
+    }
+
+    if (targetValue === undefined || targetValue < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Target value is required and must be at least 1'
+      });
+    }
+
+    // Prepare achievement data with defaults
+    const achievementData = {
+      name: name.trim(),
+      description: description.trim(),
+      icon: icon || '⭐',
+      category: category || 'milestone',
+      type: type || 'one_time',
+      targetValue: parseInt(targetValue, 10),
+      reward: {
+        points: reward?.points || 50,
+        badge: reward?.badge || null
+      },
+      difficulty: difficulty || 'medium',
+      prerequisites: prerequisites || [],
+      order: order !== undefined ? parseInt(order, 10) : 0,
+      isActive: isActive !== undefined ? isActive : true
+    };
+
+    // Validate prerequisites if provided
+    if (achievementData.prerequisites.length > 0) {
+      const prerequisiteAchievements = await Achievement.find({
+        name: { $in: achievementData.prerequisites }
+      });
+      if (prerequisiteAchievements.length !== achievementData.prerequisites.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'One or more prerequisite achievements do not exist'
+        });
+      }
+    }
+
+    const achievement = await Achievement.create(achievementData);
 
     res.status(201).json({
       success: true,
@@ -416,6 +527,14 @@ exports.createAchievement = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Achievement with this name already exists'
+      });
+    }
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: messages
       });
     }
     res.status(500).json({
