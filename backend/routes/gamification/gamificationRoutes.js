@@ -12,7 +12,8 @@ const {
   updateAchievementProgress,
   getTransactionHistory,
   getUserBadges,
-  getUserAchievements
+  getUserAchievements,
+  test
 } = require('../../controllers/gamification/gamificationController');
 const { protect } = require('../../middleware/authMiddleware');
 
@@ -27,6 +28,8 @@ router.get('/transactions/:userId', protect, getTransactionHistory);
 router.get('/leaderboard', protect, getLeaderboard);
 
 // Badge routes
+router.get('/badges', protect, getAllBadges);
+router.get('/test', protect, test);
 router.get('/badges', protect, getAllBadges);
 router.post('/badges', protect, createBadge);
 router.post('/badges/award', protect, awardBadge);

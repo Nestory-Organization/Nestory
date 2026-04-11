@@ -55,6 +55,15 @@ const achievementSchema = new mongoose.Schema(
       type: String,
       enum: ['easy', 'medium', 'hard', 'expert'],
       default: 'medium'
+    },
+    prerequisites: [{
+      type: String, // Achievement names that must be completed first
+      default: []
+    }],
+    order: {
+      type: Number,
+      default: 0,
+      min: 0
     }
   },
   {

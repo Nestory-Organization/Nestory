@@ -10,6 +10,7 @@ import FamilyService from '../../services/familyService';
 import ChildService from '../../services/childService';
 import DashboardService from '../../services/dashboardService';
 import ReadingService from '../../services/readingService';
+import chatService from '../../services/chatService';
 import toast from 'react-hot-toast';
 import {
   Book,
@@ -25,6 +26,7 @@ import {
   Sparkles,
   Copy,
   BarChart3,
+  MessageCircle,
 } from 'lucide-react';
 import { Family, Child, ChildAccountCredentials, ReadingActivitySummary } from '../../types';
 
@@ -79,6 +81,7 @@ const ParentDashboard: React.FC = () => {
   const [deletingChildId, setDeletingChildId] = useState('');
   const [resettingChildId, setResettingChildId] = useState('');
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [newChildCredentials, setNewChildCredentials] = useState<ChildAccountCredentials | null>(null);
   const [summaryStats, setSummaryStats] = useState({
     totalAssignments: 0,
@@ -194,6 +197,14 @@ const ParentDashboard: React.FC = () => {
       }
 
       setFamily(familyData);
+
+      // Load unread messages
+      try {
+        const unreadCount = await chatService.getUnread();
+        setUnreadMessages(unreadCount);
+      } catch (error) {
+        console.error('Failed to load unread messages:', error);
+      }
 
       const [childrenData, summaryData, familyDashboardData] = await Promise.all([
         ChildService.getChildren(),
@@ -507,6 +518,22 @@ const ParentDashboard: React.FC = () => {
     return 'beginner';
   };
 
+  // Set up polling for unread messages
+  useEffect(() => {
+    if (!family) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const unreadCount = await chatService.getUnread();
+        setUnreadMessages(unreadCount);
+      } catch (error) {
+        console.error('Failed to check unread messages:', error);
+      }
+    }, 3000); // Check every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [family]);
+
   const outstandingAssignments = summaryStats.assigned + summaryStats.inProgress;
   const completionProgress =
     summaryStats.totalAssignments > 0
@@ -601,22 +628,22 @@ const ParentDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <Navbar title="Dashboard" />
 
       <div className="container-responsive py-8">
         {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8 animate-fade-in">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-10 animate-fade-in">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Parent Dashboard</h1>
-            <p className="text-gray-600">{family?.familyName || 'Your Family'} • {children.length} children</p>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Parent Dashboard</h1>
+            <p className="text-gray-600 text-lg">{family?.familyName || 'Your Family'}  <span className="text-gray-400">•</span>  {children.length} {children.length === 1 ? 'child' : 'children'}</p>
             {lastUpdatedAt && (
-              <p className="text-xs text-gray-500 mt-1">
-                Updated {new Date(lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              <p className="text-xs text-gray-500 mt-2">
+                Last updated {new Date(lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3 animate-slide-down">
             <button
               onClick={() => loadData()}
               className="btn-secondary flex items-center gap-2"
@@ -638,46 +665,68 @@ const ParentDashboard: React.FC = () => {
               <Sparkles size={18} />
               View Gamification
             </button>
+            <button
+              onClick={() => navigate('/chat')}
+              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 relative"
+            >
+              <MessageCircle size={18} />
+              Family Chat
+              {unreadMessages > 0 && (
+                <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
+                  {unreadMessages > 99 ? '99+' : unreadMessages}
+                </div>
+              )}
+            </button>
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-8">
-          <StatCard
-            title="Assigned"
-            value={summaryStats.assigned}
-            icon={Book}
-            color="blue"
-            subtext="Pending to start"
-          />
-          <StatCard
-            title="In Progress"
-            value={summaryStats.inProgress}
-            icon={TrendingUp}
-            color="orange"
-            subtext="Currently being read"
-          />
-          <StatCard
-            title="Completed"
-            value={summaryStats.completed}
-            icon={CheckCircle2}
-            color="green"
-            subtext={`${summaryStats.totalAssignments} total assignments`}
-          />
-          <StatCard
-            title="Completion Rate"
-            value={`${summaryStats.completionRate}%`}
-            icon={Users}
-            color="purple"
-            subtext="Across all children"
-          />
-          <StatCard
-            title="Family Reading"
-            value={(readingStats.weeklyMinutes / 60).toFixed(1)}
-            icon={Clock}
-            color="pink"
-            subtext={`${readingStats.topStreak} day top streak`}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-10">
+          <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+            <StatCard
+              title="Assigned"
+              value={summaryStats.assigned}
+              icon={Book}
+              color="blue"
+              subtext="Pending to start"
+            />
+          </div>
+          <div className="animate-slide-up" style={{ animationDelay: '50ms' }}>
+            <StatCard
+              title="In Progress"
+              value={summaryStats.inProgress}
+              icon={TrendingUp}
+              color="orange"
+              subtext="Currently being read"
+            />
+          </div>
+          <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+            <StatCard
+              title="Completed"
+              value={summaryStats.completed}
+              icon={CheckCircle2}
+              color="green"
+              subtext={`${summaryStats.totalAssignments} total assignments`}
+            />
+          </div>
+          <div className="animate-slide-up" style={{ animationDelay: '150ms' }}>
+            <StatCard
+              title="Completion Rate"
+              value={`${summaryStats.completionRate}%`}
+              icon={Users}
+              color="purple"
+              subtext="Across all children"
+            />
+          </div>
+          <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
+            <StatCard
+              title="Family Reading"
+              value={(readingStats.weeklyMinutes / 60).toFixed(1)}
+              icon={Clock}
+              color="pink"
+              subtext={`${readingStats.topStreak} day top streak`}
+            />
+          </div>
         </div>
 
         {weekActivity && children.length > 0 && (
@@ -766,51 +815,58 @@ const ParentDashboard: React.FC = () => {
         </div>
 
         {/* Child Performance Cards */}
-        <div className="card mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Child Performance</h2>
-            <button onClick={() => navigate('/assignments')} className="btn-secondary">View All Assignments</button>
+        <div className="card mb-10 animate-slide-up">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Child Performance</h2>
+              <p className="text-sm text-gray-600 mt-1">Track progress and completion rates</p>
+            </div>
+            <button onClick={() => navigate('/assignments')} className="btn-secondary">View All</button>
           </div>
 
           {childPerformance.length === 0 ? (
-            <p className="text-gray-600">Add a child and assign a story to see live performance analytics.</p>
+            <p className="text-gray-600 text-center py-8">Add a child and assign a story to see live performance analytics.</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {childPerformance.map((item) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {childPerformance.map((item, idx) => (
                 <button
                   key={item.id}
                   onClick={() => navigate(`/child/${item.childId}`)}
-                  className="text-left rounded-xl border border-gray-200 p-4 hover:border-nestory-300 hover:bg-nestory-50/40 transition-colors"
+                  className="text-left rounded-xl border border-gray-200 bg-white hover:bg-gradient-to-br hover:from-blue-50 hover:to-nestory-50 p-5 hover:border-nestory-400 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] animate-scale-in"
+                  style={{ animationDelay: `${idx * 75}ms` }}
                 >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-2xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-2xl shadow-sm">
                       {item.avatar || '🧒'}
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">{item.name}</p>
-                      <p className="text-xs text-gray-600">{item.assignments.total} assignments</p>
+                      <p className="font-semibold text-gray-900 text-lg">{item.name}</p>
+                      <p className="text-xs text-gray-600">{item.assignments.total} total assignments</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                    <div className="rounded-md bg-blue-50 py-2">
-                      <p className="text-xs text-blue-700">Assigned</p>
-                      <p className="font-bold text-blue-900">{item.assignments.assigned}</p>
+                  <div className="grid grid-cols-3 gap-2 text-center mb-4">
+                    <div className="rounded-lg bg-blue-50 py-3 border border-blue-100 hover:border-blue-300 transition-colors">
+                      <p className="text-xs font-medium text-blue-700">Assigned</p>
+                      <p className="font-bold text-lg text-blue-900">{item.assignments.assigned}</p>
                     </div>
-                    <div className="rounded-md bg-amber-50 py-2">
-                      <p className="text-xs text-amber-700">In Progress</p>
-                      <p className="font-bold text-amber-900">{item.assignments.inProgress}</p>
+                    <div className="rounded-lg bg-amber-50 py-3 border border-amber-100 hover:border-amber-300 transition-colors">
+                      <p className="text-xs font-medium text-amber-700">In Progress</p>
+                      <p className="font-bold text-lg text-amber-900">{item.assignments.inProgress}</p>
                     </div>
-                    <div className="rounded-md bg-green-50 py-2">
-                      <p className="text-xs text-green-700">Completed</p>
-                      <p className="font-bold text-green-900">{item.assignments.completed}</p>
+                    <div className="rounded-lg bg-green-50 py-3 border border-green-100 hover:border-green-300 transition-colors">
+                      <p className="text-xs font-medium text-green-700">Completed</p>
+                      <p className="font-bold text-lg text-green-900">{item.assignments.completed}</p>
                     </div>
                   </div>
 
-                  <p className="text-xs text-gray-600">Completion rate: <span className="font-semibold text-gray-900">{item.assignments.completionRate}%</span></p>
-                  <div className="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-gray-700">Completion Rate</p>
+                    <span className="font-bold text-gray-900">{item.assignments.completionRate}%</span>
+                  </div>
+                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className="h-2 bg-gradient-to-r from-nestory-400 to-nestory-600 rounded-full"
+                      className="h-3 bg-gradient-to-r from-nestory-400 to-nestory-600 rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(item.assignments.completionRate, 100)}%` }}
                     />
                   </div>
@@ -821,10 +877,13 @@ const ParentDashboard: React.FC = () => {
         </div>
 
         {/* Children Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10 animate-slide-up">
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Family Members ({children.length})</h2>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Family Members</h2>
+                <p className="text-sm text-gray-600 mt-1">{children.length} {children.length === 1 ? 'child' : 'children'} in your family</p>
+              </div>
               <button
                 onClick={() => setShowAddChildModal(true)}
                 className="btn-primary flex items-center gap-2"
@@ -864,77 +923,122 @@ const ParentDashboard: React.FC = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="card h-fit">
-            <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
-            <div className="space-y-3">
+          <div className="card h-fit animate-slide-down">
+            <h3 className="text-lg font-bold mb-5 flex items-center gap-2">
+              <Sparkles size={20} className="text-nestory-600" />
+              Quick Actions
+            </h3>
+            <div className="space-y-2">
               <button
                 onClick={() => setShowAddChildModal(true)}
-                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-blue-50 transition-colors duration-200"
               >
-                <Plus size={18} />
-                Add Child
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Plus size={18} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Add Child</p>
+                  <p className="text-xs text-gray-500">Create new member</p>
+                </div>
               </button>
               <button
                 onClick={() => navigate('/stories')}
-                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-green-50 transition-colors duration-200"
               >
-                <Book size={18} />
-                View Story Library
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <Book size={18} className="text-green-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Browse Stories</p>
+                  <p className="text-xs text-gray-500">Find & assign books</p>
+                </div>
               </button>
               <button
                 onClick={() => navigate('/assignments')}
-                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-purple-50 transition-colors duration-200"
               >
-                <TrendingUp size={18} />
-                Manage Assignments
+                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                  <TrendingUp size={18} className="text-purple-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Manage Assignments</p>
+                  <p className="text-xs text-gray-500">Track & manage</p>
+                </div>
               </button>
               <button
                 onClick={() => navigate('/progress')}
-                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-orange-50 transition-colors duration-200"
               >
-                <BarChart3 size={18} />
-                Reading progress
+                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                  <BarChart3 size={18} className="text-orange-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Reading Progress</p>
+                  <p className="text-xs text-gray-500">View analytics</p>
+                </div>
               </button>
               <button
                 onClick={() => navigate('/family-settings')}
-                className="btn-outline w-full text-left flex items-center gap-2 py-3"
+                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-gray-100 transition-colors duration-200"
               >
-                <Users size={18} />
-                Family Settings
+                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                  <Users size={18} className="text-gray-700" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">Family Settings</p>
+                  <p className="text-xs text-gray-500">Manage profile</p>
+                </div>
               </button>
             </div>
           </div>
         </div>
 
         {/* Recent Activity */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-slide-up">
           <div className="card">
-            <h3 className="text-xl font-bold mb-4">Recent Assignments</h3>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Recent Assignments</h3>
+                <p className="text-sm text-gray-600 mt-1">Latest activity</p>
+              </div>
+              {recentAssignments.length > 0 && (
+                <button
+                  onClick={() => navigate('/assignments')}
+                  className="text-sm text-nestory-600 hover:text-nestory-700 font-medium"
+                >
+                  View All →
+                </button>
+              )}
+            </div>
             {recentAssignments.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center">
+              <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
+                <Book size={32} className="mx-auto text-gray-300 mb-3" />
                 <p className="text-gray-600">No recent assignments yet.</p>
+                <p className="text-sm text-gray-500 mt-1">Assign stories to get started</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {recentAssignments.map((activity) => (
+                {recentAssignments.slice(0, 5).map((activity, idx) => (
                   <button
                     key={activity.id}
-                    className="w-full text-left rounded-lg border border-gray-200 p-4 flex items-center justify-between hover:border-nestory-300 hover:bg-nestory-50/40 transition-colors"
+                    className="w-full text-left rounded-lg border border-gray-200 p-4 flex items-center justify-between hover:border-nestory-400 hover:bg-nestory-50 hover:shadow-md transition-all duration-200 transform hover:translate-x-1 animate-slide-up"
                     onClick={() => navigate(`/child/${activity.childId}`)}
+                    style={{ animationDelay: `${idx * 50}ms` }}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">
+                    <div className="flex items-center gap-3 flex-grow min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-lg flex-shrink-0">
                         {activity.childAvatar || '🧒'}
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{activity.childName} • {activity.storyTitle}</p>
-                        <p className="text-sm text-gray-600 capitalize">
-                          {activity.status.replace('_', ' ')} • {formatRelativeTime(activity.createdAt)}
-                        </p>
+                      <div className="min-w-0 flex-grow">
+                        <p className="font-semibold text-gray-900 truncate">{activity.childName}</p>
+                        <p className="text-sm text-gray-600 truncate">{activity.storyTitle}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{formatRelativeTime(activity.createdAt)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="badge bg-blue-100 text-blue-800 capitalize">{activity.status.replace('_', ' ')}</span>
+                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                      <span className="badge bg-blue-100 text-blue-800 capitalize text-xs">
+                        {activity.status.replace('_', ' ')}
+                      </span>
                       <ChevronRight size={16} className="text-gray-400" />
                     </div>
                   </button>
@@ -944,34 +1048,51 @@ const ParentDashboard: React.FC = () => {
           </div>
 
           <div className="card">
-            <h3 className="text-xl font-bold mb-4">Recent Completions</h3>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Recent Completions</h3>
+                <p className="text-sm text-gray-600 mt-1">Achievements unlocked</p>
+              </div>
+              {recentCompletions.length > 0 && (
+                <button
+                  onClick={() => navigate('/progress')}
+                  className="text-sm text-green-600 hover:text-green-700 font-medium"
+                >
+                  View All →
+                </button>
+              )}
+            </div>
             {recentCompletions.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center">
+              <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
+                <CheckCircle2 size={32} className="mx-auto text-gray-300 mb-3" />
                 <p className="text-gray-600">No completed assignments yet.</p>
+                <p className="text-sm text-gray-500 mt-1">Celebrate milestones here</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {recentCompletions.map((activity) => (
+                {recentCompletions.slice(0, 5).map((activity, idx) => (
                   <button
                     key={activity.id}
-                    className="w-full text-left rounded-lg border border-gray-200 p-4 flex items-center justify-between hover:border-green-300 hover:bg-green-50 transition-colors"
+                    className="w-full text-left rounded-lg border border-gray-200 bg-gradient-to-r from-green-50/50 to-emerald-50/50 p-4 flex items-center justify-between hover:border-green-400 hover:shadow-md transition-all duration-200 transform hover:translate-x-1 animate-slide-up"
                     onClick={() => navigate(`/child/${activity.childId}`)}
+                    style={{ animationDelay: `${idx * 50}ms` }}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-xl">
+                    <div className="flex items-center gap-3 flex-grow min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-lg flex-shrink-0">
                         {activity.childAvatar || '🧒'}
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{activity.childName} • {activity.storyTitle}</p>
-                        <p className="text-sm text-gray-600">
+                      <div className="min-w-0 flex-grow">
+                        <p className="font-semibold text-gray-900 truncate">{activity.childName}</p>
+                        <p className="text-sm text-gray-600 truncate">{activity.storyTitle}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
                           {activity.completedAt
                             ? `Completed ${formatRelativeTime(activity.completedAt)}`
-                            : 'Completed'}
+                            : 'Recently completed'}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="badge bg-green-100 text-green-800">Completed</span>
+                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                      <span className="badge bg-green-100 text-green-800 text-xs">✓ Done</span>
                       <ChevronRight size={16} className="text-gray-400" />
                     </div>
                   </button>

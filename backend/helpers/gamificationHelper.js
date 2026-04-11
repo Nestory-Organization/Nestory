@@ -12,8 +12,27 @@ const GamificationService = require('../services/gamification/gamificationServic
  * Award points when a story is read
  * Call this in your story controller after a story is successfully read
  */
-async function awardPointsForStoryRead(userId, storyId, childId = null) {
+/**
+ * Award points when a story is read
+ * Call this in your story controller after a story is successfully read
+ */
+async function awardPointsForStoryRead(userId, storyId, childId = null, storyCategory = null, readingTime = 0) {
   try {
+    const query = { user: userId };
+    if (childId) query.child = childId;
+
+    let progress = await UserProgress.findOne(query);
+    if (!progress) {
+      progress = await UserProgress.create({
+        user: userId,
+        child: childId
+      });
+    }
+
+    // Update reading stats
+    progress.updateReadingStats(storyCategory, readingTime);
+    await progress.save();
+
     const result = await GamificationService.awardPointsToUser(
       userId,
       20, // Points for reading a story
@@ -152,6 +171,68 @@ async function updateUserStreak(userId, childId = null) {
 }
 
 /**
+ * Update achievement progress while reading (mid-session)
+ * Call this as user reads pages to show real-time progress
+ * Does NOT award points - just updates progress tracking
+ */
+async function updateReadingProgressMidSession(userId, childId = null, currentProgress = 0) {
+  try {
+    const query = { user: userId };
+    if (childId) query.child = childId;
+    
+    let userProgress = await UserProgress.findOne(query);
+    if (!userProgress) {
+      userProgress = await UserProgress.create({ user: userId, child: childId });
+    }
+
+    // Get all achievements and update progress for reading-related ones
+    const Achievement = require('../models/gamification/Achievement');
+    const achievements = await Achievement.find({ isActive: true }).sort({ order: 1 });
+
+    for (const achievement of achievements) {
+      // Only update progress for reading-related achievements during mid-session
+      const readingAchievements = [
+        'First Steps', 'Story Explorer', 'Bookworm Beginner', 
+        'Avid Reader', 'Reading Champion', 'Legendary Reader'
+      ];
+
+      if (!readingAchievements.includes(achievement.name)) continue;
+
+      let existingProgress = userProgress.achievements.find(
+        a => a.achievement.toString() === achievement._id.toString()
+      );
+
+      if (!existingProgress) {
+        existingProgress = { 
+          achievement: achievement._id, 
+          progress: 0, 
+          completed: false, 
+          completedAt: null 
+        };
+        userProgress.achievements.push(existingProgress);
+      }
+
+      // Skip if already completed
+      if (existingProgress.completed) continue;
+
+      // For reading achievements, show partial progress during session
+      // Show progress as a fraction based on completed stories + current reading
+      const totalStoriesEffective = userProgress.stats.storiesRead + (currentProgress / 100);
+      existingProgress.progress = Math.min(
+        Math.floor(totalStoriesEffective * 100) / 100,
+        achievement.targetValue
+      );
+    }
+
+    await userProgress.save();
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating reading progress:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Get user's gamification summary
  * Use this to display user stats in UI
  */
@@ -203,5 +284,6 @@ module.exports = {
   awardPointsForAssignmentCompletion,
   awardDailyLoginBonus,
   updateUserStreak,
+  updateReadingProgressMidSession,
   getUserGamificationSummary
 };

@@ -130,41 +130,192 @@ class GamificationService {
   }
 
   /**
-   * Initialize default achievements in the system
+   * Initialize default achievements in the system with proper progression chains
    */
   static async initializeDefaultAchievements() {
     try {
       const defaultAchievements = [
+        // Level 1: Basic Reading Achievements
         {
-          name: 'Reading Explorer',
-          description: 'Read stories from 5 different categories',
+          name: 'First Steps',
+          description: 'Read your very first story',
+          icon: '👶',
+          category: 'reading',
+          type: 'one_time',
+          targetValue: 1,
+          reward: { points: 25, badge: null },
+          difficulty: 'easy',
+          prerequisites: [],
+          order: 1
+        },
+        {
+          name: 'Story Explorer',
+          description: 'Read 5 different stories',
           icon: '🧭',
-          category: 'exploration',
+          category: 'reading',
           type: 'one_time',
           targetValue: 5,
-          reward: { points: 100 },
-          difficulty: 'medium'
+          reward: { points: 50 },
+          difficulty: 'easy',
+          prerequisites: ['First Steps'],
+          order: 2
         },
         {
-          name: 'Consistent Reader',
-          description: 'Read at least one story for 10 consecutive days',
+          name: 'Bookworm Beginner',
+          description: 'Read 10 stories total',
           icon: '📖',
-          category: 'consistency',
-          type: 'repeatable',
+          category: 'reading',
+          type: 'one_time',
           targetValue: 10,
-          reward: { points: 150 },
-          difficulty: 'medium'
+          reward: { points: 75 },
+          difficulty: 'easy',
+          prerequisites: ['Story Explorer'],
+          order: 3
+        },
+
+        // Level 2: Consistency Achievements
+        {
+          name: 'Daily Reader',
+          description: 'Read for 3 consecutive days',
+          icon: '📅',
+          category: 'consistency',
+          type: 'one_time',
+          targetValue: 3,
+          reward: { points: 100 },
+          difficulty: 'medium',
+          prerequisites: ['Bookworm Beginner'],
+          order: 4
         },
         {
-          name: 'Assignment Pro',
-          description: 'Complete 20 assignments',
+          name: 'Week Warrior',
+          description: 'Read for 7 consecutive days',
+          icon: '⚡',
+          category: 'consistency',
+          type: 'one_time',
+          targetValue: 7,
+          reward: { points: 150 },
+          difficulty: 'medium',
+          prerequisites: ['Daily Reader'],
+          order: 5
+        },
+
+        // Level 3: Advanced Reading
+        {
+          name: 'Avid Reader',
+          description: 'Read 25 stories total',
+          icon: '📚',
+          category: 'reading',
+          type: 'one_time',
+          targetValue: 25,
+          reward: { points: 200 },
+          difficulty: 'medium',
+          prerequisites: ['Week Warrior'],
+          order: 6
+        },
+        {
+          name: 'Genre Explorer',
+          description: 'Read stories from 3 different categories',
+          icon: '🌍',
+          category: 'exploration',
+          type: 'one_time',
+          targetValue: 3,
+          reward: { points: 125 },
+          difficulty: 'medium',
+          prerequisites: ['Avid Reader'],
+          order: 7
+        },
+
+        // Level 4: Assignment Achievements
+        {
+          name: 'First Assignment',
+          description: 'Complete your first assignment',
+          icon: '✅',
+          category: 'milestone',
+          type: 'one_time',
+          targetValue: 1,
+          reward: { points: 50 },
+          difficulty: 'easy',
+          prerequisites: ['Bookworm Beginner'],
+          order: 8
+        },
+        {
+          name: 'Assignment Master',
+          description: 'Complete 5 assignments',
           icon: '🎯',
           category: 'milestone',
-          type: 'progressive',
-          targetValue: 20,
-          reward: { points: 250 },
-          difficulty: 'hard'
+          type: 'one_time',
+          targetValue: 5,
+          reward: { points: 150 },
+          difficulty: 'medium',
+          prerequisites: ['First Assignment'],
+          order: 9
         },
+
+        // Level 5: Expert Level
+        {
+          name: 'Reading Champion',
+          description: 'Read 50 stories total',
+          icon: '🏆',
+          category: 'reading',
+          type: 'one_time',
+          targetValue: 50,
+          reward: { points: 300 },
+          difficulty: 'hard',
+          prerequisites: ['Avid Reader', 'Assignment Master'],
+          order: 10
+        },
+        {
+          name: 'Streak Master',
+          description: 'Maintain a 14-day reading streak',
+          icon: '🔥',
+          category: 'consistency',
+          type: 'one_time',
+          targetValue: 14,
+          reward: { points: 250 },
+          difficulty: 'hard',
+          prerequisites: ['Week Warrior'],
+          order: 11
+        },
+
+        // Level 6: Legendary Achievements
+        {
+          name: 'Legendary Reader',
+          description: 'Read 100 stories total',
+          icon: '👑',
+          category: 'reading',
+          type: 'one_time',
+          targetValue: 100,
+          reward: { points: 500 },
+          difficulty: 'expert',
+          prerequisites: ['Reading Champion'],
+          order: 12
+        },
+        {
+          name: 'Dedication Legend',
+          description: 'Maintain a 30-day reading streak',
+          icon: '💎',
+          category: 'consistency',
+          type: 'one_time',
+          targetValue: 30,
+          reward: { points: 400 },
+          difficulty: 'expert',
+          prerequisites: ['Streak Master'],
+          order: 13
+        },
+        {
+          name: 'Assignment Legend',
+          description: 'Complete 20 assignments',
+          icon: '🌟',
+          category: 'milestone',
+          type: 'one_time',
+          targetValue: 20,
+          reward: { points: 300 },
+          difficulty: 'expert',
+          prerequisites: ['Assignment Master'],
+          order: 14
+        },
+
+        // Special Time-based Achievements
         {
           name: 'Early Bird',
           description: 'Read a story before 8 AM for 5 days',
@@ -172,8 +323,10 @@ class GamificationService {
           category: 'consistency',
           type: 'one_time',
           targetValue: 5,
-          reward: { points: 80 },
-          difficulty: 'easy'
+          reward: { points: 100 },
+          difficulty: 'medium',
+          prerequisites: ['Daily Reader'],
+          order: 15
         },
         {
           name: 'Night Owl',
@@ -182,8 +335,36 @@ class GamificationService {
           category: 'consistency',
           type: 'one_time',
           targetValue: 5,
-          reward: { points: 80 },
-          difficulty: 'easy'
+          reward: { points: 100 },
+          difficulty: 'medium',
+          prerequisites: ['Daily Reader'],
+          order: 16
+        },
+
+        // Repeatable Achievements
+        {
+          name: 'Monthly Reader',
+          description: 'Read 30 stories in a month',
+          icon: '📊',
+          category: 'consistency',
+          type: 'repeatable',
+          targetValue: 30,
+          reward: { points: 200 },
+          difficulty: 'hard',
+          prerequisites: ['Reading Champion'],
+          order: 17
+        },
+        {
+          name: 'Speed Reader',
+          description: 'Complete 10 stories in one week',
+          icon: '💨',
+          category: 'consistency',
+          type: 'repeatable',
+          targetValue: 10,
+          reward: { points: 150 },
+          difficulty: 'medium',
+          prerequisites: ['Week Warrior'],
+          order: 18
         }
       ];
 
@@ -246,6 +427,17 @@ class GamificationService {
 
       // Check badges
       await this.checkAndAwardBadges(progress);
+
+      // Prepare activity data for achievements
+      const now = new Date();
+      const activityData = {
+        isEarlyMorning: now.getHours() < 8,
+        isLateNight: now.getHours() >= 22,
+        reference: reference
+      };
+
+      // Check achievements
+      await this.checkAndAwardAchievements(progress, source, activityData);
 
       return {
         success: true,
@@ -319,24 +511,259 @@ class GamificationService {
   }
 
   /**
-   * Calculate user rank on leaderboard
+   * Check if user is eligible for any achievements and award them
    */
-  static async getUserRank(userId, childId = null) {
+  static async checkAndAwardAchievements(progress, activityType, activityData = {}) {
     try {
-      const query = { user: userId };
-      if (childId) query.child = childId;
+      const achievements = await Achievement.find({ isActive: true }).sort({ order: 1 });
 
-      const userProgress = await UserProgress.findOne(query);
-      if (!userProgress) return null;
+      // Prepare activity data for achievement checking
+      const enrichedActivityData = {
+        ...activityData,
+        categoriesRead: new Set(progress.stats.categoriesRead || []),
+        earlyMorningReads: progress.stats.earlyMorningReads || 0,
+        lateNightReads: progress.stats.lateNightReads || 0,
+        monthlyReads: progress.stats.monthlyReads || 0,
+        weeklyReads: progress.stats.weeklyReads || 0,
+        isEarlyMorning: activityData.isEarlyMorning || false,
+        isLateNight: activityData.isLateNight || false
+      };
 
-      const rank = await UserProgress.countDocuments({
-        totalPoints: { $gt: userProgress.totalPoints }
-      });
+      for (const achievement of achievements) {
+        // Skip if already completed
+        const existingProgress = progress.achievements.find(
+          a => a.achievement.toString() === achievement._id.toString()
+        );
 
-      return rank + 1;
+        if (existingProgress && existingProgress.completed) continue;
+
+        // Check prerequisites
+        if (!await this.checkPrerequisites(progress, achievement.prerequisites)) {
+          continue;
+        }
+
+        let shouldAward = false;
+        let progressIncrement = 0;
+
+        // Check achievement criteria based on type and activity
+        switch (achievement.name) {
+          case 'First Steps':
+            if (activityType === 'story_read' && progress.stats.storiesRead >= 1) {
+              shouldAward = true;
+              progressIncrement = 1;
+            }
+            break;
+
+          case 'Story Explorer':
+            if (activityType === 'story_read') {
+              progressIncrement = progress.stats.storiesRead;
+              shouldAward = progress.stats.storiesRead >= achievement.targetValue;
+            }
+            break;
+
+          case 'Bookworm Beginner':
+          case 'Avid Reader':
+          case 'Reading Champion':
+          case 'Legendary Reader':
+            if (activityType === 'story_read') {
+              progressIncrement = progress.stats.storiesRead;
+              shouldAward = progress.stats.storiesRead >= achievement.targetValue;
+            }
+            break;
+
+          case 'Daily Reader':
+          case 'Week Warrior':
+          case 'Streak Master':
+          case 'Dedication Legend':
+            if (activityType === 'story_read' || activityType === 'assignment_completed') {
+              progressIncrement = progress.currentStreak;
+              shouldAward = progress.currentStreak >= achievement.targetValue;
+            }
+            break;
+
+          case 'First Assignment':
+            if (activityType === 'assignment_completed' && progress.stats.assignmentsCompleted >= 1) {
+              shouldAward = true;
+              progressIncrement = 1;
+            }
+            break;
+
+          case 'Assignment Master':
+          case 'Assignment Legend':
+            if (activityType === 'assignment_completed') {
+              progressIncrement = progress.stats.assignmentsCompleted;
+              shouldAward = progress.stats.assignmentsCompleted >= achievement.targetValue;
+            }
+            break;
+
+          case 'Genre Explorer':
+            if (activityType === 'story_read') {
+              progressIncrement = enrichedActivityData.categoriesRead.size;
+              shouldAward = enrichedActivityData.categoriesRead.size >= achievement.targetValue;
+            }
+            break;
+
+          case 'Early Bird':
+            if (activityType === 'story_read' && enrichedActivityData.isEarlyMorning) {
+              progressIncrement = enrichedActivityData.earlyMorningReads;
+              shouldAward = enrichedActivityData.earlyMorningReads >= achievement.targetValue;
+            }
+            break;
+
+          case 'Night Owl':
+            if (activityType === 'story_read' && enrichedActivityData.isLateNight) {
+              progressIncrement = enrichedActivityData.lateNightReads;
+              shouldAward = enrichedActivityData.lateNightReads >= achievement.targetValue;
+            }
+            break;
+
+          case 'Monthly Reader':
+            if (activityType === 'story_read') {
+              progressIncrement = enrichedActivityData.monthlyReads;
+              shouldAward = enrichedActivityData.monthlyReads >= achievement.targetValue;
+            }
+            break;
+
+          case 'Speed Reader':
+            if (activityType === 'story_read') {
+              progressIncrement = enrichedActivityData.weeklyReads;
+              shouldAward = enrichedActivityData.weeklyReads >= achievement.targetValue;
+            }
+            break;
+        }
+
+        if (shouldAward) {
+          await this.awardAchievement(progress, achievement, progressIncrement);
+        } else if (progressIncrement > 0) {
+          // Update progress even if not completed
+          await this.updateAchievementProgress(progress, achievement, progressIncrement);
+        }
+      }
+
+      await progress.save();
+      return true;
     } catch (error) {
-      throw new Error(`Error calculating rank: ${error.message}`);
+      console.error('Error checking achievements:', error);
+      return false;
     }
+  }
+
+  /**
+   * Check if prerequisites are met for an achievement
+   */
+  static async checkPrerequisites(progress, prerequisites) {
+    if (!prerequisites || prerequisites.length === 0) return true;
+
+    for (const prereqName of prerequisites) {
+      const prereqAchievement = await Achievement.findOne({ name: prereqName });
+      if (!prereqAchievement) continue;
+
+      const userAchievement = progress.achievements.find(
+        a => a.achievement.toString() === prereqAchievement._id.toString()
+      );
+
+      if (!userAchievement || !userAchievement.completed) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Award an achievement to a user
+   */
+  static async awardAchievement(progress, achievement, progressValue) {
+    let achievementProgress = progress.achievements.find(
+      a => a.achievement.toString() === achievement._id.toString()
+    );
+
+    if (!achievementProgress) {
+      achievementProgress = {
+        achievement: achievement._id,
+        progress: 0,
+        completed: false,
+        completedAt: null
+      };
+      progress.achievements.push(achievementProgress);
+    }
+
+    achievementProgress.progress = Math.max(achievementProgress.progress, progressValue);
+    achievementProgress.completed = true;
+    achievementProgress.completedAt = new Date();
+
+    // Award points
+    progress.totalPoints += achievement.reward.points;
+    progress.calculateLevel();
+
+    // Award badge if specified
+    if (achievement.reward.badge) {
+      const badgeExists = progress.badges.some(
+        b => b.badge.toString() === achievement.reward.badge.toString()
+      );
+      if (!badgeExists) {
+        progress.badges.push({
+          badge: achievement.reward.badge,
+          earnedAt: new Date()
+        });
+      }
+    }
+
+    // Create transaction
+    await PointTransaction.create({
+      user: progress.user,
+      child: progress.child,
+      points: achievement.reward.points,
+      type: 'earn',
+      source: 'achievement',
+      description: `Completed achievement: ${achievement.name}`,
+      reference: { model: 'Achievement', id: achievement._id },
+      balanceBefore: progress.totalPoints - achievement.reward.points,
+      balanceAfter: progress.totalPoints
+    });
+
+    console.log(`Achievement awarded: ${achievement.name} to user ${progress.user}`);
+  }
+
+  /**
+   * Update achievement progress without completing it
+   */
+  static async updateAchievementProgress(progress, achievement, increment) {
+    let achievementProgress = progress.achievements.find(
+      a => a.achievement.toString() === achievement._id.toString()
+    );
+
+    if (!achievementProgress) {
+      achievementProgress = {
+        achievement: achievement._id,
+        progress: 0,
+        completed: false,
+        completedAt: null
+      };
+      progress.achievements.push(achievementProgress);
+    }
+
+    achievementProgress.progress = Math.min(
+      achievementProgress.progress + increment,
+      achievement.targetValue
+    );
+  }
+
+  static async getUserRank(userId, childId = null) {
+    const query = {};
+    if (childId) query.child = childId;
+
+    const progress = await UserProgress.findOne({ user: userId, ...(childId ? { child: childId } : {}) });
+    if (!progress) {
+      return null;
+    }
+
+    const higherRankedCount = await UserProgress.countDocuments({
+      ...query,
+      totalPoints: { $gt: progress.totalPoints }
+    });
+
+    return higherRankedCount + 1;
   }
 }
 
