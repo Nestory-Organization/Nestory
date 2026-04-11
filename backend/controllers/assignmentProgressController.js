@@ -4,6 +4,9 @@ const {
   enrichAssignmentsWithSessions,
   summarize,
 } = require("../services/assignmentProgressService");
+const {
+  deleteOrphanAssignmentsForParent,
+} = require("../utils/orphanAssignmentCleanup");
 
 /**
  * @desc Progress analytics for parent's family (optional ?childId=)
@@ -12,6 +15,8 @@ const {
  */
 exports.getParentProgressOverview = async (req, res) => {
   try {
+    await deleteOrphanAssignmentsForParent(req.user._id);
+
     const { childId } = req.query;
 
     if (childId) {
