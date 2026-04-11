@@ -73,8 +73,12 @@ test.describe("Reading progress API", () => {
         storyId: story._id.toString(),
       },
     });
-    expect(start.status()).toBe(201);
-    const startBody = await start.json();
+    const startRaw = await start.text();
+    expect(
+      start.status(),
+      `POST /api/sessions/start expected 201, got ${start.status()}: ${startRaw}`,
+    ).toBe(201);
+    const startBody = JSON.parse(startRaw);
     const sessionId = startBody.data._id;
 
     const upd = await request.post("/api/sessions/update", {

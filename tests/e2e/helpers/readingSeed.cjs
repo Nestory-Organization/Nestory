@@ -10,7 +10,10 @@ const mongoose = reqBackend("node_modules/mongoose");
 const jwt = reqBackend("node_modules/jsonwebtoken");
 
 try {
-  reqBackend("node_modules/dotenv").config({ path: path.join(backendRoot, ".env") });
+  reqBackend("node_modules/dotenv").config({
+    path: path.join(backendRoot, ".env"),
+    override: true,
+  });
 } catch {
   /* optional */
 }
@@ -32,7 +35,9 @@ async function connect() {
   // Mongoose defaults to serverSelectionTimeoutMS: 30000, which matches Playwright's
   // beforeAll hook timeout — the hook then fails with an unhelpful "hook timeout".
   // Fail fast so tests skip with a clear Mongo message instead.
+  // Must match backend/config/db.js — otherwise seeds land in `test` (or default) while the API uses `nestory` → 401 "User not found".
   const opts = {
+    dbName: "nestory",
     serverSelectionTimeoutMS: 10_000,
     connectTimeoutMS: 10_000,
   };

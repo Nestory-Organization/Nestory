@@ -4,16 +4,11 @@ const path = require('path');
 
 const repoRoot = __dirname;
 
-// Load backend/.env before defaults so JWT_SECRET (and MONGO_URI) match a reused `npm run dev`
-// server and match tokens built in tests. Otherwise Playwright falls back to
-// playwright-test-secret while the API uses .env → 401 on /api/sessions/start.
-try {
-  require(path.join(repoRoot, 'backend', 'node_modules', 'dotenv')).config({
-    path: path.join(repoRoot, 'backend', '.env'),
-  });
-} catch {
-  /* backend not installed yet */
-}
+// Load backend/.env before defaults (root devDependency `dotenv` — do not rely on backend/node_modules path).
+require('dotenv').config({
+  path: path.join(repoRoot, 'backend', '.env'),
+  override: true,
+});
 
 process.env.MONGO_URI =
   process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/nestory';
