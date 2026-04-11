@@ -13,8 +13,8 @@ import {
   BarChart3,
   Sparkles,
   Search,
+  MessageCircle
 } from 'lucide-react';
-import { BookOpen, Flame, Clock, Award, CalendarDays, BarChart3, Sparkles, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StoryService from '../../services/storyService';
 import AssignmentService from '../../services/assignmentService';
