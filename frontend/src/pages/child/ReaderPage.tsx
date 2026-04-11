@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StoryService from '../../services/storyService';
+import AssignmentService from '../../services/assignmentService';
+import { useAuth } from '../../contexts/AuthContext';
 import { Story } from '../../types';
 
 interface GoogleBooksEmbedProps {
@@ -64,6 +66,7 @@ const ErrorDisplay: React.FC<{ message: string }> = ({ message }) => (
 const ReaderPage: React.FC = () => {
   const { storyId } = useParams<{ storyId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [story, setStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +82,22 @@ const ReaderPage: React.FC = () => {
       try {
         setIsLoading(true);
         const storyData = await StoryService.getStoryById(storyId);
+
+        if (user?.role === 'child') {
+          const assignments = await AssignmentService.getMyAssignments().catch(() => []);
+          const sid = String(storyId);
+          const allowed = assignments.some(
+            (a) =>
+              a.status !== 'completed' &&
+              sid === String(a.storyId || a.story?._id || a.story?.id || ''),
+          );
+          if (!allowed) {
+            setStory(null);
+            setError('This book is not assigned to you. Ask a parent to assign it before reading.');
+            return;
+          }
+        }
+
         setStory(storyData);
         setError(null);
       } catch (err: unknown) {
@@ -98,7 +117,7 @@ const ReaderPage: React.FC = () => {
     };
 
     loadStory();
-  }, [storyId]);
+  }, [storyId, user?.role]);
 
   if (isLoading) {
     return (

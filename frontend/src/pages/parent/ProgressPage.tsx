@@ -4,7 +4,9 @@ import Navbar from '../../components/common/Navbar';
 import AssignmentProgressBoard from '../../components/progress/AssignmentProgressBoard';
 import AssignmentService from '../../services/assignmentService';
 import FamilyService from '../../services/familyService';
-import { AssignmentProgressOverview, Family } from '../../types';
+import ReadingService from '../../services/readingService';
+import ReadingWeeklyBarChart from '../../components/progress/ReadingWeeklyBarChart';
+import { AssignmentProgressOverview, Family, ReadingActivitySummary } from '../../types';
 import toast from 'react-hot-toast';
 import { ArrowLeft, BarChart3 } from 'lucide-react';
 
@@ -13,6 +15,7 @@ const ParentProgressPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [family, setFamily] = useState<Family | null>(null);
   const [data, setData] = useState<AssignmentProgressOverview | null>(null);
+  const [weekActivity, setWeekActivity] = useState<ReadingActivitySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterChildId, setFilterChildId] = useState(() => searchParams.get('childId') ?? '');
 
@@ -34,10 +37,14 @@ const ParentProgressPage: React.FC = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const overview = await AssignmentService.getParentProgressOverview(
-          filterChildId || undefined
-        );
-        if (!cancelled) setData(overview);
+        const [overview, activity] = await Promise.all([
+          AssignmentService.getParentProgressOverview(filterChildId || undefined),
+          ReadingService.getFamilyActivitySummary(7).catch(() => null),
+        ]);
+        if (!cancelled) {
+          setData(overview);
+          setWeekActivity(activity);
+        }
       } catch (e: unknown) {
         if (!cancelled) {
           const message =
@@ -50,6 +57,7 @@ const ParentProgressPage: React.FC = () => {
               : 'Failed to load progress';
           toast.error(message || 'Failed to load progress');
           setData(null);
+          setWeekActivity(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -115,6 +123,45 @@ const ParentProgressPage: React.FC = () => {
           </div>
         </div>
 
+        {weekActivity && (
+          <div className="card mb-8 border-nestory-200 bg-gradient-to-br from-white to-nestory-50/50">
+            <h2 className="text-lg font-bold text-gray-900">This week (family)</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Pages and minutes from progress saves (last {weekActivity.days} days), all children
+              combined.
+            </p>
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-white/90 border border-gray-100 p-3 text-center">
+                <p className="text-xs text-gray-500">Pages</p>
+                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalPagesLogged}</p>
+              </div>
+              <div className="rounded-lg bg-white/90 border border-gray-100 p-3 text-center">
+                <p className="text-xs text-gray-500">Minutes</p>
+                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalMinutesLogged}</p>
+              </div>
+              <div className="rounded-lg bg-white/90 border border-gray-100 p-3 text-center">
+                <p className="text-xs text-gray-500">Saves</p>
+                <p className="text-2xl font-bold text-gray-900">{weekActivity.progressSaveCount}</p>
+              </div>
+              <div className="rounded-lg bg-white/90 border border-gray-100 p-3 text-center">
+                <p className="text-xs text-gray-500">Period</p>
+                <p className="text-sm font-semibold text-gray-800 mt-2">
+                  {new Date(weekActivity.periodStart).toLocaleDateString()} –{' '}
+                  {new Date(weekActivity.periodEnd).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+            {weekActivity.byDay && weekActivity.byDay.length > 0 ? (
+              <div className="mt-6 rounded-xl bg-white/90 border border-gray-100 p-4">
+                <ReadingWeeklyBarChart
+                  byDay={weekActivity.byDay}
+                  title={`Family minutes & pages per day (last ${weekActivity.days} days)`}
+                />
+              </div>
+            ) : null}
+          </div>
+        )}
+
         <AssignmentProgressBoard
           data={data}
           loading={loading}
@@ -124,6 +171,7 @@ const ParentProgressPage: React.FC = () => {
           childOptions={childOptions}
           enableExportPrint
           documentTitle={printTitle}
+          enableAssignmentSearch
         />
       </div>
     </div>

@@ -96,6 +96,28 @@ const ChildDashboard: React.FC = () => {
 
     try {
       setStartingReadKey(loadingKey);
+
+      // If this is an assignment (loadingKey starts with 'a-'), update its status to in_progress
+      if (loadingKey.startsWith('a-')) {
+        const assignmentId = loadingKey.substring(2); // Remove 'a-' prefix
+        const assignment = assignments.find((a) => a.id === assignmentId);
+        
+        if (assignment && assignment.status === 'assigned') {
+          try {
+            await AssignmentService.updateMyAssignmentStatus(assignmentId, 'in_progress');
+            // Update the local assignments list
+            setAssignments(
+              assignments.map((a) =>
+                a.id === assignmentId ? { ...a, status: 'in_progress' } : a
+              )
+            );
+          } catch (statusError) {
+            console.warn('Failed to update assignment status:', statusError);
+            // Continue with reading even if status update fails
+          }
+        }
+      }
+
       const { _id } = await ReadingService.startMySession({ storyId });
       navigate(`/child/read/${_id}`);
     } catch (error: unknown) {

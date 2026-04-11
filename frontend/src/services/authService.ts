@@ -67,7 +67,10 @@ class AuthService {
   async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await apiClient.getInstance().post<ApiResponse<BackendAuthPayload>>(
       '/auth/login',
-      data
+      {
+        ...data,
+        email: data.email.trim().toLowerCase(),
+      }
     );
 
     const payload = response.data.data!;
@@ -97,6 +100,27 @@ class AuthService {
       '/auth/change-password',
       data
     );
+  }
+
+  async forgotPassword(email: string): Promise<{ resetToken: string; expiresIn: string }> {
+    const response = await apiClient.getInstance().post<
+      ApiResponse<{ resetToken: string; expiresIn: string }>
+    >('/auth/forgot-password', { email });
+
+    return response.data.data!;
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<AuthResponse> {
+    const response = await apiClient.getInstance().post<ApiResponse<BackendAuthPayload>>(
+      `/auth/reset-password/${token}`,
+      { newPassword }
+    );
+
+    const payload = response.data.data!;
+    return {
+      user: this.normalizeUser(payload),
+      token: payload.token || '',
+    };
   }
 
   logout(): void {

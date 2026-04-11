@@ -48,6 +48,13 @@ exports.addChildValidation = [
     .withMessage(
       "Reading level must be one of: beginner, intermediate, advanced",
     ),
+
+  body("email")
+    .optional()
+    .trim()
+    .isEmail()
+    .withMessage("Please provide a valid email address")
+    .normalizeEmail(),
 ];
 
 // Validation rules for updating a child

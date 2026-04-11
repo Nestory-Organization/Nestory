@@ -1,6 +1,11 @@
 const Child = require("../models/Child");
 const Family = require("../models/Family");
 const User = require("../models/User");
+const Assignment = require("../models/Assignment");
+const ReadingSession = require("../models/ReadingSession");
+const ReadingActivity = require("../models/ReadingActivity");
+const UserProgress = require("../models/gamification/UserProgress");
+const PointTransaction = require("../models/gamification/PointTransaction");
 const mongoose = require("mongoose");
 const { normalizeChild } = require("../utils/contractTransformers");
 
@@ -40,7 +45,7 @@ const buildChildLoginEmail = async ({ childName, parentId }) => {
 // @access  Private
 exports.addChild = async (req, res) => {
   try {
-    const { name, age, avatar, readingLevel } = req.body;
+    const { name, age, avatar, readingLevel, email } = req.body;
 
     // Parent must have a family group first
     const family = await Family.findOne({ parent: req.user._id });
@@ -51,10 +56,26 @@ exports.addChild = async (req, res) => {
       });
     }
 
-    const childLoginEmail = await buildChildLoginEmail({
-      childName: name,
-      parentId: req.user._id,
-    });
+    // Determine the email to use for child account
+    let childLoginEmail;
+    if (email) {
+      // Check if provided email is unique
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already in use. Please provide a different email.",
+        });
+      }
+      childLoginEmail = email.toLowerCase();
+    } else {
+      // Generate email if not provided
+      childLoginEmail = await buildChildLoginEmail({
+        childName: name,
+        parentId: req.user._id,
+      });
+    }
+
     const temporaryPassword = generateTemporaryPassword();
 
     // Create the child profile first, then create the linked child account.
@@ -65,6 +86,7 @@ exports.addChild = async (req, res) => {
       readingLevel: readingLevel || "beginner",
       family: family._id,
       parent: req.user._id,
+      email: childLoginEmail,
     });
 
     let childUser;
@@ -290,15 +312,23 @@ exports.deleteChild = async (req, res) => {
       });
     }
 
-    // Remove child reference from the family's children array
+    const childObjectId = child._id;
+
+    await Promise.all([
+      Assignment.deleteMany({ child: childObjectId }),
+      ReadingSession.deleteMany({ childId: childObjectId }),
+      ReadingActivity.deleteMany({ childId: childObjectId }),
+      UserProgress.deleteMany({ child: childObjectId }),
+      PointTransaction.deleteMany({ child: childObjectId }),
+    ]);
+
     await Family.findByIdAndUpdate(child.family, {
-      $pull: { children: child._id },
+      $pull: { children: childObjectId },
     });
 
-    // Remove linked child user account if one exists.
-    await User.deleteOne({ childProfile: child._id });
+    await User.deleteOne({ childProfile: childObjectId });
 
-    await Child.findByIdAndDelete(req.params.id);
+    await Child.findByIdAndDelete(childObjectId);
 
     res.status(200).json({
       success: true,

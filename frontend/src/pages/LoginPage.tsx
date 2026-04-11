@@ -66,7 +66,11 @@ const LoginPage: React.FC = () => {
         }
       }
 
-      const errorMessage = error?.response?.data?.message || 'Login failed. Please try again.';
+      let errorMessage = error?.response?.data?.message || 'Login failed. Please try again.';
+      if (errorMessage === 'Invalid credentials') {
+        errorMessage =
+          "Invalid email or password. Parent and reader accounts each have their own password; changing or resetting a reader's login does not change the parent's.";
+      }
       setFormError(errorMessage);
       toast.error(errorMessage);
     }
@@ -85,6 +89,9 @@ const LoginPage: React.FC = () => {
         <div className="card shadow-lg">
           <form onSubmit={handleSubmit} className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900 text-center">Welcome Back</h2>
+            <p className="text-center text-sm text-gray-500 -mt-2">
+              Use the parent email and parent password. Reader logins are separate (often a @nestory.app address).
+            </p>
 
             {/* Email Field */}
             <div>
@@ -136,6 +143,16 @@ const LoginPage: React.FC = () => {
               </div>
             )}
 
+            {/* Forgot Password Link */}
+            <div className="text-right">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-nestory-600 font-semibold hover:text-nestory-700"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             {/* Submit Button */}
             <button
               type="submit"
@@ -160,9 +177,13 @@ const LoginPage: React.FC = () => {
 
         {/* Demo Credentials */}
         <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
-          <p className="text-xs text-gray-600 font-semibold mb-2">Demo Credentials:</p>
+          <p className="text-xs text-gray-600 font-semibold mb-2">Demo credentials (if seeded):</p>
           <p className="text-xs text-gray-600">Email: parent@example.com</p>
           <p className="text-xs text-gray-600">Password: password123</p>
+          <p className="text-xs text-gray-500 mt-2">
+            If you forgot your parent password, run from the backend folder:{' '}
+            <code className="text-gray-700">npm run reset-password -- your@email.com NewPass123</code>
+          </p>
         </div>
       </div>
     </div>
