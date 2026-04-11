@@ -7,6 +7,7 @@ import ReadingService from '../../services/readingService';
 import { AssignmentProgressOverview, ReadingActivitySummary } from '../../types';
 import toast from 'react-hot-toast';
 import { ArrowLeft, BarChart3 } from 'lucide-react';
+import ReadingWeeklyBarChart from '../../components/progress/ReadingWeeklyBarChart';
 
 const ChildProgressPage: React.FC = () => {
   const navigate = useNavigate();
@@ -105,6 +106,14 @@ const ChildProgressPage: React.FC = () => {
                 </p>
               </div>
             </div>
+            {weekActivity.byDay && weekActivity.byDay.length > 0 ? (
+              <div className="mt-6 rounded-xl bg-white/90 border border-gray-100 p-4">
+                <ReadingWeeklyBarChart
+                  byDay={weekActivity.byDay}
+                  title={`Minutes & pages per day (last ${weekActivity.days} days)`}
+                />
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -117,6 +126,7 @@ const ChildProgressPage: React.FC = () => {
           childOptions={[]}
           enableExportPrint
           documentTitle="My reading progress"
+          enableAssignmentSearch
         />
       </div>
     </div>

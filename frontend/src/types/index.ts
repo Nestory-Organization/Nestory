@@ -311,6 +311,14 @@ export interface ChildActivitySlice {
   progressSaveCount: number;
 }
 
+/** One calendar day in the activity window (UTC date key) — for charts. */
+export interface ReadingActivityDayRow {
+  date: string;
+  pages: number;
+  minutes: number;
+  progressSaveCount: number;
+}
+
 export interface ReadingActivitySummary {
   days: number;
   periodStart: string;
@@ -318,6 +326,7 @@ export interface ReadingActivitySummary {
   totalPagesLogged: number;
   totalMinutesLogged: number;
   progressSaveCount: number;
+  byDay?: ReadingActivityDayRow[];
   byChild?: ChildActivitySlice[];
 }
 

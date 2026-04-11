@@ -8,6 +8,9 @@ const {
   normalizeAssignmentStats,
   getId,
 } = require("../utils/contractTransformers");
+const {
+  deleteOrphanAssignmentsForParent,
+} = require("../utils/orphanAssignmentCleanup");
 
 // @desc    Get full family reading dashboard
 // @route   GET /api/dashboard/family
@@ -22,6 +25,8 @@ exports.getFamilyDashboard = async (req, res) => {
         message: "No family group found. Please create a family group first.",
       });
     }
+
+    await deleteOrphanAssignmentsForParent(req.user._id);
 
     // Get all active children
     const children = await Child.find({ parent: req.user._id, isActive: true });
@@ -257,6 +262,8 @@ exports.getFamilySummary = async (req, res) => {
         message: "No family group found. Please create a family group first.",
       });
     }
+
+    await deleteOrphanAssignmentsForParent(req.user._id);
 
     const allAssignments = await Assignment.find({ family: family._id });
     const total = allAssignments.length;
