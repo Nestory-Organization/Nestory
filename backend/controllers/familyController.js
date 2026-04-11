@@ -1,7 +1,10 @@
 const Family = require("../models/Family");
+const ChatGroup = require("../models/ChatGroup");
+const ChatMessage = require("../models/ChatMessage");
 const mongoose = require("mongoose");
 require("../models/Child"); // Register Child model so populate('children') works
 const { normalizeFamily } = require("../utils/contractTransformers");
+const { ensureChatGroupForFamily } = require("../services/chatService");
 // @desc    Create a new family group
 // @route   POST /api/family
 // @access  Private (Parent only)
@@ -23,6 +26,12 @@ exports.createFamily = async (req, res) => {
       familyName,
       parent: req.user._id,
     });
+
+    const chatGroup = await ensureChatGroupForFamily(family);
+    if (chatGroup) {
+      family.chatGroup = chatGroup._id;
+      await family.save();
+    }
 
     res.status(201).json({
       success: true,
@@ -196,6 +205,8 @@ exports.deleteFamily = async (req, res) => {
       });
     }
 
+    await ChatMessage.deleteMany({ family: family._id });
+    await ChatGroup.deleteOne({ family: family._id });
     await Family.findByIdAndDelete(req.params.id);
 
     res.status(200).json({

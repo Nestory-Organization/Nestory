@@ -4,6 +4,11 @@ const ReadingActivity = require("../models/ReadingActivity");
 const Story = require("../models/storyLibrary/Story");
 const Child = require("../models/Child");
 const { awardPointsForStoryRead, updateReadingProgressMidSession } = require('../helpers/gamificationHelper');
+const {
+  createReadingStartedMessage,
+  serializeMessage,
+} = require("../services/chatService");
+const { emitFamilyChatEvent } = require("../realtime/socketServer");
 
 // Normalize date to start of day (for streak: unique days with reading)
 const getDateKey = (date) => {
@@ -39,6 +44,31 @@ const resolveReadingChildId = (user) => {
     return user.childProfile || null;
   }
   return user._id;
+};
+
+const postReadingStartedChatNotification = async ({
+  childId,
+  storyId,
+  startedByUserId,
+  sessionId,
+}) => {
+  try {
+    const message = await createReadingStartedMessage({
+      childId,
+      storyId,
+      startedByUserId,
+      sessionId,
+    });
+
+    if (!message) return;
+
+    const serialized = serializeMessage(message.toObject());
+    emitFamilyChatEvent(serialized.family, "chat:new-message", {
+      message: serialized,
+    });
+  } catch (error) {
+    console.error("Failed to post reading-started chat notification", error);
+  }
 };
 
 // @desc    Start or resume a reading session (logged-in child; uses linked Child profile)
@@ -112,7 +142,9 @@ exports.startMySession = async (req, res) => {
     if (existing) {
       return res.status(200).json({
         success: true,
-        message: existing.completed ? "Reading session loaded" : "Reading session resumed",
+        message: existing.completed
+          ? "Reading session loaded"
+          : "Reading session resumed",
         data: existing,
       });
     }
@@ -124,6 +156,13 @@ exports.startMySession = async (req, res) => {
       pagesRead: 0,
       timeSpent: 0,
       completed: false,
+    });
+
+    await postReadingStartedChatNotification({
+      childId,
+      storyId: effectiveStoryId,
+      startedByUserId: req.user._id,
+      sessionId: session._id,
     });
 
     return res.status(201).json({
@@ -237,6 +276,13 @@ exports.startSession = async (req, res) => {
       pagesRead: 0,
       timeSpent: 0,
       completed: false,
+    });
+
+    await postReadingStartedChatNotification({
+      childId: effectiveChildId,
+      storyId: effectiveStoryId,
+      startedByUserId: req.user._id,
+      sessionId: session._id,
     });
 
     return res.status(201).json({
@@ -570,7 +616,10 @@ exports.getFamilyActivitySummary = async (req, res) => {
     start.setDate(end.getDate() - days);
     start.setHours(0, 0, 0, 0);
 
-    const children = await Child.find({ parent: req.user._id, isActive: true }).select("name");
+    const children = await Child.find({
+      parent: req.user._id,
+      isActive: true,
+    }).select("name");
     if (!children.length) {
       return res.status(200).json({
         success: true,
@@ -589,7 +638,7 @@ exports.getFamilyActivitySummary = async (req, res) => {
 
     const childIds = children.map((c) => c._id);
     const nameById = Object.fromEntries(
-      children.map((c) => [c._id.toString(), c.name || "Reader"])
+      children.map((c) => [c._id.toString(), c.name || "Reader"]),
     );
 
     const agg = await ReadingActivity.aggregate([
@@ -623,7 +672,7 @@ exports.getFamilyActivitySummary = async (req, res) => {
         minutes: acc.minutes + c.minutes,
         entries: acc.entries + c.progressSaveCount,
       }),
-      { pages: 0, minutes: 0, entries: 0 }
+      { pages: 0, minutes: 0, entries: 0 },
     );
 
     return res.status(200).json({
@@ -666,11 +715,11 @@ exports.getMySessions = async (req, res) => {
     const { status } = req.query; // optional: 'active' | 'completed'
 
     const filter = { childId: readerChildId };
-    if (status === 'active') filter.completed = false;
-    if (status === 'completed') filter.completed = true;
+    if (status === "active") filter.completed = false;
+    if (status === "completed") filter.completed = true;
 
     const sessions = await ReadingSession.find(filter)
-      .populate('bookId', 'title author coverImage pageCount')
+      .populate("bookId", "title author coverImage pageCount")
       .sort({ lastUpdatedAt: -1 })
       .lean();
 
@@ -679,24 +728,26 @@ exports.getMySessions = async (req, res) => {
       bookId: s.bookId,
       pagesRead: s.pagesRead,
       totalPages: s.totalPages,
-      progress: s.totalPages ? Number(((s.pagesRead / s.totalPages) * 100).toFixed(2)) : 0,
+      progress: s.totalPages
+        ? Number(((s.pagesRead / s.totalPages) * 100).toFixed(2))
+        : 0,
       timeSpent: s.timeSpent,
       completed: s.completed,
       startedAt: s.startedAt,
-      lastUpdatedAt: s.lastUpdatedAt
+      lastUpdatedAt: s.lastUpdatedAt,
     }));
 
     return res.status(200).json({
       success: true,
-      message: 'My sessions fetched',
-      data
+      message: "My sessions fetched",
+      data,
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -722,14 +773,14 @@ exports.getProgressByBook = async (req, res) => {
       bookId,
     })
       .sort({ lastUpdatedAt: -1 })
-      .populate('bookId', 'title author coverImage pageCount')
+      .populate("bookId", "title author coverImage pageCount")
       .lean();
 
     if (!session) {
       return res.status(200).json({
         success: true,
-        message: 'No session found for this book',
-        data: { session: null, progress: 0, pagesRead: 0, totalPages: null }
+        message: "No session found for this book",
+        data: { session: null, progress: 0, pagesRead: 0, totalPages: null },
       });
     }
 
@@ -739,7 +790,7 @@ exports.getProgressByBook = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Progress fetched',
+      message: "Progress fetched",
       data: {
         session: session._id,
         bookId: session.bookId,
@@ -747,15 +798,15 @@ exports.getProgressByBook = async (req, res) => {
         totalPages: session.totalPages,
         progress,
         completed: session.completed,
-        lastUpdatedAt: session.lastUpdatedAt
-      }
+        lastUpdatedAt: session.lastUpdatedAt,
+      },
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -771,7 +822,7 @@ exports.deleteSession = async (req, res) => {
     if (!session) {
       return res.status(404).json({
         success: false,
-        message: 'Session not found'
+        message: "Session not found",
       });
     }
 
@@ -799,14 +850,14 @@ exports.deleteSession = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Session deleted'
+      message: "Session deleted",
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -820,31 +871,42 @@ exports.getMonthlyAnalytics = async (req, res) => {
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
     const sessions = await ReadingSession.find({
       childId: new mongoose.Types.ObjectId(childId),
-      startedAt: { $gte: startOfMonth, $lte: endOfMonth }
+      startedAt: { $gte: startOfMonth, $lte: endOfMonth },
     });
 
-    const totalMinutes = sessions.reduce((sum, s) => sum + (s.timeSpent || 0), 0);
+    const totalMinutes = sessions.reduce(
+      (sum, s) => sum + (s.timeSpent || 0),
+      0,
+    );
     const booksCompleted = sessions.filter((s) => s.completed).length;
 
     return res.status(200).json({
       success: true,
-      message: 'Monthly analytics fetched',
+      message: "Monthly analytics fetched",
       data: {
         totalMinutes,
         sessionCount: sessions.length,
-        booksCompleted
-      }
+        booksCompleted,
+      },
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -857,9 +919,9 @@ exports.getTopBooks = async (req, res) => {
     const { childId } = req.params;
 
     const sessions = await ReadingSession.find({
-      childId: new mongoose.Types.ObjectId(childId)
+      childId: new mongoose.Types.ObjectId(childId),
     })
-      .populate('bookId', 'title author coverImage')
+      .populate("bookId", "title author coverImage")
       .lean();
 
     const byBook = {};
@@ -880,15 +942,15 @@ exports.getTopBooks = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Top books fetched',
-      data: top
+      message: "Top books fetched",
+      data: top,
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
@@ -901,11 +963,14 @@ exports.getAchievements = async (req, res) => {
     const { childId } = req.params;
 
     const sessions = await ReadingSession.find({
-      childId: new mongoose.Types.ObjectId(childId)
+      childId: new mongoose.Types.ObjectId(childId),
     }).sort({ startedAt: 1 });
 
     const completedCount = sessions.filter((s) => s.completed).length;
-    const totalMinutes = sessions.reduce((sum, s) => sum + (s.timeSpent || 0), 0);
+    const totalMinutes = sessions.reduce(
+      (sum, s) => sum + (s.timeSpent || 0),
+      0,
+    );
     const daySet = new Set();
     sessions.forEach((s) => daySet.add(getDateKey(s.startedAt)));
     const days = Array.from(daySet).sort((a, b) => a - b);
@@ -929,53 +994,56 @@ exports.getAchievements = async (req, res) => {
 
     const achievements = [
       {
-        id: 'first_book',
-        name: 'First Book',
-        description: 'Complete your first book',
+        id: "first_book",
+        name: "First Book",
+        description: "Complete your first book",
         unlocked: completedCount >= 1,
-        unlockedAt: completedCount >= 1 ? sessions.find((s) => s.completed)?.lastUpdatedAt : null
+        unlockedAt:
+          completedCount >= 1
+            ? sessions.find((s) => s.completed)?.lastUpdatedAt
+            : null,
       },
       {
-        id: 'five_books',
-        name: 'Bookworm',
-        description: 'Complete 5 books',
+        id: "five_books",
+        name: "Bookworm",
+        description: "Complete 5 books",
         unlocked: completedCount >= 5,
-        unlockedAt: null
+        unlockedAt: null,
       },
       {
-        id: 'streak_7',
-        name: 'Week Warrior',
-        description: 'Read 7 days in a row',
+        id: "streak_7",
+        name: "Week Warrior",
+        description: "Read 7 days in a row",
         unlocked: currentStreak >= 7,
-        unlockedAt: null
+        unlockedAt: null,
       },
       {
-        id: 'weekly_30',
-        name: 'Dedicated Reader',
-        description: 'Read 30 minutes in a week',
+        id: "weekly_30",
+        name: "Dedicated Reader",
+        description: "Read 30 minutes in a week",
         unlocked: weeklyMinutes >= 30,
-        unlockedAt: null
+        unlockedAt: null,
       },
       {
-        id: 'total_60',
-        name: 'Hour Reader',
-        description: 'Read 60 minutes total',
+        id: "total_60",
+        name: "Hour Reader",
+        description: "Read 60 minutes total",
         unlocked: totalMinutes >= 60,
-        unlockedAt: null
-      }
+        unlockedAt: null,
+      },
     ];
 
     return res.status(200).json({
       success: true,
-      message: 'Achievements fetched',
-      data: achievements
+      message: "Achievements fetched",
+      data: achievements,
     });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };

@@ -26,6 +26,7 @@ import ReaderPage from './pages/child/ReaderPage';
 import GoogleBooksImportPage from './pages/admin/storyLibrary/GoogleBooksImportPage';
 import ReadingPage from './pages/child/ReadingPage';
 import ChildProgressPage from './pages/child/ProgressPage';
+import FamilyChatPage from './pages/chat/FamilyChatPage';
 
 // Loading component
 const LoadingScreen: React.FC = () => (
@@ -123,6 +124,7 @@ const AppContent: React.FC = () => {
           <Route path="/family-settings" element={<FamilySettingsPage />} />
           <Route path="/progress" element={<ParentProgressPage />} />
           <Route path="/gamification" element={<GamificationPage />} />
+          <Route path="/chat" element={<FamilyChatPage />} />
         </>
       )}
 
@@ -152,6 +154,7 @@ const AppContent: React.FC = () => {
           <Route path="/reader/:storyId" element={<ReaderPage />} />
           <Route path="/child/read/:sessionId" element={<ReadingPage />} />
           <Route path="/child/progress" element={<ChildProgressPage />} />
+          <Route path="/child/chat" element={<FamilyChatPage />} />
         </>
       )}
 

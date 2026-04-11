@@ -45,32 +45,32 @@
 @layer components {
   /* Button variants */
   .btn-primary {
-    @apply px-4 py-2 bg-nestory-600 text-white rounded-lg font-semibold hover:bg-nestory-700 active:bg-nestory-800 transition-colors duration-200;
+    @apply px-4 py-2 bg-nestory-600 text-white rounded-lg font-semibold hover:bg-nestory-700 hover:shadow-lg hover:-translate-y-0.5 active:bg-nestory-800 transition-all duration-200;
   }
 
   .btn-secondary {
-    @apply px-4 py-2 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300 active:bg-gray-400 transition-colors duration-200;
+    @apply px-4 py-2 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300 hover:shadow-md hover:-translate-y-0.5 active:bg-gray-400 transition-all duration-200;
   }
 
   .btn-outline {
-    @apply px-4 py-2 border-2 border-nestory-600 text-nestory-600 rounded-lg font-semibold hover:bg-nestory-50 active:bg-nestory-100 transition-colors duration-200;
+    @apply px-4 py-2 border-2 border-nestory-600 text-nestory-600 rounded-lg font-semibold hover:bg-nestory-50 hover:shadow-md hover:-translate-y-0.5 active:bg-nestory-100 transition-all duration-200;
   }
 
   .btn-danger {
-    @apply px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 active:bg-red-800 transition-colors duration-200;
+    @apply px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 hover:shadow-lg hover:-translate-y-0.5 active:bg-red-800 transition-all duration-200;
   }
 
   .btn-success {
-    @apply px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 active:bg-green-800 transition-colors duration-200;
+    @apply px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 hover:shadow-lg hover:-translate-y-0.5 active:bg-green-800 transition-all duration-200;
   }
 
   /* Card styles */
   .card {
-    @apply bg-white rounded-lg border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow duration-200;
+    @apply bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-300;
   }
 
   .card-interactive {
-    @apply card cursor-pointer hover:border-nestory-400 hover:shadow-md transition-all duration-200;
+    @apply card cursor-pointer hover:border-nestory-300 hover:shadow-xl hover:scale-[1.01] transition-all duration-300;
   }
 
   /* Input styles */
@@ -126,4 +126,100 @@
 
 .transition-smooth {
   @apply transition-all duration-300 ease-in-out;
+}
+
+/* Enhanced Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gentle-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes shimmer-loading {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-pulse-gentle {
+  animation: gentle-pulse 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 1000px 100%;
+  animation: shimmer-loading 2s infinite;
+}
+
+/* Enhanced hover effects */
+.card-hover-lift {
+  @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+}
+
+.smooth-transition {
+  @apply transition-all duration-300 ease-out;
 }
