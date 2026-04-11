@@ -143,6 +143,16 @@ const LoginPage: React.FC = () => {
               </div>
             )}
 
+            {/* Forgot Password Link */}
+            <div className="text-right">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-nestory-600 font-semibold hover:text-nestory-700"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             {/* Submit Button */}
             <button
               type="submit"

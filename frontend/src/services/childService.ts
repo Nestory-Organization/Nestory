@@ -8,6 +8,8 @@ class ChildService {
     age: number;
     avatar?: string;
     family?: string;
+    readingLevel?: 'beginner' | 'intermediate' | 'advanced';
+    email?: string;
   }): Promise<AddChildResponse> {
     const response = await apiClient.getInstance().post<ApiResponse<AddChildResponse>>(
       '/children',

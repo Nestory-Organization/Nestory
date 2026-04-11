@@ -92,6 +92,7 @@ export interface Child {
   parent: string;
   isActive: boolean;
   readingLevel?: 'beginner' | 'intermediate' | 'advanced';
+  email?: string;
   createdAt: string;
   updatedAt: string;
 }

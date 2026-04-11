@@ -78,3 +78,23 @@ exports.updateProfileValidation = [
     .isMobilePhone()
     .withMessage("Please provide a valid phone number"),
 ];
+
+// Forgot password validation rules
+exports.forgotPasswordValidation = [
+  body("email")
+    .trim()
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Please provide a valid email")
+    .normalizeEmail(),
+];
+
+// Reset password validation rules
+exports.resetPasswordValidation = [
+  body("newPassword")
+    .notEmpty()
+    .withMessage("New password is required")
+    .isLength({ min: 6 })
+    .withMessage("New password must be at least 6 characters long"),
+];

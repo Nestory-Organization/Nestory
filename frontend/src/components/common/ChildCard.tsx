@@ -51,7 +51,15 @@ const ChildCard: React.FC<ChildCardProps> = ({
 
       {/* Child Info */}
       <h3 className="font-bold text-center text-gray-900 text-lg mb-1">{child.name}</h3>
-      <p className="text-center text-gray-600 text-sm mb-4">Age: {child.age}</p>
+      <p className="text-center text-gray-600 text-sm mb-2">Age: {child.age}</p>
+      
+      {/* Email */}
+      {child.email && (
+        <p className="text-center text-gray-500 text-xs mb-4 break-all">
+          <span className="text-gray-400">📧 </span>
+          {child.email}
+        </p>
+      )}
 
       {/* Reading Level Indicator */}
       {child.readingLevel && (

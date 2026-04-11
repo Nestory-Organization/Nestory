@@ -8,6 +8,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 // Pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import ParentDashboard from './pages/parent/Dashboard';
 import StoriesPage from './pages/parent/StoriesPage';
 import StoryDetailPage from './pages/parent/StoryDetailPage';
@@ -100,6 +102,22 @@ const AppContent: React.FC = () => {
           isAuthenticated && hasValidRole
             ? <Navigate to={getDefaultRoute()} replace />
             : <RegisterPage />
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          isAuthenticated && hasValidRole
+            ? <Navigate to={getDefaultRoute()} replace />
+            : <ForgotPasswordPage />
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          isAuthenticated && hasValidRole
+            ? <Navigate to={getDefaultRoute()} replace />
+            : <ResetPasswordPage />
         }
       />
 

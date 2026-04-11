@@ -136,12 +136,15 @@ const ParentDashboard: React.FC = () => {
     name: string;
     age: number;
     avatar: string;
+    readingLevel: 'beginner' | 'intermediate' | 'advanced';
+    email?: string;
     readingLevel: ChildReadingLevel;
   }>({
     name: '',
     age: 5,
     avatar: '👧',
     readingLevel: 'beginner',
+    email: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -149,6 +152,7 @@ const ParentDashboard: React.FC = () => {
     const newErrors: Record<string, string> = {};
     const trimmedName = formData.name.trim();
     const trimmedAvatar = formData.avatar.trim();
+    const trimmedEmail = formData.email?.trim() || '';
 
     if (!trimmedName) {
       newErrors.name = 'Child name is required';
@@ -164,6 +168,13 @@ const ParentDashboard: React.FC = () => {
       newErrors.avatar = 'Avatar must be 2048 characters or less';
     } else if (!isValidAvatar(trimmedAvatar)) {
       newErrors.avatar = 'Avatar must be an emoji or a valid http/https URL';
+    }
+
+    if (trimmedEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        newErrors.email = 'Please provide a valid email address';
+      }
     }
 
     setFormErrors(newErrors);
@@ -370,12 +381,16 @@ const ParentDashboard: React.FC = () => {
 
     try {
       setIsSavingChild(true);
-      const payload = {
+      const payload: any = {
         name: formData.name.trim(),
         age: formData.age,
         avatar: formData.avatar.trim(),
         readingLevel: formData.readingLevel,
       };
+
+      if (formData.email?.trim()) {
+        payload.email = formData.email.trim();
+      }
 
       if (editingChild) {
         const updated = await ChildService.updateChild(editingChild.id, {
@@ -396,7 +411,7 @@ const ParentDashboard: React.FC = () => {
       }
 
       // Reset form and close modal
-      setFormData({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner' });
+      setFormData({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner', email: '' });
       setShowAddChildModal(false);
       setEditingChild(null);
       setFormErrors({});
@@ -429,6 +444,7 @@ const ParentDashboard: React.FC = () => {
       age: child.age,
       avatar: child.avatar || '👧',
       readingLevel: child.readingLevel || 'beginner',
+      email: child.email || '',
     });
     setShowAddChildModal(true);
   };
@@ -453,7 +469,7 @@ const ParentDashboard: React.FC = () => {
     setShowAddChildModal(false);
     setEditingChild(null);
     setFormErrors({});
-    setFormData({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner' });
+    setFormData({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner', email: '' });
   };
 
   const handleResetChildPassword = async (childId: string) => {
@@ -1203,6 +1219,22 @@ const ParentDashboard: React.FC = () => {
             }}
             placeholder="e.g., 👧 or https://example.com/avatar.png"
             error={formErrors.avatar}
+          />
+
+          {/* Email (Optional) */}
+          <InputField
+            label="Email (Optional)"
+            name="email"
+            type="email"
+            value={formData.email || ''}
+            onChange={(e) => {
+              setFormData({ ...formData, email: e.target.value });
+              if (formErrors.email) {
+                setFormErrors((prev) => ({ ...prev, email: '' }));
+              }
+            }}
+            placeholder="e.g., emma.doe@example.com (leave empty to auto-generate)"
+            error={formErrors.email}
           />
 
           {/* Reading Level */}
