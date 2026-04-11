@@ -1,24 +1,5 @@
 {
   "version": 2,
   "buildCommand": "cd frontend && npm run build",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "npm install && cd backend && npm install && cd ../frontend && npm install",
-  "functions": {
-    "backend/server.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/backend/server.js"
-    }
-  ],
-  "env": {
-    "MONGO_URI": "mongodb+srv://nestory_admin:DxeZ2Bv38KV1Isof@cluster0.jzjmmvn.mongodb.net/nestory?retryWrites=true&w=majority&appName=Cluster0",
-    "JWT_SECRET": "409ac05ddfc90f0532efac315428f8857d6af5eaa64388bc171dce12584a6c9c",
-    "JWT_EXPIRE": "30d",
-    "NODE_ENV": "production"
-  }
+  "outputDirectory": "frontend/dist"
 }
