@@ -3,7 +3,15 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
-import { BookOpen, Flame, Award, CalendarDays, BarChart3, ListChecks } from 'lucide-react';
+import {
+  BookOpen,
+  Flame,
+  Award,
+  CalendarDays,
+  BarChart3,
+  ListChecks,
+  Sparkles,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import StoryService from '../../services/storyService';
 import AssignmentService from '../../services/assignmentService';
@@ -129,20 +137,34 @@ const ChildDashboard: React.FC = () => {
 
       <div className="container-responsive py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">
-            Welcome, {user?.name || 'Reader'}
-          </h1>
-          <p className="text-gray-600">
-            You can open and read only books your parent assigns. Start from My Assigned Stories below.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/child/progress')}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 transition-colors"
-          >
-            <BarChart3 size={18} />
-            View my reading progress
-          </button>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">
+                Welcome, {user?.name || 'Reader'}
+              </h1>
+              <p className="text-gray-600">
+                You can open and read only books your parent assigns. Start from My Assigned Stories below.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => navigate('/child/progress')}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 transition-colors"
+              >
+                <BarChart3 size={18} />
+                View my reading progress
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/child/gamification')}
+                className="btn-primary inline-flex items-center justify-center gap-2"
+              >
+                <Sparkles size={18} />
+                View Gamification
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

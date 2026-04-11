@@ -634,6 +634,13 @@ const ParentDashboard: React.FC = () => {
               <Book size={20} />
               Browse Stories
             </button>
+            <button
+              onClick={() => navigate('/gamification')}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <Sparkles size={18} />
+              View Gamification
+            </button>
           </div>
         </div>
 
