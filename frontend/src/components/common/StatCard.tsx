@@ -7,7 +7,7 @@ interface StatCardProps {
   icon: LucideIcon;
   color?: 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'pink';
   subtext?: string;
-  trend?: number; // percentage change
+  trend?: number;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -18,32 +18,35 @@ const StatCard: React.FC<StatCardProps> = ({
   subtext,
   trend,
 }) => {
-  const colorMap = {
-    blue: 'bg-blue-100 text-blue-600',
-    green: 'bg-green-100 text-green-600',
-    purple: 'bg-purple-100 text-purple-600',
-    orange: 'bg-orange-100 text-orange-600',
-    red: 'bg-red-100 text-red-600',
-    pink: 'bg-pink-100 text-pink-600',
+  const colorMap: Record<string, string> = {
+    blue: 'bg-primary-container text-primary-700',
+    green: 'bg-tertiary-container text-tertiary-700',
+    purple: 'bg-secondary-100 text-secondary-800',
+    orange: 'bg-amber-100 text-amber-900',
+    red: 'bg-red-100 text-red-800',
+    pink: 'bg-rose-100 text-rose-800',
   };
 
   return (
-    <div className="card animate-slide-up">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-semibold text-gray-600 mb-2">{title}</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-3xl font-bold text-gray-900">{value}</h3>
-            {trend && (
-              <span className={`text-xs font-semibold ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {trend > 0 ? '+' : ''}{trend}%
+    <div className="card animate-slide-up bg-surface-container-lowest">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="eyebrow mb-2">{title}</p>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <h3 className="font-headline text-3xl font-semibold text-on-surface">{value}</h3>
+            {trend ? (
+              <span
+                className={`text-xs font-semibold ${trend > 0 ? 'text-tertiary-700' : 'text-red-700'}`}
+              >
+                {trend > 0 ? '+' : ''}
+                {trend}%
               </span>
-            )}
+            ) : null}
           </div>
-          {subtext && <p className="text-xs text-gray-500 mt-1">{subtext}</p>}
+          {subtext && <p className="text-xs text-on-surface-variant mt-2 leading-relaxed">{subtext}</p>}
         </div>
-        <div className={`${colorMap[color]} p-4 rounded-lg`}>
-          <Icon size={28} />
+        <div className={`${colorMap[color]} p-3.5 rounded-2xl shrink-0 shadow-ambient-sm`}>
+          <Icon size={26} strokeWidth={2} />
         </div>
       </div>
     </div>

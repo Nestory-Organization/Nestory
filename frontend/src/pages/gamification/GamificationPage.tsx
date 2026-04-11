@@ -92,13 +92,14 @@ const GamificationPage: React.FC = () => {
   const leaderboardTitle = user?.role === 'child' ? 'Child Leaderboard' : 'Leaderboard';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-shell min-h-screen">
       <Navbar title="Gamification" />
       <div className="container-responsive py-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Gamification</h1>
-            <p className="text-gray-600 mt-1">
+            <p className="eyebrow text-primary-700 mb-2">Celebrate every page</p>
+            <h1 className="font-headline text-3xl font-semibold text-on-surface tracking-tight">Gamification</h1>
+            <p className="text-on-surface-variant mt-1">
               Track points, badges, achievements, and leaderboard progress inside Nestory.
             </p>
           </div>
@@ -152,29 +153,29 @@ const GamificationPage: React.FC = () => {
                   <p className="text-sm font-semibold text-nestory-700 flex items-center gap-2">
                     <Award size={16} /> Earned Badges
                   </p>
-                  <h2 className="text-xl font-bold text-gray-900 mt-1">Your Badge Collection</h2>
+                  <h2 className="text-xl font-bold text-on-surface mt-1">Your Badge Collection</h2>
                 </div>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-on-surface-variant/75">
                   {earnedBadges.length} earned
                 </span>
               </div>
               {isLoading ? (
-                <p className="text-gray-600">Loading badges …</p>
+                <p className="text-on-surface-variant">Loading badges …</p>
               ) : earnedBadges.length === 0 ? (
-                <p className="text-gray-600">No badges earned yet. Keep reading and completing assignments to unlock your first badge.</p>
+                <p className="text-on-surface-variant">No badges earned yet. Keep reading and completing assignments to unlock your first badge.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {earnedBadges.map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-gray-200 p-4 bg-white">
+                    <div key={item.id} className="rounded-2xl p-4 bg-surface-container-lowest shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)]">
                       <div className="flex items-center justify-between gap-3 mb-3">
                         <div>
-                          <p className="font-semibold text-gray-900">{item.badge.name}</p>
-                          <p className="text-sm text-gray-500">{item.badge.category}</p>
+                          <p className="font-semibold text-on-surface">{item.badge.name}</p>
+                          <p className="text-sm text-on-surface-variant/75">{item.badge.category}</p>
                         </div>
                         <div className="badge bg-green-100 text-green-800">{item.badge.points} pts</div>
                       </div>
-                      <p className="text-sm text-gray-600 mb-3">{item.badge.description}</p>
-                      <p className="text-xs text-gray-500">Earned {item.earnedAt ? new Date(item.earnedAt).toLocaleDateString() : 'recently'}</p>
+                      <p className="text-sm text-on-surface-variant mb-3">{item.badge.description}</p>
+                      <p className="text-xs text-on-surface-variant/75">Earned {item.earnedAt ? new Date(item.earnedAt).toLocaleDateString() : 'recently'}</p>
                     </div>
                   ))}
                 </div>
@@ -187,24 +188,24 @@ const GamificationPage: React.FC = () => {
                   <p className="text-sm font-semibold text-nestory-700 flex items-center gap-2">
                     <ShieldCheck size={16} /> Available Badges
                   </p>
-                  <h2 className="text-xl font-bold text-gray-900 mt-1">Badges to Earn</h2>
+                  <h2 className="text-xl font-bold text-on-surface mt-1">Badges to Earn</h2>
                 </div>
-                <span className="text-sm text-gray-500">{availableBadges.length} options</span>
+                <span className="text-sm text-on-surface-variant/75">{availableBadges.length} options</span>
               </div>
               {isLoading ? (
-                <p className="text-gray-600">Loading available badge list …</p>
+                <p className="text-on-surface-variant">Loading available badge list …</p>
               ) : availableBadges.length === 0 ? (
-                <p className="text-gray-600">You have already unlocked all active badges, or no badge definitions are available.</p>
+                <p className="text-on-surface-variant">You have already unlocked all active badges, or no badge definitions are available.</p>
               ) : (
                 <div className="space-y-3">
                   {availableBadges.slice(0, 6).map((badge) => (
-                    <div key={badge.id} className="rounded-2xl border border-gray-200 p-4 bg-white">
+                    <div key={badge.id} className="rounded-2xl p-4 bg-surface-container-lowest shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)]">
                       <div className="flex items-center justify-between gap-3 mb-2">
-                        <p className="font-semibold text-gray-900">{badge.name}</p>
+                        <p className="font-semibold text-on-surface">{badge.name}</p>
                         <span className="badge bg-indigo-100 text-indigo-800">{badge.points} pts</span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">{badge.description}</p>
-                      <p className="text-xs text-gray-500">Requires {badge.criteria?.threshold ?? 'N/A'} {badge.criteria?.type?.replace('_', ' ')}</p>
+                      <p className="text-sm text-on-surface-variant mb-2">{badge.description}</p>
+                      <p className="text-xs text-on-surface-variant/75">Requires {badge.criteria?.threshold ?? 'N/A'} {badge.criteria?.type?.replace('_', ' ')}</p>
                     </div>
                   ))}
                 </div>
@@ -218,38 +219,38 @@ const GamificationPage: React.FC = () => {
                 <p className="text-sm font-semibold text-nestory-700 flex items-center gap-2">
                   <ListChecks size={16} /> Achievement Progress
                 </p>
-                <h2 className="text-xl font-bold text-gray-900 mt-1">Goal Tracker</h2>
+                <h2 className="text-xl font-bold text-on-surface mt-1">Goal Tracker</h2>
               </div>
-              <span className="text-sm text-gray-500">{achievements.length} tracked</span>
+              <span className="text-sm text-on-surface-variant/75">{achievements.length} tracked</span>
             </div>
             {isLoading ? (
-              <p className="text-gray-600">Loading achievements …</p>
+              <p className="text-on-surface-variant">Loading achievements …</p>
             ) : achievements.length === 0 ? (
-              <p className="text-gray-600">No tracked achievements yet. Complete more actions to start progress bars.</p>
+              <p className="text-on-surface-variant">No tracked achievements yet. Complete more actions to start progress bars.</p>
             ) : (
               <div className="space-y-4">
                 {[...activeAchievements, ...completedAchievements].map((item) => (
-                  <div key={`${item.achievement.id}-${item.completed ? 'completed' : 'active'}`} className="rounded-2xl border border-gray-200 p-4 bg-white">
+                  <div key={`${item.achievement.id}-${item.completed ? 'completed' : 'active'}`} className="rounded-2xl p-4 bg-surface-container-lowest shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)]">
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <div>
-                        <p className="font-semibold text-gray-900">{item.achievement.name}</p>
-                        <p className="text-sm text-gray-500">{item.achievement.description}</p>
+                        <p className="font-semibold text-on-surface">{item.achievement.name}</p>
+                        <p className="text-sm text-on-surface-variant/75">{item.achievement.description}</p>
                       </div>
                       <span className={`badge ${item.completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                         {item.completed ? 'Completed' : 'In progress'}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500 mb-2">
+                    <div className="text-xs text-on-surface-variant/75 mb-2">
                       {item.progress}/{item.achievement.targetValue} points
                     </div>
-                    <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                    <div className="h-2 rounded-full bg-surface-container-high overflow-hidden">
                       <div
                         className="h-2 bg-gradient-to-r from-nestory-500 to-blue-500"
                         style={{ width: `${Math.min((item.progress / Math.max(item.achievement.targetValue, 1)) * 100, 100)}%` }}
                       />
                     </div>
                     {item.completedAt && (
-                      <p className="text-xs text-gray-500 mt-2">Completed {new Date(item.completedAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-on-surface-variant/75 mt-2">Completed {new Date(item.completedAt).toLocaleDateString()}</p>
                     )}
                   </div>
                 ))}
@@ -265,26 +266,26 @@ const GamificationPage: React.FC = () => {
                 <p className="text-sm font-semibold text-nestory-700 flex items-center gap-2">
                   <TrendingUp size={16} /> {leaderboardTitle}
                 </p>
-                <h2 className="text-xl font-bold text-gray-900 mt-1">Top Players</h2>
+                <h2 className="text-xl font-bold text-on-surface mt-1">Top Players</h2>
               </div>
-              <span className="text-sm text-gray-500">Top {leaderboard.length}</span>
+              <span className="text-sm text-on-surface-variant/75">Top {leaderboard.length}</span>
             </div>
             {isLoading ? (
-              <p className="text-gray-600">Loading leaderboard …</p>
+              <p className="text-on-surface-variant">Loading leaderboard …</p>
             ) : leaderboard.length === 0 ? (
-              <p className="text-gray-600">No leaderboard entries yet.</p>
+              <p className="text-on-surface-variant">No leaderboard entries yet.</p>
             ) : (
               <div className="space-y-3">
                 {leaderboard.map((entry, index) => (
-                  <div key={entry.id} className="rounded-2xl border border-gray-200 p-4 bg-white flex items-center justify-between gap-3">
+                  <div key={entry.id} className="rounded-2xl p-4 bg-surface-container-lowest shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)] flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm text-gray-500">#{index + 1} {entry.child ? `(${entry.child.name})` : entry.user?.name}</p>
-                      <p className="font-semibold text-gray-900">{entry.user?.name || entry.child?.name || 'Unknown'}</p>
-                      <p className="text-xs text-gray-500 mt-1">{entry.totalPoints} points • Level {entry.level}</p>
+                      <p className="text-sm text-on-surface-variant/75">#{index + 1} {entry.child ? `(${entry.child.name})` : entry.user?.name}</p>
+                      <p className="font-semibold text-on-surface">{entry.user?.name || entry.child?.name || 'Unknown'}</p>
+                      <p className="text-xs text-on-surface-variant/75 mt-1">{entry.totalPoints} points • Level {entry.level}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900">{entry.currentStreak}d</p>
-                      <p className="text-xs text-gray-500">streak</p>
+                      <p className="font-semibold text-on-surface">{entry.currentStreak}d</p>
+                      <p className="text-xs text-on-surface-variant/75">streak</p>
                     </div>
                   </div>
                 ))}
@@ -298,28 +299,28 @@ const GamificationPage: React.FC = () => {
                 <p className="text-sm font-semibold text-nestory-700 flex items-center gap-2">
                   <Clock size={16} /> Recent Activity
                 </p>
-                <h2 className="text-xl font-bold text-gray-900 mt-1">Point History</h2>
+                <h2 className="text-xl font-bold text-on-surface mt-1">Point History</h2>
               </div>
-              <span className="text-sm text-gray-500">Last {transactions.length}</span>
+              <span className="text-sm text-on-surface-variant/75">Last {transactions.length}</span>
             </div>
             {isLoading ? (
-              <p className="text-gray-600">Loading transactions …</p>
+              <p className="text-on-surface-variant">Loading transactions …</p>
             ) : transactions.length === 0 ? (
-              <p className="text-gray-600">No recent point transactions yet.</p>
+              <p className="text-on-surface-variant">No recent point transactions yet.</p>
             ) : (
               <div className="space-y-3">
                 {transactions.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-gray-200 p-4 bg-white">
+                  <div key={item.id} className="rounded-2xl p-4 bg-surface-container-lowest shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)]">
                     <div className="flex items-center justify-between gap-3 mb-2">
                       <div>
-                        <p className="font-semibold text-gray-900">{item.description}</p>
-                        <p className="text-xs text-gray-500">{item.source.replace('_', ' ')}</p>
+                        <p className="font-semibold text-on-surface">{item.description}</p>
+                        <p className="text-xs text-on-surface-variant/75">{item.source.replace('_', ' ')}</p>
                       </div>
                       <span className={`font-semibold ${item.points >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                         {item.points > 0 ? `+${item.points}` : item.points}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500">Balance: {item.balanceAfter}</p>
+                    <p className="text-xs text-on-surface-variant/75">Balance: {item.balanceAfter}</p>
                   </div>
                 ))}
               </div>
@@ -327,11 +328,11 @@ const GamificationPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="card border-dashed border-gray-300">
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+        <div className="card border border-dashed border-on-surface/[0.12] bg-surface-container-low/40">
+          <div className="flex items-center gap-2 text-sm text-on-surface-variant/75 mb-3">
             <Sparkles size={16} /> Tip
           </div>
-          <p className="text-sm text-gray-600">Use this screen to celebrate reading milestones, check current progress, and compare your score with other Nestory players. If you want, refresh the page after completing a story, assignment, or challenge.</p>
+          <p className="text-sm text-on-surface-variant">Use this screen to celebrate reading milestones, check current progress, and compare your score with other Nestory players. If you want, refresh the page after completing a story, assignment, or challenge.</p>
         </div>
       </div>
     </div>

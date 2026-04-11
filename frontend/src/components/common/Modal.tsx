@@ -33,40 +33,39 @@ const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-      <div className={`bg-white rounded-lg shadow-xl ${sizeMap[size]} w-full mx-4 animate-scale-in`}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+      style={{ background: 'rgba(48, 51, 46, 0.45)' }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <div
+        className={`bg-surface-container-lowest rounded-2xl shadow-ambient w-full ${sizeMap[size]} mx-auto animate-scale-in overflow-hidden`}
+      >
+        <div className="flex items-center justify-between px-6 py-4 bg-surface-container-low">
+          <h2 id="modal-title" className="font-headline text-lg font-semibold text-on-surface pr-2">
+            {title}
+          </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors duration-200 ease-spring shrink-0"
             disabled={isLoading}
+            aria-label="Close"
           >
-            <X size={24} />
+            <X size={22} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {children}
-        </div>
+        <div className="p-6 bg-surface-container-lowest">{children}</div>
 
-        {/* Footer with Actions */}
         {onConfirm && (
-          <div className="flex gap-3 justify-end p-6 border-t border-gray-200 bg-gray-50">
-            <button
-              onClick={onClose}
-              className="btn-secondary"
-              disabled={isLoading}
-            >
+          <div className="flex gap-3 justify-end px-6 py-4 bg-surface-container-low">
+            <button type="button" onClick={onClose} className="btn-secondary" disabled={isLoading}>
               {cancelText}
             </button>
-            <button
-              onClick={onConfirm}
-              className="btn-primary"
-              disabled={isLoading}
-            >
+            <button type="button" onClick={onConfirm} className="btn-primary" disabled={isLoading}>
               {isLoading ? 'Loading...' : confirmText}
             </button>
           </div>

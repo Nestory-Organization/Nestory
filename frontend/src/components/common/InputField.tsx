@@ -35,13 +35,15 @@ const InputField: React.FC<InputFieldProps> = ({
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <label className="block text-sm font-semibold text-on-surface mb-2">
           {label}
           {required && <span className="text-red-600 ml-1">*</span>}
         </label>
       )}
       <div className="relative">
-        {Icon && <Icon className="absolute left-3 top-3 text-gray-400" size={20} />}
+        {Icon && (
+          <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" size={20} />
+        )}
         <input
           type={type}
           name={name}
@@ -52,12 +54,12 @@ const InputField: React.FC<InputFieldProps> = ({
           min={min}
           max={max}
           step={step}
-          className={`input-base ${Icon ? 'pl-10' : ''} ${
-            error ? 'border-red-500 focus:ring-red-500' : ''
-          } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+          className={`input-base ${Icon ? 'pl-11' : ''} ${
+            error ? '!shadow-[inset_0_0_0_2px_rgba(220,38,38,0.35)]' : ''
+          } ${disabled ? 'opacity-60 cursor-not-allowed bg-surface-container-low' : ''}`}
         />
       </div>
-      {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+      {error && <p className="text-red-700 text-sm mt-1.5">{error}</p>}
     </div>
   );
 };

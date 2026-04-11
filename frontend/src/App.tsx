@@ -30,10 +30,10 @@ import FamilyChatPage from './pages/chat/FamilyChatPage';
 
 // Loading component
 const LoadingScreen: React.FC = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-nestory-50 to-blue-50">
-    <div className="text-center">
-      <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
-      <p className="text-nestory-600 font-semibold">Loading Nestory...</p>
+  <div className="flex items-center justify-center min-h-screen page-shell">
+    <div className="text-center animate-fade-in">
+      <div className="w-16 h-16 border-[3px] border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4" />
+      <p className="font-headline text-primary-800 font-semibold">Opening your library…</p>
     </div>
   </div>
 );
@@ -174,9 +174,12 @@ const App: React.FC = () => {
             position="top-right"
             toastOptions={{
               duration: 4000,
+              className: 'font-body',
               style: {
-                background: '#1e293b',
-                color: '#fff',
+                background: 'linear-gradient(135deg, #30332e 0%, #3d403a 100%)',
+                color: '#fafaf5',
+                borderRadius: '1rem',
+                boxShadow: '0 12px 32px rgba(232, 74, 95, 0.12)',
               },
             }}
           />

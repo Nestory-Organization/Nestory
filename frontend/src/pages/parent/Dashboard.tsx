@@ -542,11 +542,11 @@ const ParentDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="page-shell">
         <Navbar title="Dashboard" />
         <div className="container-responsive py-8 text-center">
-          <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your family data...</p>
+          <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-on-surface-variant">Loading your family data...</p>
         </div>
       </div>
     );
@@ -554,13 +554,13 @@ const ParentDashboard: React.FC = () => {
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="page-shell">
         <Navbar title="Dashboard" />
         <div className="container-responsive py-10">
           <div className="card max-w-2xl mx-auto text-center py-12">
             <AlertCircle className="mx-auto mb-4 text-red-600" size={36} />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to load your dashboard</h2>
-            <p className="text-gray-600 mb-6">{loadError}</p>
+            <h2 className="text-2xl font-bold text-on-surface mb-2">Unable to load your dashboard</h2>
+            <p className="text-on-surface-variant mb-6">{loadError}</p>
             <div className="flex justify-center gap-3">
               <button onClick={loadData} className="btn-primary">Try Again</button>
               <button onClick={() => navigate('/family-settings')} className="btn-secondary">Family Settings</button>
@@ -573,17 +573,17 @@ const ParentDashboard: React.FC = () => {
 
   if (!family) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="page-shell">
         <Navbar title="Dashboard" />
         <div className="container-responsive py-10">
           <div className="card max-w-3xl mx-auto">
             <div className="flex items-start gap-4 mb-6">
-              <div className="w-12 h-12 rounded-full bg-nestory-100 flex items-center justify-center">
-                <Home className="text-nestory-700" size={22} />
+              <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
+                <Home className="text-primary-700" size={22} />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your Family Group</h1>
-                <p className="text-gray-600">To add children, assign stories, and track reading progress, start by creating your family profile.</p>
+                <h1 className="text-3xl font-bold text-on-surface mb-2">Create Your Family Group</h1>
+                <p className="text-on-surface-variant">To add children, assign stories, and track reading progress, start by creating your family profile.</p>
               </div>
             </div>
 
@@ -617,7 +617,7 @@ const ParentDashboard: React.FC = () => {
                 </button>
               </div>
 
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-on-surface-variant/75">
                 Backend rules: only parents can manage families, and each parent can have only one family group.
               </p>
             </div>
@@ -628,17 +628,24 @@ const ParentDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="page-shell">
       <Navbar title="Dashboard" />
 
       <div className="container-responsive py-8">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-10 animate-fade-in">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Parent Dashboard</h1>
-            <p className="text-gray-600 text-lg">{family?.familyName || 'Your Family'}  <span className="text-gray-400">•</span>  {children.length} {children.length === 1 ? 'child' : 'children'}</p>
+            <p className="eyebrow text-primary-700 mb-2">Family reading hub</p>
+            <h1 className="font-headline text-4xl font-semibold text-on-surface mb-2 tracking-tight">
+              Parent dashboard
+            </h1>
+            <p className="text-on-surface-variant text-lg">
+              {family?.familyName || 'Your Family'}{' '}
+              <span className="text-on-surface-variant/50">·</span> {children.length}{' '}
+              {children.length === 1 ? 'child' : 'children'}
+            </p>
             {lastUpdatedAt && (
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-on-surface-variant/75 mt-2">
                 Last updated {new Date(lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
             )}
@@ -666,8 +673,9 @@ const ParentDashboard: React.FC = () => {
               View Gamification
             </button>
             <button
+              type="button"
               onClick={() => navigate('/chat')}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 relative"
+              className="btn-primary relative inline-flex items-center gap-2 px-6 py-3"
             >
               <MessageCircle size={18} />
               Family Chat
@@ -730,17 +738,17 @@ const ParentDashboard: React.FC = () => {
         </div>
 
         {weekActivity && children.length > 0 && (
-          <div className="card mb-8 border-nestory-200 bg-gradient-to-br from-white to-nestory-50/40">
+          <div className="card mb-8 bg-gradient-to-br from-surface-container-lowest to-primary-50/30 shadow-[inset_0_0_0_1px_rgba(232,74,95,0.1)]">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <BarChart3 className="text-nestory-600" size={20} />
+                <h2 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                  <BarChart3 className="text-primary-600" size={20} />
                   Week in review
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-on-surface-variant mt-1">
                   Pages and minutes from children tapping Save progress (last {weekActivity.days} days).
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-on-surface-variant/75 mt-1">
                   {new Date(weekActivity.periodStart).toLocaleDateString()} –{' '}
                   {new Date(weekActivity.periodEnd).toLocaleDateString()}
                 </p>
@@ -754,33 +762,33 @@ const ParentDashboard: React.FC = () => {
               </button>
             </div>
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Pages logged</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalPagesLogged}</p>
+              <div className="rounded-xl bg-surface-container-lowest/95 shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)] p-3 text-center">
+                <p className="text-xs text-on-surface-variant/75">Pages logged</p>
+                <p className="text-2xl font-bold text-on-surface">{weekActivity.totalPagesLogged}</p>
               </div>
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Minutes logged</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalMinutesLogged}</p>
+              <div className="rounded-xl bg-surface-container-lowest/95 shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)] p-3 text-center">
+                <p className="text-xs text-on-surface-variant/75">Minutes logged</p>
+                <p className="text-2xl font-bold text-on-surface">{weekActivity.totalMinutesLogged}</p>
               </div>
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Progress saves</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.progressSaveCount}</p>
+              <div className="rounded-xl bg-surface-container-lowest/95 shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)] p-3 text-center">
+                <p className="text-xs text-on-surface-variant/75">Progress saves</p>
+                <p className="text-2xl font-bold text-on-surface">{weekActivity.progressSaveCount}</p>
               </div>
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Children with activity</p>
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="rounded-xl bg-surface-container-lowest/95 shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)] p-3 text-center">
+                <p className="text-xs text-on-surface-variant/75">Children with activity</p>
+                <p className="text-2xl font-bold text-on-surface">
                   {weekActivity.byChild?.filter((c) => c.progressSaveCount > 0).length ?? 0}
                 </p>
               </div>
             </div>
             {weekActivity.byChild && weekActivity.byChild.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-sm font-semibold text-gray-800 mb-2">By child</p>
-                <ul className="grid sm:grid-cols-2 gap-2 text-sm text-gray-700">
+              <div className="mt-4 pt-4 border-t border-on-surface/[0.06]">
+                <p className="text-sm font-semibold text-on-surface mb-2">By child</p>
+                <ul className="grid sm:grid-cols-2 gap-2 text-sm text-on-surface">
                   {weekActivity.byChild.map((c) => (
-                    <li key={c.childId} className="flex flex-col sm:flex-row sm:justify-between gap-1 rounded-lg bg-gray-50 px-3 py-2">
+                    <li key={c.childId} className="flex flex-col sm:flex-row sm:justify-between gap-1 rounded-lg bg-surface-container-low px-3 py-2">
                       <span className="font-medium">{c.childName}</span>
-                      <span className="text-gray-600">
+                      <span className="text-on-surface-variant">
                         {c.pages} pg · {c.minutes} min · {c.progressSaveCount} saves
                       </span>
                     </li>
@@ -794,21 +802,21 @@ const ParentDashboard: React.FC = () => {
         <div className="card mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-nestory-700 flex items-center gap-2">
+              <p className="text-sm font-semibold text-primary-800 flex items-center gap-2">
                 <Sparkles size={16} /> At a Glance
               </p>
-              <h2 className="text-xl font-bold text-gray-900 mt-1">Family Assignment Momentum</h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <h2 className="text-xl font-bold text-on-surface mt-1">Family Assignment Momentum</h2>
+              <p className="text-sm text-on-surface-variant mt-1">
                 {summaryStats.completed} completed, {outstandingAssignments} still active across your family.
               </p>
             </div>
             <div className="min-w-[220px]">
               <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-gray-600">Completion Progress</span>
-                <span className="font-semibold text-gray-900">{completionProgress}%</span>
+                <span className="text-on-surface-variant">Completion Progress</span>
+                <span className="font-semibold text-on-surface">{completionProgress}%</span>
               </div>
-              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-3 bg-gradient-to-r from-green-400 to-green-600 rounded-full" style={{ width: `${completionProgress}%` }} />
+              <div className="h-3 bg-surface-container-high rounded-full overflow-hidden">
+                <div className="h-3 bg-gradient-to-r from-tertiary-500 to-tertiary-400 rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]" style={{ width: `${completionProgress}%` }} />
               </div>
             </div>
           </div>
@@ -818,21 +826,21 @@ const ParentDashboard: React.FC = () => {
         <div className="card mb-10 animate-slide-up">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Child Performance</h2>
-              <p className="text-sm text-gray-600 mt-1">Track progress and completion rates</p>
+              <h2 className="text-2xl font-bold text-on-surface">Child Performance</h2>
+              <p className="text-sm text-on-surface-variant mt-1">Track progress and completion rates</p>
             </div>
             <button onClick={() => navigate('/assignments')} className="btn-secondary">View All</button>
           </div>
 
           {childPerformance.length === 0 ? (
-            <p className="text-gray-600 text-center py-8">Add a child and assign a story to see live performance analytics.</p>
+            <p className="text-on-surface-variant text-center py-8">Add a child and assign a story to see live performance analytics.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {childPerformance.map((item, idx) => (
                 <button
                   key={item.id}
                   onClick={() => navigate(`/child/${item.childId}`)}
-                  className="text-left rounded-xl border border-gray-200 bg-white hover:bg-gradient-to-br hover:from-blue-50 hover:to-nestory-50 p-5 hover:border-nestory-400 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] animate-scale-in"
+                  className="text-left rounded-2xl bg-surface-container-lowest shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)] hover:bg-gradient-to-br hover:from-secondary-50 hover:to-primary-50/80 p-5 hover:shadow-ambient hover:-translate-y-0.5 transition-all duration-300 ease-spring transform hover:scale-[1.01] animate-scale-in"
                   style={{ animationDelay: `${idx * 75}ms` }}
                 >
                   <div className="flex items-center gap-3 mb-4">
@@ -840,8 +848,8 @@ const ParentDashboard: React.FC = () => {
                       {item.avatar || '🧒'}
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 text-lg">{item.name}</p>
-                      <p className="text-xs text-gray-600">{item.assignments.total} total assignments</p>
+                      <p className="font-semibold text-on-surface text-lg">{item.name}</p>
+                      <p className="text-xs text-on-surface-variant">{item.assignments.total} total assignments</p>
                     </div>
                   </div>
 
@@ -861,12 +869,12 @@ const ParentDashboard: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-gray-700">Completion Rate</p>
-                    <span className="font-bold text-gray-900">{item.assignments.completionRate}%</span>
+                    <p className="text-xs font-medium text-on-surface">Completion Rate</p>
+                    <span className="font-bold text-on-surface">{item.assignments.completionRate}%</span>
                   </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-3 bg-surface-container-high rounded-full overflow-hidden">
                     <div
-                      className="h-3 bg-gradient-to-r from-nestory-400 to-nestory-600 rounded-full transition-all duration-500"
+                      className="h-3 bg-gradient-to-r from-primary-500 to-primary-300 rounded-full transition-all duration-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
                       style={{ width: `${Math.min(item.assignments.completionRate, 100)}%` }}
                     />
                   </div>
@@ -881,8 +889,8 @@ const ParentDashboard: React.FC = () => {
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Family Members</h2>
-                <p className="text-sm text-gray-600 mt-1">{children.length} {children.length === 1 ? 'child' : 'children'} in your family</p>
+                <h2 className="text-2xl font-bold text-on-surface">Family Members</h2>
+                <p className="text-sm text-on-surface-variant mt-1">{children.length} {children.length === 1 ? 'child' : 'children'} in your family</p>
               </div>
               <button
                 onClick={() => setShowAddChildModal(true)}
@@ -896,7 +904,7 @@ const ParentDashboard: React.FC = () => {
 
             {children.length === 0 ? (
               <div className="card text-center py-12">
-                <p className="text-gray-600 mb-4">No children added yet</p>
+                <p className="text-on-surface-variant mb-4">No children added yet</p>
                 <button
                   onClick={() => setShowAddChildModal(true)}
                   className="btn-primary mx-auto"
@@ -925,7 +933,7 @@ const ParentDashboard: React.FC = () => {
           {/* Quick Actions */}
           <div className="card h-fit animate-slide-down">
             <h3 className="text-lg font-bold mb-5 flex items-center gap-2">
-              <Sparkles size={20} className="text-nestory-600" />
+              <Sparkles size={20} className="text-primary-600" />
               Quick Actions
             </h3>
             <div className="space-y-2">
@@ -937,8 +945,8 @@ const ParentDashboard: React.FC = () => {
                   <Plus size={18} className="text-blue-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Add Child</p>
-                  <p className="text-xs text-gray-500">Create new member</p>
+                  <p className="font-medium text-on-surface">Add Child</p>
+                  <p className="text-xs text-on-surface-variant/75">Create new member</p>
                 </div>
               </button>
               <button
@@ -949,8 +957,8 @@ const ParentDashboard: React.FC = () => {
                   <Book size={18} className="text-green-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Browse Stories</p>
-                  <p className="text-xs text-gray-500">Find & assign books</p>
+                  <p className="font-medium text-on-surface">Browse Stories</p>
+                  <p className="text-xs text-on-surface-variant/75">Find & assign books</p>
                 </div>
               </button>
               <button
@@ -961,8 +969,8 @@ const ParentDashboard: React.FC = () => {
                   <TrendingUp size={18} className="text-purple-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Manage Assignments</p>
-                  <p className="text-xs text-gray-500">Track & manage</p>
+                  <p className="font-medium text-on-surface">Manage Assignments</p>
+                  <p className="text-xs text-on-surface-variant/75">Track & manage</p>
                 </div>
               </button>
               <button
@@ -973,20 +981,20 @@ const ParentDashboard: React.FC = () => {
                   <BarChart3 size={18} className="text-orange-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Reading Progress</p>
-                  <p className="text-xs text-gray-500">View analytics</p>
+                  <p className="font-medium text-on-surface">Reading Progress</p>
+                  <p className="text-xs text-on-surface-variant/75">View analytics</p>
                 </div>
               </button>
               <button
                 onClick={() => navigate('/family-settings')}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-surface-container-high transition-colors duration-200"
               >
-                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                  <Users size={18} className="text-gray-700" />
+                <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+                  <Users size={18} className="text-on-surface" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Family Settings</p>
-                  <p className="text-xs text-gray-500">Manage profile</p>
+                  <p className="font-medium text-on-surface">Family Settings</p>
+                  <p className="text-xs text-on-surface-variant/75">Manage profile</p>
                 </div>
               </button>
             </div>
@@ -998,30 +1006,30 @@ const ParentDashboard: React.FC = () => {
           <div className="card">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Recent Assignments</h3>
-                <p className="text-sm text-gray-600 mt-1">Latest activity</p>
+                <h3 className="text-lg font-bold text-on-surface">Recent Assignments</h3>
+                <p className="text-sm text-on-surface-variant mt-1">Latest activity</p>
               </div>
               {recentAssignments.length > 0 && (
                 <button
                   onClick={() => navigate('/assignments')}
-                  className="text-sm text-nestory-600 hover:text-nestory-700 font-medium"
+                  className="text-sm text-primary-700 hover:text-primary-800 font-semibold"
                 >
                   View All →
                 </button>
               )}
             </div>
             {recentAssignments.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-                <Book size={32} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-600">No recent assignments yet.</p>
-                <p className="text-sm text-gray-500 mt-1">Assign stories to get started</p>
+              <div className="rounded-2xl border border-dashed border-on-surface/[0.12] bg-surface-container-low/50 p-8 text-center">
+                <Book size={32} className="mx-auto text-on-surface-variant/35 mb-3" />
+                <p className="text-on-surface-variant">No recent assignments yet.</p>
+                <p className="text-sm text-on-surface-variant/75 mt-1">Assign stories to get started</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {recentAssignments.slice(0, 5).map((activity, idx) => (
                   <button
                     key={activity.id}
-                    className="w-full text-left rounded-lg border border-gray-200 p-4 flex items-center justify-between hover:border-nestory-400 hover:bg-nestory-50 hover:shadow-md transition-all duration-200 transform hover:translate-x-1 animate-slide-up"
+                    className="w-full text-left rounded-xl bg-surface-container-low p-4 flex items-center justify-between shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)] hover:bg-primary-50/50 hover:shadow-ambient-sm transition-all duration-200 ease-spring transform hover:translate-x-0.5 animate-slide-up"
                     onClick={() => navigate(`/child/${activity.childId}`)}
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
@@ -1030,16 +1038,16 @@ const ParentDashboard: React.FC = () => {
                         {activity.childAvatar || '🧒'}
                       </div>
                       <div className="min-w-0 flex-grow">
-                        <p className="font-semibold text-gray-900 truncate">{activity.childName}</p>
-                        <p className="text-sm text-gray-600 truncate">{activity.storyTitle}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{formatRelativeTime(activity.createdAt)}</p>
+                        <p className="font-semibold text-on-surface truncate">{activity.childName}</p>
+                        <p className="text-sm text-on-surface-variant truncate">{activity.storyTitle}</p>
+                        <p className="text-xs text-on-surface-variant/75 mt-0.5">{formatRelativeTime(activity.createdAt)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                       <span className="badge bg-blue-100 text-blue-800 capitalize text-xs">
                         {activity.status.replace('_', ' ')}
                       </span>
-                      <ChevronRight size={16} className="text-gray-400" />
+                      <ChevronRight size={16} className="text-on-surface-variant/50" />
                     </div>
                   </button>
                 ))}
@@ -1050,8 +1058,8 @@ const ParentDashboard: React.FC = () => {
           <div className="card">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Recent Completions</h3>
-                <p className="text-sm text-gray-600 mt-1">Achievements unlocked</p>
+                <h3 className="text-lg font-bold text-on-surface">Recent Completions</h3>
+                <p className="text-sm text-on-surface-variant mt-1">Achievements unlocked</p>
               </div>
               {recentCompletions.length > 0 && (
                 <button
@@ -1063,17 +1071,17 @@ const ParentDashboard: React.FC = () => {
               )}
             </div>
             {recentCompletions.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-                <CheckCircle2 size={32} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-600">No completed assignments yet.</p>
-                <p className="text-sm text-gray-500 mt-1">Celebrate milestones here</p>
+              <div className="rounded-2xl border border-dashed border-on-surface/[0.12] bg-surface-container-low/50 p-8 text-center">
+                <CheckCircle2 size={32} className="mx-auto text-on-surface-variant/35 mb-3" />
+                <p className="text-on-surface-variant">No completed assignments yet.</p>
+                <p className="text-sm text-on-surface-variant/75 mt-1">Celebrate milestones here</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {recentCompletions.slice(0, 5).map((activity, idx) => (
                   <button
                     key={activity.id}
-                    className="w-full text-left rounded-lg border border-gray-200 bg-gradient-to-r from-green-50/50 to-emerald-50/50 p-4 flex items-center justify-between hover:border-green-400 hover:shadow-md transition-all duration-200 transform hover:translate-x-1 animate-slide-up"
+                    className="w-full text-left rounded-xl bg-gradient-to-r from-tertiary-50/90 to-tertiary-container/40 p-4 flex items-center justify-between shadow-[inset_0_0_0_1px_rgba(102,187,106,0.2)] hover:shadow-ambient-sm transition-all duration-200 ease-spring transform hover:translate-x-0.5 animate-slide-up"
                     onClick={() => navigate(`/child/${activity.childId}`)}
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
@@ -1082,9 +1090,9 @@ const ParentDashboard: React.FC = () => {
                         {activity.childAvatar || '🧒'}
                       </div>
                       <div className="min-w-0 flex-grow">
-                        <p className="font-semibold text-gray-900 truncate">{activity.childName}</p>
-                        <p className="text-sm text-gray-600 truncate">{activity.storyTitle}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="font-semibold text-on-surface truncate">{activity.childName}</p>
+                        <p className="text-sm text-on-surface-variant truncate">{activity.storyTitle}</p>
+                        <p className="text-xs text-on-surface-variant/75 mt-0.5">
                           {activity.completedAt
                             ? `Completed ${formatRelativeTime(activity.completedAt)}`
                             : 'Recently completed'}
@@ -1093,7 +1101,7 @@ const ParentDashboard: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                       <span className="badge bg-green-100 text-green-800 text-xs">✓ Done</span>
-                      <ChevronRight size={16} className="text-gray-400" />
+                      <ChevronRight size={16} className="text-on-surface-variant/50" />
                     </div>
                   </button>
                 ))}
@@ -1116,7 +1124,7 @@ const ParentDashboard: React.FC = () => {
         <div className="space-y-6">
           {/* Avatar Selection */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
+            <label className="block text-sm font-semibold text-on-surface mb-3">
               Choose Avatar
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -1127,8 +1135,8 @@ const ParentDashboard: React.FC = () => {
                   type="button"
                   className={`text-3xl p-3 rounded-lg border-2 transition-all ${
                     formData.avatar === emoji
-                      ? 'border-nestory-600 bg-nestory-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'ring-2 ring-primary-500 bg-primary-50'
+                      : 'ring-1 ring-on-surface/[0.08] hover:ring-primary-200'
                   }`}
                 >
                   {emoji}
@@ -1204,13 +1212,13 @@ const ParentDashboard: React.FC = () => {
         size="md"
       >
         <div className="space-y-3">
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-on-surface">
             Share these credentials with your child. They will be prompted to change this temporary password after first login.
           </p>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Login Email</p>
+          <div className="rounded-xl bg-surface-container-low p-4 shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)]">
+            <p className="text-xs uppercase tracking-wide text-on-surface-variant/75">Login Email</p>
             <div className="mt-1 flex items-center justify-between gap-3">
-              <p className="font-semibold text-gray-900 break-all">{newChildCredentials?.email}</p>
+              <p className="font-semibold text-on-surface break-all">{newChildCredentials?.email}</p>
               <button
                 type="button"
                 className="btn-secondary whitespace-nowrap inline-flex items-center gap-2"
@@ -1221,10 +1229,10 @@ const ParentDashboard: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Temporary Password</p>
+          <div className="rounded-xl bg-surface-container-low p-4 shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)]">
+            <p className="text-xs uppercase tracking-wide text-on-surface-variant/75">Temporary Password</p>
             <div className="mt-1 flex items-center justify-between gap-3">
-              <p className="font-semibold text-gray-900">{newChildCredentials?.temporaryPassword}</p>
+              <p className="font-semibold text-on-surface">{newChildCredentials?.temporaryPassword}</p>
               <button
                 type="button"
                 className="btn-secondary whitespace-nowrap inline-flex items-center gap-2"

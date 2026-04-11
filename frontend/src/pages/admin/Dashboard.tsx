@@ -78,18 +78,18 @@ const AdminDashboard: React.FC = () => {
   }, [users]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-shell min-h-screen">
       <Navbar title="Admin" />
       <AdminSearchRequestPopup />
 
       <div className="container-responsive py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">
-            Administration Panel
+          <p className="eyebrow text-primary-700 mb-2">Operations</p>
+          <h1 className="font-headline text-3xl font-semibold text-on-surface mb-1 tracking-tight">
+            Administration panel
           </h1>
-          <p className="text-gray-600">
-            Welcome, {user?.name || 'Admin'}. Monitor users, families, and
-            stories.
+          <p className="text-on-surface-variant">
+            Welcome, {user?.name || 'Admin'}. Monitor users, families, and stories.
           </p>
         </div>
 
@@ -127,8 +127,8 @@ const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="card">
             <div className="flex items-center gap-2 mb-4">
-              <Users className="text-nestory-600" size={22} />
-              <h2 className="text-xl font-bold text-gray-900">
+              <Users className="text-primary-600" size={22} />
+              <h2 className="text-xl font-bold text-on-surface">
                 User Management
               </h2>
             </div>
@@ -151,8 +151,8 @@ const AdminDashboard: React.FC = () => {
 
           <div className="card">
             <div className="flex items-center gap-2 mb-4">
-              <BookOpen className="text-nestory-600" size={22} />
-              <h2 className="text-xl font-bold text-gray-900">
+              <BookOpen className="text-primary-600" size={22} />
+              <h2 className="text-xl font-bold text-on-surface">
                 Story Management
               </h2>
             </div>
@@ -175,8 +175,8 @@ const AdminDashboard: React.FC = () => {
 
           <div className="card">
             <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="text-nestory-600" size={22} />
-              <h2 className="text-xl font-bold text-gray-900">Gamification</h2>
+              <Sparkles className="text-primary-600" size={22} />
+              <h2 className="text-xl font-bold text-on-surface">Gamification</h2>
             </div>
             <div className="space-y-3">
               <button
@@ -197,28 +197,28 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-bold mb-6 text-gray-900">
+          <h2 className="text-xl font-bold mb-6 text-on-surface">
             Recent Activity
           </h2>
           {isLoading ? (
-            <p className="text-gray-600">Loading activity...</p>
+            <p className="text-on-surface-variant">Loading activity...</p>
           ) : recentUsers.length === 0 ? (
-            <p className="text-gray-600">No user activity available.</p>
+            <p className="text-on-surface-variant">No user activity available.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b-2 border-gray-200">
-                    <th className="text-left p-4 font-semibold text-gray-700">
+                  <tr className="border-b-2 border-on-surface/[0.08]">
+                    <th className="text-left p-4 font-semibold text-on-surface">
                       User
                     </th>
-                    <th className="text-left p-4 font-semibold text-gray-700">
+                    <th className="text-left p-4 font-semibold text-on-surface">
                       Role
                     </th>
-                    <th className="text-left p-4 font-semibold text-gray-700">
+                    <th className="text-left p-4 font-semibold text-on-surface">
                       Joined
                     </th>
-                    <th className="text-left p-4 font-semibold text-gray-700">
+                    <th className="text-left p-4 font-semibold text-on-surface">
                       Status
                     </th>
                   </tr>
@@ -227,18 +227,18 @@ const AdminDashboard: React.FC = () => {
                   {recentUsers.map((item) => (
                     <tr
                       key={item._id || item.id || item.email}
-                      className="border-b border-gray-100 hover:bg-gray-50"
+                      className="border-b border-on-surface/[0.06] hover:bg-surface-container-low/80"
                     >
                       <td className="p-4">
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-on-surface">
                           {item.name || 'Unnamed user'}
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-on-surface-variant">
                           {item.email || '-'}
                         </p>
                       </td>
                       <td className="p-4 capitalize">{item.role || 'unknown'}</td>
-                      <td className="p-4 text-gray-700">
+                      <td className="p-4 text-on-surface">
                         {item.createdAt
                           ? new Date(item.createdAt).toLocaleDateString()
                           : '-'}

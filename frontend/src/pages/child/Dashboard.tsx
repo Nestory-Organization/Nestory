@@ -259,15 +259,15 @@ const ChildDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-shell">
       <Navbar title="My Reading" />
 
       <div className="container-responsive py-8">
-        <div className="mb-8">
+        <div className="mb-10">
           <button
             type="button"
             onClick={() => navigate('/child/progress')}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 transition-colors"
+            className="mb-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl btn-secondary text-sm font-semibold"
           >
             <BarChart3 size={18} />
             View my reading progress
@@ -275,11 +275,12 @@ const ChildDashboard: React.FC = () => {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-1">
+              <p className="eyebrow text-tertiary-700 mb-2">Your reading nook</p>
+              <h1 className="font-headline text-3xl font-semibold text-on-surface mb-1 tracking-tight">
                 Welcome, {user?.name || 'Reader'}
               </h1>
-              <p className="text-gray-600">
-                Track your progress and continue your reading journey.
+              <p className="text-on-surface-variant">
+                Pick a book, log your time, and show your streak to the family.
               </p>
             </div>
 
@@ -292,8 +293,9 @@ const ChildDashboard: React.FC = () => {
               View Gamification
             </button>
             <button
+              type="button"
               onClick={() => navigate('/child/chat')}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 relative"
+              className="btn-primary relative inline-flex items-center gap-2 px-6 py-3"
             >
               <MessageCircle size={18} />
               Family Chat
@@ -309,7 +311,7 @@ const ChildDashboard: React.FC = () => {
         <div className="card mb-8">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+              <Search className="absolute left-3 top-3 text-on-surface-variant/50" size={18} />
               <input
                 type="text"
                 value={searchQuery}
@@ -350,7 +352,7 @@ const ChildDashboard: React.FC = () => {
 
         {!!searchQuery.trim() && localMatches.length > 0 && (
           <div className="card mb-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+            <h2 className="text-xl font-bold text-on-surface mb-4">
               Library Matches
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -376,7 +378,7 @@ const ChildDashboard: React.FC = () => {
           localMatches.length === 0 &&
           externalResults.length > 0 && (
             <div className="card mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <h2 className="text-xl font-bold text-on-surface mb-4">
                 Google Books Results
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -431,25 +433,25 @@ const ChildDashboard: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
           <div className="card">
-            <p className="text-sm text-gray-600 mb-1">My Assignments</p>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-sm text-on-surface-variant mb-1">My Assignments</p>
+            <p className="text-2xl font-bold text-on-surface">
               {isLoading ? '...' : assignmentStats.total}
             </p>
           </div>
           <div className="card">
-            <p className="text-sm text-gray-600 mb-1">Assigned</p>
+            <p className="text-sm text-on-surface-variant mb-1">Assigned</p>
             <p className="text-2xl font-bold text-blue-700">
               {isLoading ? '...' : assignmentStats.assigned}
             </p>
           </div>
           <div className="card">
-            <p className="text-sm text-gray-600 mb-1">In Progress</p>
+            <p className="text-sm text-on-surface-variant mb-1">In Progress</p>
             <p className="text-2xl font-bold text-amber-700">
               {isLoading ? '...' : assignmentStats.inProgress}
             </p>
           </div>
           <div className="card">
-            <p className="text-sm text-gray-600 mb-1">Completed</p>
+            <p className="text-sm text-on-surface-variant mb-1">Completed</p>
             <p className="text-2xl font-bold text-green-700">
               {isLoading ? '...' : assignmentStats.completed}
             </p>
@@ -460,16 +462,16 @@ const ChildDashboard: React.FC = () => {
           <div className="lg:col-span-2 space-y-6">
             <div className="card">
               <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">
+                <BookOpen className="text-primary-600" size={22} />
+                <h2 className="text-xl font-bold text-on-surface">
                   Your reading progress
                 </h2>
               </div>
 
               {isLoading ? (
-                <p className="text-gray-600">Loading progress...</p>
+                <p className="text-on-surface-variant">Loading progress...</p>
               ) : activeSessions.length === 0 ? (
-                <p className="text-gray-600">
+                <p className="text-on-surface-variant">
                   Open a book below to start a reading session. Books need a page
                   count in the library to open in the reader.
                 </p>
@@ -495,24 +497,24 @@ const ChildDashboard: React.FC = () => {
                     return (
                       <li
                         key={row._id}
-                        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-gray-200 p-4"
+                        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-xl bg-surface-container-low p-4 shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)]"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-900">{title}</p>
+                          <p className="font-semibold text-on-surface">{title}</p>
                           {author ? (
-                            <p className="text-sm text-gray-600">{author}</p>
+                            <p className="text-sm text-on-surface-variant">{author}</p>
                           ) : null}
 
-                          <div className="mt-2 h-2 rounded-full bg-gray-200 overflow-hidden max-w-md">
+                          <div className="mt-2 h-2 rounded-full bg-surface-container-high overflow-hidden max-w-md">
                             <div
-                              className="h-full rounded-full bg-nestory-600 transition-all"
+                              className="h-full rounded-full bg-gradient-to-r from-primary-600 to-primary-400 transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
                               style={{
                                 width: `${Math.min(100, row.progress)}%`,
                               }}
                             />
                           </div>
 
-                          <p className="text-xs text-gray-500 mt-2">
+                          <p className="text-xs text-on-surface-variant/75 mt-2">
                             {row.pagesRead} / {row.totalPages} pages (
                             {Math.round(row.progress)}%)
                           </p>
@@ -522,7 +524,7 @@ const ChildDashboard: React.FC = () => {
                           type="button"
                           disabled={!sid || startingReadKey !== null}
                           onClick={() => sid && navigate(`/child/read/${row._id}`)}
-                          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 disabled:opacity-50 transition-colors"
+                          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-50 transition-colors"
                         >
                           Continue reading
                         </button>
@@ -535,16 +537,16 @@ const ChildDashboard: React.FC = () => {
 
             <div className="card">
               <div className="flex items-center gap-2 mb-4">
-                <CalendarDays className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">
+                <CalendarDays className="text-primary-600" size={22} />
+                <h2 className="text-xl font-bold text-on-surface">
                   My Assigned Stories
                 </h2>
               </div>
 
               {isLoading ? (
-                <p className="text-gray-600">Loading assignments...</p>
+                <p className="text-on-surface-variant">Loading assignments...</p>
               ) : pendingAssignments.length === 0 ? (
-                <p className="text-gray-600">
+                <p className="text-on-surface-variant">
                   No active assignments yet. Great job keeping up!
                 </p>
               ) : (
@@ -559,7 +561,7 @@ const ChildDashboard: React.FC = () => {
                     return (
                       <div
                         key={assignment.id}
-                        className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 hover:border-nestory-300 hover:bg-nestory-50/40 transition-colors sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-3 rounded-xl bg-surface-container-low p-4 shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)] hover:bg-primary-50/30 transition-colors sm:flex-row sm:items-center sm:justify-between"
                       >
                         <button
                           type="button"
@@ -568,10 +570,10 @@ const ChildDashboard: React.FC = () => {
                           }
                           className="flex-1 text-left min-w-0"
                         >
-                          <p className="font-semibold text-gray-900">
+                          <p className="font-semibold text-on-surface">
                             {assignment.story?.title || 'Untitled story'}
                           </p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-on-surface-variant">
                             {assignment.story?.author || 'Unknown author'}
                           </p>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -579,7 +581,7 @@ const ChildDashboard: React.FC = () => {
                               {assignment.status.replace('_', ' ')}
                             </span>
                             {assignment.dueDate && (
-                              <span className="badge bg-gray-100 text-gray-700">
+                              <span className="badge bg-secondary-container text-secondary-onContainer">
                                 Due{' '}
                                 {new Date(
                                   assignment.dueDate
@@ -598,7 +600,7 @@ const ChildDashboard: React.FC = () => {
                             )
                           }
                           disabled={startingReadKey !== null}
-                          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           {startingReadKey === readKey ? 'Opening…' : 'Read book'}
                         </button>
@@ -611,14 +613,14 @@ const ChildDashboard: React.FC = () => {
 
             <div className="card">
               <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">Story Picks</h2>
+                <BookOpen className="text-primary-600" size={22} />
+                <h2 className="text-xl font-bold text-on-surface">Story Picks</h2>
               </div>
 
               {isLoading ? (
-                <p className="text-gray-600">Loading story recommendations...</p>
+                <p className="text-on-surface-variant">Loading story recommendations...</p>
               ) : quickPicks.length === 0 ? (
-                <p className="text-gray-600">No stories available yet.</p>
+                <p className="text-on-surface-variant">No stories available yet.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {quickPicks.map((story) => {
@@ -645,7 +647,7 @@ const ChildDashboard: React.FC = () => {
           </div>
 
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+            <h2 className="text-xl font-bold text-on-surface mb-4">
               Reading Tips
             </h2>
             <div className="space-y-3">
@@ -656,10 +658,10 @@ const ChildDashboard: React.FC = () => {
               ].map((achievement) => (
                 <div
                   key={achievement.text}
-                  className="rounded-lg border border-gray-200 bg-gray-50 p-3 flex items-center gap-3"
+                  className="rounded-xl bg-surface-container-low p-3 flex items-center gap-3 shadow-[inset_0_0_0_1px_rgba(48,51,46,0.06)]"
                 >
                   <span className="text-xl">{achievement.emoji}</span>
-                  <span className="font-medium text-gray-700">
+                  <span className="font-medium text-on-surface">
                     {achievement.text}
                   </span>
                 </div>

@@ -89,33 +89,46 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-nestory-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md animate-fade-in">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-4xl font-bold text-gradient mb-2">Nestory</div>
-          <p className="text-gray-600">Join Our Reading Community</p>
+    <div className="min-h-screen page-shell flex">
+      <div className="hidden lg:flex lg:w-[40%] xl:w-[42%] relative overflow-hidden bg-gradient-to-br from-secondary-500 via-primary-500 to-tertiary-500 text-white p-12 flex-col justify-center">
+        <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle_at_30%_20%,white,transparent_45%),radial-gradient(circle_at_80%_80%,white,transparent_40%)]" />
+        <div className="relative z-10 max-w-sm">
+          <p className="eyebrow text-white/90 mb-3">Join Nestory</p>
+          <h2 className="font-headline text-3xl font-semibold leading-tight">
+            Create your family&apos;s reading home
+          </h2>
+          <p className="mt-4 text-white/90 text-sm leading-relaxed">
+            Register as a parent to manage children and assignments, or as an admin to curate the library and
+            gamification.
+          </p>
         </div>
+      </div>
 
-        {/* Register Card */}
-        <div className="card shadow-lg">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 text-center">Create Account</h2>
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 overflow-y-auto">
+        <div className="w-full max-w-md animate-fade-in py-6">
+          <div className="text-center mb-8 lg:hidden">
+            <div className="font-headline text-4xl font-semibold text-gradient mb-2">Nestory</div>
+            <p className="text-on-surface-variant">Create your family&apos;s reading home</p>
+          </div>
 
-            {/* Name Field */}
+          <div className="card shadow-ambient rounded-2xl">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="text-center lg:text-left">
+                <p className="eyebrow text-primary-700 mb-2">New account</p>
+                <h2 className="font-headline text-2xl font-semibold text-on-surface">Create account</h2>
+              </div>
+
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Full Name
-              </label>
+              <label className="block text-sm font-semibold text-on-surface mb-2">Full name</label>
               <div className="relative">
-                <User className="absolute left-3 top-3 text-gray-400" size={20} />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" size={20} />
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className={`input-base pl-10 ${
-                    errors.name ? 'border-red-500 focus:ring-red-500' : ''
+                  className={`input-base pl-11 ${
+                    errors.name ? '!shadow-[inset_0_0_0_2px_rgba(220,38,38,0.35)]' : ''
                   }`}
                   placeholder="John Doe"
                   disabled={isLoading}
@@ -126,18 +139,16 @@ const RegisterPage: React.FC = () => {
 
             {/* Email Field */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email Address
-              </label>
+              <label className="block text-sm font-semibold text-on-surface mb-2">Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" size={20} />
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`input-base pl-10 ${
-                    errors.email ? 'border-red-500 focus:ring-red-500' : ''
+                  className={`input-base pl-11 ${
+                    errors.email ? '!shadow-[inset_0_0_0_2px_rgba(220,38,38,0.35)]' : ''
                   }`}
                   placeholder="your@email.com"
                   disabled={isLoading}
@@ -148,9 +159,7 @@ const RegisterPage: React.FC = () => {
 
             {/* Role Selection */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Register As
-              </label>
+              <label className="block text-sm font-semibold text-on-surface mb-2">Register as</label>
               <select
                 name="role"
                 value={formData.role}
@@ -166,18 +175,16 @@ const RegisterPage: React.FC = () => {
 
             {/* Password Field */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Password
-              </label>
+              <label className="block text-sm font-semibold text-on-surface mb-2">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" size={20} />
                 <input
                   type="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className={`input-base pl-10 ${
-                    errors.password ? 'border-red-500 focus:ring-red-500' : ''
+                  className={`input-base pl-11 ${
+                    errors.password ? '!shadow-[inset_0_0_0_2px_rgba(220,38,38,0.35)]' : ''
                   }`}
                   placeholder="••••••••"
                   disabled={isLoading}
@@ -188,18 +195,16 @@ const RegisterPage: React.FC = () => {
 
             {/* Confirm Password Field */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Confirm Password
-              </label>
+              <label className="block text-sm font-semibold text-on-surface mb-2">Confirm password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" size={20} />
                 <input
                   type="password"
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className={`input-base pl-10 ${
-                    errors.confirmPassword ? 'border-red-500 focus:ring-red-500' : ''
+                  className={`input-base pl-11 ${
+                    errors.confirmPassword ? '!shadow-[inset_0_0_0_2px_rgba(220,38,38,0.35)]' : ''
                   }`}
                   placeholder="••••••••"
                   disabled={isLoading}
@@ -211,7 +216,7 @@ const RegisterPage: React.FC = () => {
             </div>
 
             {formError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 shadow-[inset_0_0_0_1px_rgba(248,113,113,0.35)]">
                 {formError}
               </div>
             )}
@@ -220,7 +225,7 @@ const RegisterPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl"
             >
               <UserPlus size={20} />
               {isLoading ? 'Creating Account...' : 'Create Account'}
@@ -228,13 +233,14 @@ const RegisterPage: React.FC = () => {
           </form>
 
           {/* Sign In Link */}
-          <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-            <p className="text-gray-600">
+          <div className="mt-8 pt-6 text-center bg-surface-container-low -mx-2 px-4 py-4 rounded-xl">
+            <p className="text-on-surface-variant text-sm">
               Already have an account?{' '}
-              <Link to="/login" className="text-nestory-600 font-semibold hover:text-nestory-700">
-                Log in here
+              <Link to="/login" className="text-primary-700 font-semibold hover:text-primary-800 underline-offset-2 hover:underline">
+                Log in
               </Link>
             </p>
+          </div>
           </div>
         </div>
       </div>

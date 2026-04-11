@@ -42,13 +42,13 @@ const ChildCard: React.FC<ChildCardProps> = ({
       onClick={() => onClick?.(child)}
     >
       {/* Avatar */}
-      <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-pink-200 to-purple-200 rounded-full flex items-center justify-center text-4xl">
+      <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-primary-container to-tertiary-container rounded-full flex items-center justify-center text-4xl shadow-ambient-sm ring-2 ring-white/80">
         {child.avatar || '👧'}
       </div>
 
       {/* Child Info */}
-      <h3 className="font-bold text-center text-gray-900 text-lg mb-1">{child.name}</h3>
-      <p className="text-center text-gray-600 text-sm mb-4">Age: {child.age}</p>
+      <h3 className="font-headline font-semibold text-center text-on-surface text-lg mb-1">{child.name}</h3>
+      <p className="text-center text-on-surface-variant text-sm mb-4">Age: {child.age}</p>
 
       {/* Reading Level Indicator */}
       {child.readingLevel && (
@@ -59,8 +59,8 @@ const ChildCard: React.FC<ChildCardProps> = ({
       )}
 
       {/* Quick Stats (placeholder) */}
-      <div className="bg-gray-50 rounded-lg p-3 mb-4 text-center">
-        <div className="flex items-center justify-center gap-2 text-nestory-600 font-semibold">
+      <div className="bg-surface-container-low rounded-xl p-3 mb-4 text-center">
+        <div className="flex items-center justify-center gap-2 text-primary-700 font-semibold">
           <BookOpen size={16} />
           <span>0 books</span>
         </div>
@@ -68,7 +68,7 @@ const ChildCard: React.FC<ChildCardProps> = ({
 
       {/* Actions */}
       {showActions && (onEdit || onDelete || onResetPassword) && (
-        <div className="flex gap-2 justify-center pt-3 border-t border-gray-200">
+        <div className="flex flex-wrap gap-2 justify-center pt-4 mt-2 bg-surface-container-low rounded-xl py-3 px-2">
           {onEdit && (
             <button
               onClick={(e) => {

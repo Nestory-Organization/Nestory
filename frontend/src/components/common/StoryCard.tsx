@@ -38,13 +38,13 @@ const StoryCard: React.FC<StoryCardProps> = ({
   const getLevelColor = (level?: string) => {
     switch (level) {
       case 'beginner':
-        return 'bg-green-100 text-green-800';
+        return 'bg-tertiary-container text-tertiary-onContainer';
       case 'intermediate':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary-container text-primary-800';
       case 'advanced':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-secondary-100 text-secondary-900';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-secondary-container text-secondary-onContainer';
     }
   };
 
@@ -78,13 +78,13 @@ const StoryCard: React.FC<StoryCardProps> = ({
   return (
     <button
       type="button"
-      className={`relative w-full text-left card-interactive flex flex-col h-full transition-all hover:shadow-lg ${
-        isSelected ? 'ring-2 ring-nestory-600 shadow-lg' : ''
-      } ${canInteract ? 'cursor-pointer active:scale-95' : ''} ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
+      className={`relative w-full text-left card-interactive flex flex-col h-full ${
+        isSelected ? 'ring-2 ring-primary-600/40 shadow-ambient' : ''
+      } ${canInteract ? 'cursor-pointer active:scale-[0.98] transition-transform duration-200 ease-spring' : ''} ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
       onClick={handleClick}
       disabled={!canInteract}
     >
-      <div className="w-full h-44 bg-gray-200 rounded-lg mb-4 overflow-hidden flex items-center justify-center">
+      <div className="w-full h-44 bg-surface-container-high rounded-xl mb-4 overflow-hidden flex items-center justify-center shadow-ambient-sm">
         <img
           src={getCoverImageUrl()}
           alt={story.title || 'Book cover'}
@@ -118,21 +118,21 @@ const StoryCard: React.FC<StoryCardProps> = ({
         )}
       </div>
 
-      <h3 className="font-bold text-gray-900 line-clamp-2 mb-1">
+      <h3 className="font-headline font-semibold text-on-surface line-clamp-2 mb-1">
         {story.title || 'Untitled'}
       </h3>
 
-      <p className="text-sm text-gray-600 mb-3">
+      <p className="text-sm text-on-surface-variant mb-3">
         {story.author || 'Unknown Author'}
       </p>
 
       {story.description && (
-        <p className="text-xs text-gray-600 line-clamp-3 mb-3">
+        <p className="text-xs text-on-surface-variant/90 line-clamp-3 mb-3">
           {story.description}
         </p>
       )}
 
-      <div className="mt-auto pt-3 border-t border-gray-200 space-y-2 text-xs text-gray-500">
+      <div className="mt-auto pt-3 space-y-2 text-xs text-on-surface-variant rounded-xl bg-surface-container-low px-3 py-3 -mx-1">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1 min-w-0">
             <BookOpen size={14} />
@@ -152,7 +152,7 @@ const StoryCard: React.FC<StoryCardProps> = ({
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] text-gray-400">
+          <span className="text-[11px] text-on-surface-variant/80">
             {hasGooglePreview
               ? 'Click to open preview'
               : isGoogleBook
@@ -161,7 +161,7 @@ const StoryCard: React.FC<StoryCardProps> = ({
           </span>
 
           {!hasGooglePreview && !isGoogleBook && (
-            <span className="text-[11px] inline-flex items-center gap-1 text-slate-500">
+            <span className="text-[11px] inline-flex items-center gap-1 text-on-surface-variant">
               <FileText size={12} />
               Manual entry
             </span>
@@ -170,7 +170,7 @@ const StoryCard: React.FC<StoryCardProps> = ({
       </div>
 
       {isSelected && (
-        <div className="absolute top-3 right-3 w-6 h-6 bg-nestory-600 rounded-full flex items-center justify-center text-white text-sm">
+        <div className="absolute top-3 right-3 w-7 h-7 bg-gradient-primary rounded-full flex items-center justify-center text-white text-sm shadow-ambient-sm ring-2 ring-white/90">
           ✓
         </div>
       )}

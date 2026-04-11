@@ -281,35 +281,36 @@ const FamilyChatPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-shell min-h-screen">
       <Navbar title="Family Chat" />
 
       <div className="container-responsive py-8 max-w-4xl mx-auto">
         <button
           type="button"
           onClick={() => navigate(user?.role === 'child' ? '/child' : '/dashboard')}
-          className="btn-secondary mb-6 inline-flex items-center gap-2 transition-all hover:drop-shadow-md"
+          className="btn-secondary mb-6 inline-flex items-center gap-2"
         >
           <ArrowLeft size={18} />
           Back
         </button>
 
-        <div className="card mb-6 flex items-center justify-between gap-4 bg-gradient-to-r from-white to-nestory-50/30 border-nestory-200">
+        <div className="card mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-br from-surface-container-lowest to-secondary-50/40 shadow-[inset_0_0_0_1px_rgba(61,143,212,0.12)]">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+            <p className="eyebrow text-secondary-800 mb-1">Together</p>
+            <h1 className="font-headline text-2xl sm:text-3xl font-semibold text-on-surface flex items-center gap-3 mb-1">
+              <span className="w-11 h-11 rounded-2xl bg-gradient-secondary flex items-center justify-center shadow-ambient-sm ring-2 ring-white/80">
                 <MessageCircle size={24} className="text-white" />
-              </div>
+              </span>
               {group?.name || 'Family Chat'}
             </h1>
-            <p className="text-sm text-gray-600 mt-2">
-              Chat with your family and get reading activity updates.
+            <p className="text-sm text-on-surface-variant mt-1">
+              Reading updates and quick hellos—stays in your family.
             </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <div className="text-2xl font-bold text-gray-900">{group?.members?.length || 0}</div>
-              <div className="text-xs text-gray-600 flex items-center gap-1 justify-end mt-1">
+              <div className="text-2xl font-headline font-semibold text-on-surface">{group?.members?.length || 0}</div>
+              <div className="text-xs text-on-surface-variant flex items-center gap-1 justify-end mt-1">
                 <Users size={14} />
                 <span>{group?.members?.length === 1 ? 'member' : 'members'}</span>
               </div>
@@ -319,32 +320,32 @@ const FamilyChatPage: React.FC = () => {
                 type="button"
                 onClick={handleClearChat}
                 disabled={clearing || messages.length === 0}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-red-700 bg-red-50 hover:bg-red-100/90 shadow-[inset_0_0_0_1px_rgba(248,113,113,0.25)] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Clear all chat messages"
               >
                 <Trash2 size={18} />
-                <span className="text-sm">Clear Chat</span>
+                <span className="text-sm">Clear chat</span>
               </button>
             )}
           </div>
         </div>
 
-        <div className="card p-0 overflow-hidden border-nestory-200 shadow-lg">
-          <div className="h-[60vh] overflow-y-auto p-5 bg-gradient-to-b from-white via-white to-gray-50/30">
+        <div className="card p-0 overflow-hidden shadow-ambient rounded-2xl">
+          <div className="h-[60vh] overflow-y-auto p-5 bg-gradient-to-b from-surface-container-lowest via-surface to-surface-container-low/30">
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="w-12 h-12 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin"></div>
-                  <p className="text-gray-600 font-medium">Loading chat...</p>
+                  <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+                  <p className="text-on-surface-variant font-medium">Loading chat…</p>
                 </div>
               </div>
             ) : messages.length === 0 ? (
-              <div className="text-center py-20 text-gray-600 h-full flex flex-col items-center justify-center">
-                <div className="w-16 h-16 rounded-full bg-nestory-100 flex items-center justify-center mb-4">
-                  <MessageCircle className="text-nestory-400" size={32} />
+              <div className="text-center py-20 text-on-surface-variant h-full flex flex-col items-center justify-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary-100 flex items-center justify-center mb-4 shadow-ambient-sm">
+                  <MessageCircle className="text-primary-500" size={32} />
                 </div>
-                <p className="text-lg font-semibold text-gray-900 mb-2">No messages yet</p>
-                <p className="text-sm">Start the conversation with your family!</p>
+                <p className="text-lg font-headline font-semibold text-on-surface mb-2">No messages yet</p>
+                <p className="text-sm">Say hi and share what you&apos;re reading!</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -355,7 +356,7 @@ const FamilyChatPage: React.FC = () => {
                   if (isSystem) {
                     return (
                       <div key={message.id} className="flex justify-center my-2">
-                        <span className="inline-block rounded-full bg-gradient-to-r from-nestory-50 to-blue-50 border border-nestory-200 px-4 py-2 text-xs font-medium text-nestory-700 shadow-sm">
+                        <span className="inline-block rounded-full bg-gradient-to-r from-primary-50 to-secondary-50 px-4 py-2 text-xs font-semibold text-primary-800 shadow-[inset_0_0_0_1px_rgba(232,74,95,0.15)]">
                           {message.content}
                         </span>
                       </div>
@@ -368,21 +369,23 @@ const FamilyChatPage: React.FC = () => {
                       className={`flex ${isMine ? 'justify-end' : 'justify-start'} animate-fade-in`}
                     >
                       <div
-                        className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-md transition-all duration-200 hover:shadow-lg ${
+                        className={`max-w-[78%] rounded-2xl px-4 py-3 transition-all duration-200 ease-spring ${
                           isMine
-                            ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-br-sm'
-                            : 'bg-white border border-gray-200 text-gray-900 rounded-bl-sm hover:border-gray-300'
+                            ? 'bg-gradient-primary text-white rounded-br-md shadow-ambient-sm'
+                            : 'bg-surface-container-lowest text-on-surface rounded-bl-md shadow-[inset_0_0_0_1px_rgba(48,51,46,0.08)]'
                         }`}
                       >
                         {!isMine && (
-                          <p className="text-xs font-bold text-nestory-700 mb-2 uppercase tracking-wide">
+                          <p className="text-[0.65rem] font-bold text-primary-700 mb-1.5 uppercase tracking-widest">
                             {message.senderName}
                           </p>
                         )}
                         <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
-                        <p className={`text-[11px] mt-2 font-medium ${
-                          isMine ? 'text-blue-100 opacity-80' : 'text-gray-500'
-                        }`}>
+                        <p
+                          className={`text-[11px] mt-2 font-medium ${
+                            isMine ? 'text-white/80' : 'text-on-surface-variant/75'
+                          }`}
+                        >
                           {formatTime(message.createdAt)}
                         </p>
                       </div>
@@ -394,15 +397,15 @@ const FamilyChatPage: React.FC = () => {
             )}
           </div>
 
-          <div className="border-t border-gray-200 p-4 bg-gradient-to-b from-white to-gray-50 space-y-3">
+          <div className="border-t border-on-surface/[0.06] p-4 glass-effect space-y-3">
             {typingUsers.length > 0 && (
               <div className="flex items-center gap-2 px-3 py-1">
                 <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-nestory-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-nestory-500 animate-bounce" style={{ animationDelay: '100ms' }}></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-nestory-500 animate-bounce" style={{ animationDelay: '200ms' }}></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-bounce" style={{ animationDelay: '100ms' }} />
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-bounce" style={{ animationDelay: '200ms' }} />
                 </div>
-                <span className="text-xs text-gray-600 font-medium">{typingUsers.join(', ')} typing...</span>
+                <span className="text-xs text-on-surface-variant font-medium">{typingUsers.join(', ')} typing…</span>
               </div>
             )}
             <div className="flex gap-3 items-end">
@@ -419,8 +422,8 @@ const FamilyChatPage: React.FC = () => {
                       handleSend();
                     }
                   }}
-                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-0 focus:border-nestory-500 transition-colors duration-200 placeholder-gray-400"
-                  placeholder="Type a message..."
+                  className="input-base rounded-xl py-3"
+                  placeholder="Type a message…"
                   maxLength={1500}
                 />
               </div>
@@ -428,7 +431,7 @@ const FamilyChatPage: React.FC = () => {
                 type="button"
                 onClick={handleSend}
                 disabled={sending || !newMessage.trim()}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:-translate-y-0"
+                className="btn-primary flex items-center justify-center min-w-[3.25rem] h-[46px] rounded-xl disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
                 <Send size={18} />
               </button>
