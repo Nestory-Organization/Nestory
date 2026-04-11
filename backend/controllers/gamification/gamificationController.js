@@ -2,6 +2,54 @@ const UserProgress = require('../../models/gamification/UserProgress');
 const Badge = require('../../models/gamification/Badge');
 const Achievement = require('../../models/gamification/Achievement');
 const PointTransaction = require('../../models/gamification/PointTransaction');
+const DailyChallenge = require('../../models/gamification/DailyChallenge');
+const User = require('../../models/User');
+const Child = require('../../models/Child');
+const GamificationService = require('../../services/gamification/gamificationService');
+const { generateDailyChallenge } = require('../../services/gamification/aiChallengeService');
+
+// Helper function to check if achievement is available to user
+const checkAchievementAvailability = (progress, achievement) => {
+  // Check prerequisites
+  if (achievement.prerequisites && achievement.prerequisites.length > 0) {
+    for (const prereqName of achievement.prerequisites) {
+      const prereqAchievement = progress.achievements.find(
+        ua => ua.achievement.name === prereqName && ua.completed
+      );
+      if (!prereqAchievement) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
+const getDateKey = (inputDate = new Date()) => {
+  const d = new Date(inputDate);
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const resolveUserAndChild = async (userId, childId) => {
+  const user = await User.findById(userId).select('role parentAccount childProfile');
+
+  let actualUserId = userId;
+  let actualChildId = childId;
+
+  if (user && user.role === 'child') {
+    actualUserId = user.parentAccount || userId;
+    if (!actualChildId) {
+      actualChildId = user.childProfile || null;
+    }
+  }
+
+  return {
+    actualUserId,
+    actualChildId
+  };
+};
 
 // @desc    Get user progress/stats
 // @route   GET /api/gamification/progress/:userId
@@ -11,9 +59,24 @@ exports.getUserProgress = async (req, res) => {
     const { userId } = req.params;
     const { childId } = req.query;
 
-    const query = { user: userId };
-    if (childId) {
-      query.child = childId;
+    // If the userId matches a child user, we need to resolve to parent account
+    const user = await User.findById(userId).select('role parentAccount childProfile');
+    
+    let actualUserId = userId;
+    let actualChildId = childId;
+
+    // If requesting user is a child, use their parent account
+    if (user && user.role === 'child') {
+      actualUserId = user.parentAccount || userId;
+      // If no explicit childId provided, use the child's own childProfile
+      if (!actualChildId) {
+        actualChildId = user.childProfile;
+      }
+    }
+
+    const query = { user: actualUserId };
+    if (actualChildId) {
+      query.child = actualChildId;
     }
 
     let progress = await UserProgress.findOne(query)
@@ -23,8 +86,8 @@ exports.getUserProgress = async (req, res) => {
     if (!progress) {
       // Create initial progress for user
       progress = await UserProgress.create({
-        user: userId,
-        child: childId || null
+        user: actualUserId,
+        child: actualChildId || null
       });
     }
 
@@ -39,6 +102,13 @@ exports.getUserProgress = async (req, res) => {
       error: error.message
     });
   }
+};
+
+// @desc    Gamification controller health check
+// @route   GET /api/gamification/test
+// @access  Private
+exports.test = async (req, res) => {
+  res.status(200).json({ success: true, message: 'Gamification controller is available' });
 };
 
 // @desc    Award points to user
@@ -475,6 +545,122 @@ exports.updateAchievementProgress = async (req, res) => {
   }
 };
 
+// @desc    Get user badges
+// @route   GET /api/gamification/user-badges/:userId
+// @access  Private
+exports.getUserBadges = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { childId } = req.query;
+
+    // If the userId matches a child user, resolve to parent account
+    const User = require('../../models/User');
+    const user = await User.findById(userId).select('role parentAccount childProfile');
+    
+    let actualUserId = userId;
+    let actualChildId = childId;
+
+    if (user && user.role === 'child') {
+      actualUserId = user.parentAccount || userId;
+      if (!actualChildId) {
+        actualChildId = user.childProfile;
+      }
+    }
+
+    const query = { user: actualUserId };
+    if (actualChildId) query.child = actualChildId;
+
+    const progress = await UserProgress.findOne(query)
+      .populate('badges.badge');
+
+    if (!progress) {
+      return res.status(404).json({
+        success: false,
+        message: 'User progress not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: progress.badges
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user badges',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get user achievements with progress
+// @route   GET /api/gamification/user-achievements/:userId
+// @access  Private
+exports.getUserAchievements = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { childId } = req.query;
+
+    // If the userId matches a child user, resolve to parent account
+    const User = require('../../models/User');
+    const user = await User.findById(userId).select('role parentAccount childProfile');
+    
+    let actualUserId = userId;
+    let actualChildId = childId;
+
+    if (user && user.role === 'child') {
+      actualUserId = user.parentAccount || userId;
+      if (!actualChildId) {
+        actualChildId = user.childProfile;
+      }
+    }
+
+    const query = { user: actualUserId };
+    if (actualChildId) query.child = actualChildId;
+
+    const progress = await UserProgress.findOne(query)
+      .populate('achievements.achievement');
+
+    if (!progress) {
+      return res.status(404).json({
+        success: false,
+        message: 'User progress not found'
+      });
+    }
+
+    // Get all achievements
+    const allAchievements = await Achievement.find({ isActive: true })
+      .sort({ order: 1 });
+
+    // Combine user progress with achievement definitions
+    const userAchievements = allAchievements.map(achievement => {
+      const userAchievement = progress.achievements.find(ua => {
+        const achievementId = ua.achievement && ua.achievement._id ? ua.achievement._id.toString() : ua.achievement.toString();
+        return achievementId === achievement._id.toString();
+      });
+
+      return {
+        achievement: achievement,
+        progress: userAchievement ? userAchievement.progress : 0,
+        completed: userAchievement ? userAchievement.completed : false,
+        completedAt: userAchievement ? userAchievement.completedAt : null,
+        isAvailable: checkAchievementAvailability(progress, achievement)
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: userAchievements
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user achievements',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Get point transaction history
 // @route   GET /api/gamification/transactions/:userId
 // @access  Private
@@ -483,14 +669,28 @@ exports.getTransactionHistory = async (req, res) => {
     const { userId } = req.params;
     const { childId, limit = 50, type, source } = req.query;
 
-    const query = { user: userId };
-    if (childId) query.child = childId;
+    // If the userId matches a child user, resolve to parent account
+    const User = require('../../models/User');
+    const user = await User.findById(userId).select('role parentAccount childProfile');
+    
+    let actualUserId = userId;
+    let actualChildId = childId;
+
+    if (user && user.role === 'child') {
+      actualUserId = user.parentAccount || userId;
+      if (!actualChildId) {
+        actualChildId = user.childProfile;
+      }
+    }
+
+    const query = { user: actualUserId };
+    if (actualChildId) query.child = actualChildId;
     if (type) query.type = type;
     if (source) query.source = source;
 
     const transactions = await PointTransaction.find(query)
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .limit(parseInt(limit, 10));
 
     res.status(200).json({
       success: true,
@@ -506,92 +706,245 @@ exports.getTransactionHistory = async (req, res) => {
   }
 };
 
-// @desc    Get user badges
-// @route   GET /api/gamification/user-badges/:userId
+// @desc    Generate today's AI challenge
+// @route   POST /api/gamification/challenges/generate
 // @access  Private
-exports.getUserBadges = async (req, res) => {
+exports.generateTodayChallenge = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const { childId } = req.query;
+    const { userId, childId, forceNew = false } = req.body;
 
-    const query = { user: userId };
-    if (childId) query.child = childId;
-
-    const progress = await UserProgress.findOne(query)
-      .populate('badges.badge');
-
-    if (!progress) {
-      return res.status(404).json({
+    if (!userId) {
+      return res.status(400).json({
         success: false,
-        message: 'User progress not found'
+        message: 'Please provide userId'
       });
     }
 
-    res.status(200).json({
+    const { actualUserId, actualChildId } = await resolveUserAndChild(userId, childId);
+    const dateKey = getDateKey();
+
+    const query = {
+      user: actualUserId,
+      child: actualChildId || null,
+      dateKey
+    };
+
+    const existingChallenge = await DailyChallenge.findOne(query);
+
+    if (existingChallenge && forceNew !== true) {
+      return res.status(200).json({
+        success: true,
+        message: 'Today challenge already exists',
+        data: existingChallenge
+      });
+    }
+
+    const progressQuery = { user: actualUserId };
+    if (actualChildId) {
+      progressQuery.child = actualChildId;
+    }
+
+    let progress = await UserProgress.findOne(progressQuery);
+    if (!progress) {
+      progress = await UserProgress.create({
+        user: actualUserId,
+        child: actualChildId || null
+      });
+    }
+
+    let childProfile = null;
+    if (actualChildId) {
+      childProfile = await Child.findById(actualChildId).select('age readingLevel name');
+    }
+
+    const challengePayload = await generateDailyChallenge({
+      childProfile,
+      progress,
+      dateKey
+    });
+
+    const challenge = await DailyChallenge.findOneAndUpdate(
+      query,
+      {
+        $set: {
+          title: challengePayload.title,
+          description: challengePayload.description,
+          challengeType: challengePayload.challengeType,
+          targetValue: challengePayload.targetValue,
+          rewardPoints: challengePayload.rewardPoints,
+          generatedBy: challengePayload.generatedBy,
+          metadata: challengePayload.metadata,
+          currentProgress: 0,
+          isCompleted: false,
+          completedAt: null
+        }
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true
+      }
+    );
+
+    res.status(201).json({
       success: true,
-      count: progress.badges.length,
-      data: progress.badges
+      message: 'Daily challenge generated successfully',
+      data: challenge
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error fetching user badges',
+      message: 'Error generating daily challenge',
       error: error.message
     });
   }
 };
 
-// @desc    Get user achievements
-// @route   GET /api/gamification/user-achievements/:userId
+// @desc    Get today's challenge
+// @route   GET /api/gamification/challenges/today/:userId
 // @access  Private
-exports.getUserAchievements = async (req, res) => {
+exports.getTodayChallenge = async (req, res) => {
   try {
     const { userId } = req.params;
     const { childId } = req.query;
 
-    const query = { user: userId };
-    if (childId) query.child = childId;
+    const { actualUserId, actualChildId } = await resolveUserAndChild(userId, childId);
 
-    const progress = await UserProgress.findOne(query)
-      .populate('achievements.achievement');
+    const challenge = await DailyChallenge.findOne({
+      user: actualUserId,
+      child: actualChildId || null,
+      dateKey: getDateKey()
+    });
 
-    if (!progress) {
+    if (!challenge) {
       return res.status(404).json({
         success: false,
-        message: 'User progress not found'
+        message: 'No challenge generated for today'
       });
     }
 
     res.status(200).json({
       success: true,
-      count: progress.achievements.length,
-      data: progress.achievements
+      data: challenge
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error fetching user achievements',
+      message: 'Error fetching today challenge',
       error: error.message
     });
   }
 };
 
-// Helper function to check and award badges
+// @desc    Update challenge progress
+// @route   POST /api/gamification/challenges/progress
+// @access  Private
+exports.updateTodayChallengeProgress = async (req, res) => {
+  try {
+    const { userId, childId, progressIncrement = 1, challengeId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide userId'
+      });
+    }
+
+    if (!Number.isFinite(Number(progressIncrement)) || Number(progressIncrement) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'progressIncrement must be a positive number'
+      });
+    }
+
+    const { actualUserId, actualChildId } = await resolveUserAndChild(userId, childId);
+
+    let challenge;
+    if (challengeId) {
+      challenge = await DailyChallenge.findById(challengeId);
+    } else {
+      challenge = await DailyChallenge.findOne({
+        user: actualUserId,
+        child: actualChildId || null,
+        dateKey: getDateKey()
+      });
+    }
+
+    if (!challenge) {
+      return res.status(404).json({
+        success: false,
+        message: 'Daily challenge not found'
+      });
+    }
+
+    if (challenge.isCompleted) {
+      return res.status(200).json({
+        success: true,
+        message: 'Challenge already completed',
+        data: challenge
+      });
+    }
+
+    challenge.currentProgress = Math.min(
+      challenge.targetValue,
+      challenge.currentProgress + Number(progressIncrement)
+    );
+
+    if (challenge.currentProgress >= challenge.targetValue) {
+      challenge.isCompleted = true;
+      challenge.completedAt = new Date();
+      await challenge.save();
+
+      const awardResult = await GamificationService.awardPointsToUser(
+        actualUserId,
+        challenge.rewardPoints,
+        'manual',
+        `Completed daily AI challenge: ${challenge.title}`,
+        actualChildId || null,
+        { model: 'None', id: null }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: 'Challenge completed and points awarded',
+        data: {
+          challenge,
+          reward: {
+            pointsAwarded: challenge.rewardPoints,
+            totalPoints: awardResult.progress.totalPoints,
+            level: awardResult.progress.level
+          }
+        }
+      });
+    }
+
+    await challenge.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Challenge progress updated',
+      data: challenge
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating challenge progress',
+      error: error.message
+    });
+  }
+};
+
 async function checkAndAwardBadges(progress) {
   try {
     const badges = await Badge.find({ isActive: true });
 
     for (const badge of badges) {
-      // Check if already earned
       const alreadyEarned = progress.badges.some(
         b => b.badge.toString() === badge._id.toString()
       );
-
       if (alreadyEarned) continue;
 
       let shouldAward = false;
-
-      // Check criteria
       switch (badge.criteria.type) {
         case 'story_count':
           shouldAward = progress.stats.storiesRead >= badge.criteria.threshold;
@@ -605,14 +958,24 @@ async function checkAndAwardBadges(progress) {
         case 'assignments_completed':
           shouldAward = progress.stats.assignmentsCompleted >= badge.criteria.threshold;
           break;
+        default:
+          shouldAward = false;
       }
 
       if (shouldAward) {
-        progress.badges.push({
-          badge: badge._id,
-          earnedAt: new Date()
-        });
+        progress.badges.push({ badge: badge._id, earnedAt: new Date() });
         progress.totalPoints += badge.points;
+        await PointTransaction.create({
+          user: progress.user,
+          child: progress.child,
+          points: badge.points,
+          type: 'bonus',
+          source: 'badge_earned',
+          description: `Earned badge: ${badge.name}`,
+          reference: { model: 'Badge', id: badge._id },
+          balanceBefore: progress.totalPoints - badge.points,
+          balanceAfter: progress.totalPoints
+        });
       }
     }
 

@@ -4,10 +4,13 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, BookOpen, Clock, ExternalLink, Tag, User } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import StoryService from '../../services/storyService';
+import AssignmentService from '../../services/assignmentService';
+import { useAuth } from '../../contexts/AuthContext';
 import { Story } from '../../types';
 
 const StoryDetailPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { storyId } = useParams<{ storyId: string }>();
   const [story, setStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,13 +34,29 @@ const StoryDetailPage: React.FC = () => {
     const loadStory = async () => {
       if (!storyId) {
         toast.error('Invalid story id');
-        navigate('/stories');
+        navigate(user?.role === 'child' ? '/child' : '/stories');
         return;
       }
 
       try {
         setIsLoading(true);
         const storyData = await StoryService.getStoryById(storyId);
+
+        if (user?.role === 'child') {
+          const assignments = await AssignmentService.getMyAssignments().catch(() => []);
+          const sid = String(storyId);
+          const allowed = assignments.some(
+            (a) =>
+              a.status !== 'completed' &&
+              sid === String(a.storyId || a.story?._id || a.story?.id || ''),
+          );
+          if (!allowed) {
+            toast.error('This book is not assigned to you.');
+            navigate('/child');
+            return;
+          }
+        }
+
         setStory(storyData);
       } catch (error: any) {
         toast.error(error?.response?.data?.message || 'Failed to load story');
@@ -47,7 +66,7 @@ const StoryDetailPage: React.FC = () => {
     };
 
     loadStory();
-  }, [navigate, storyId]);
+  }, [navigate, storyId, user?.role]);
 
   if (isLoading) {
     return (

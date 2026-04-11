@@ -12,7 +12,11 @@ const {
   updateAchievementProgress,
   getTransactionHistory,
   getUserBadges,
-  getUserAchievements
+  getUserAchievements,
+  generateTodayChallenge,
+  getTodayChallenge,
+  updateTodayChallengeProgress,
+  test
 } = require('../../controllers/gamification/gamificationController');
 const { protect } = require('../../middleware/authMiddleware');
 
@@ -28,6 +32,8 @@ router.get('/leaderboard', protect, getLeaderboard);
 
 // Badge routes
 router.get('/badges', protect, getAllBadges);
+router.get('/test', protect, test);
+router.get('/badges', protect, getAllBadges);
 router.post('/badges', protect, createBadge);
 router.post('/badges/award', protect, awardBadge);
 router.get('/user-badges/:userId', protect, getUserBadges);
@@ -37,5 +43,10 @@ router.get('/achievements', protect, getAllAchievements);
 router.post('/achievements', protect, createAchievement);
 router.post('/achievements/progress', protect, updateAchievementProgress);
 router.get('/user-achievements/:userId', protect, getUserAchievements);
+
+// Daily AI challenge routes
+router.post('/challenges/generate', protect, generateTodayChallenge);
+router.get('/challenges/today/:userId', protect, getTodayChallenge);
+router.post('/challenges/progress', protect, updateTodayChallengeProgress);
 
 module.exports = router;

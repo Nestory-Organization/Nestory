@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '../../../components/common/Navbar';
 import StoryLibraryTable from '../../../components/storyLibrary/StoryLibraryTable';
@@ -239,6 +240,15 @@ const StoryLibraryCrudPage: React.FC = () => {
       <Navbar title="Story Library Management" />
 
       <div className="container-responsive py-8">
+        <button
+          type="button"
+          onClick={() => navigate('/admin')}
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-nestory-700"
+        >
+          <ArrowLeft size={18} />
+          Back to Admin Dashboard
+        </button>
+
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">

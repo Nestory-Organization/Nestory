@@ -32,6 +32,10 @@ dist-ssr
 build/
 coverage/
 
+# Keep a single Vite config: vite.config.ts only (avoid stray .js/.d.ts from tooling)
+vite.config.js
+vite.config.d.ts
+
 # Package manager files
 package-lock.json
 yarn.lock

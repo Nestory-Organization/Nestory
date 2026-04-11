@@ -4,6 +4,8 @@ import { Edit2, Trash2, BookOpen, KeyRound } from 'lucide-react';
 
 interface ChildCardProps {
   child: Child;
+  /** Stories assigned to this child (all-time assignment count). */
+  assignedStoryCount?: number;
   onEdit?: (child: Child) => void;
   onDelete?: (childId: string) => void;
   onResetPassword?: (childId: string) => void;
@@ -15,6 +17,7 @@ interface ChildCardProps {
 
 const ChildCard: React.FC<ChildCardProps> = ({
   child,
+  assignedStoryCount = 0,
   onEdit,
   onDelete,
   onResetPassword,
@@ -66,12 +69,14 @@ const ChildCard: React.FC<ChildCardProps> = ({
         </div>
       )}
 
-      {/* Quick Stats (placeholder) */}
       <div className="bg-gray-50 rounded-lg p-3 mb-4 text-center">
         <div className="flex items-center justify-center gap-2 text-nestory-600 font-semibold">
           <BookOpen size={16} />
-          <span>0 books</span>
+          <span>
+            {assignedStoryCount === 1 ? '1 book' : `${assignedStoryCount} books`}
+          </span>
         </div>
+        <p className="text-xs text-gray-500 mt-1">Assigned stories</p>
       </div>
 
       {/* Actions */}

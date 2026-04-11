@@ -1,0 +1,38 @@
+const express = require("express");
+const cors = require("cors");
+const requestLogger = require("./middleware/requestLogger");
+const errorHandler = require("./middleware/errorHandler");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(requestLogger);
+
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/stories", require("./routes/storyLibrary/storyRoutes"));
+app.use("/api/sessions", require("./routes/readingRoutes"));
+app.use("/api/family", require("./routes/familyRoutes"));
+app.use("/api/children", require("./routes/childRoutes"));
+app.use("/api/assignments", require("./routes/assignmentRoutes"));
+app.use("/api/dashboard", require("./routes/dashboardRoutes"));
+
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Welcome to Nestory API",
+    version: "1.0.0",
+  });
+});
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
+
+app.use(errorHandler);
+
+module.exports = app;
