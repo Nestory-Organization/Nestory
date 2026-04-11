@@ -17,9 +17,9 @@
     }
   ],
   "env": {
-    "MONGO_URI": "@MONGO_URI",
-    "JWT_SECRET": "@JWT_SECRET",
-    "JWT_EXPIRE": "@JWT_EXPIRE",
+    "MONGO_URI": "mongodb+srv://nestory_admin:DxeZ2Bv38KV1Isof@cluster0.jzjmmvn.mongodb.net/nestory?retryWrites=true&w=majority&appName=Cluster0",
+    "JWT_SECRET": "409ac05ddfc90f0532efac315428f8857d6af5eaa64388bc171dce12584a6c9c",
+    "JWT_EXPIRE": "30d",
     "NODE_ENV": "production"
   }
 }
