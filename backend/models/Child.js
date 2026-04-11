@@ -38,6 +38,12 @@ const childSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    email: {
+      type: String,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+    },
   },
   { timestamps: true },
 );

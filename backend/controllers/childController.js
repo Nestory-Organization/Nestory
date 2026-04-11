@@ -40,7 +40,7 @@ const buildChildLoginEmail = async ({ childName, parentId }) => {
 // @access  Private
 exports.addChild = async (req, res) => {
   try {
-    const { name, age, avatar, readingLevel } = req.body;
+    const { name, age, avatar, readingLevel, email } = req.body;
 
     // Parent must have a family group first
     const family = await Family.findOne({ parent: req.user._id });
@@ -51,10 +51,26 @@ exports.addChild = async (req, res) => {
       });
     }
 
-    const childLoginEmail = await buildChildLoginEmail({
-      childName: name,
-      parentId: req.user._id,
-    });
+    // Determine the email to use for child account
+    let childLoginEmail;
+    if (email) {
+      // Check if provided email is unique
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already in use. Please provide a different email.",
+        });
+      }
+      childLoginEmail = email.toLowerCase();
+    } else {
+      // Generate email if not provided
+      childLoginEmail = await buildChildLoginEmail({
+        childName: name,
+        parentId: req.user._id,
+      });
+    }
+
     const temporaryPassword = generateTemporaryPassword();
 
     // Create the child profile first, then create the linked child account.
@@ -65,6 +81,7 @@ exports.addChild = async (req, res) => {
       readingLevel: readingLevel || "beginner",
       family: family._id,
       parent: req.user._id,
+      email: childLoginEmail,
     });
 
     let childUser;
