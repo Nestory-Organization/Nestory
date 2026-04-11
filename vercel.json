@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "npm install && cd backend && npm install && cd ../frontend && npm install",
+  "functions": {
+    "backend/server.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/backend/server.js"
+    }
+  ],
+  "env": {
+    "MONGODB_URI": "@MONGODB_URI",
+    "JWT_SECRET": "@JWT_SECRET",
+    "JWT_EXPIRE": "@JWT_EXPIRE",
+    "NODE_ENV": "production"
+  }
+}

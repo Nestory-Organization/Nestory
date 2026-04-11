@@ -24,15 +24,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
 // Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/stories', require('./routes/storyLibrary/storyRoutes'));
-app.use('/api/search-requests', require('./routes/searchRequestRoutes'));
-app.use('/api/sessions', require('./routes/readingRoutes'));
-app.use('/api/family', require('./routes/familyRoutes'));
-app.use('/api/children', require('./routes/childRoutes'));
-app.use('/api/assignments', require('./routes/assignmentRoutes'));
-app.use('/api/dashboard', require('./routes/dashboardRoutes'));
-app.use('/api/gamification', require('./routes/gamification/gamificationRoutes'));
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/stories", require("./routes/storyLibrary/storyRoutes"));
+app.use("/api/search-requests", require("./routes/searchRequestRoutes"));
+app.use("/api/sessions", require("./routes/readingRoutes"));
+app.use("/api/family", require("./routes/familyRoutes"));
+app.use("/api/children", require("./routes/childRoutes"));
+app.use("/api/assignments", require("./routes/assignmentRoutes"));
+app.use("/api/dashboard", require("./routes/dashboardRoutes"));
+app.use(
+  "/api/gamification",
+  require("./routes/gamification/gamificationRoutes"),
+);
 app.use("/api/chat", require("./routes/chatRoutes"));
 
 // Welcome Route
@@ -55,10 +58,15 @@ app.use((req, res, next) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Start Server
-const PORT = process.env.PORT || 5000;
-initSocketServer(server);
+// Export app for Vercel
+module.exports = app;
 
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// Start Server (for local development)
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  initSocketServer(server);
+
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
