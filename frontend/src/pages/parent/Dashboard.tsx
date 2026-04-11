@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../../components/common/Navbar';
-import StatCard from '../../components/common/StatCard';
-import ChildCard from '../../components/common/ChildCard';
-import Modal from '../../components/common/Modal';
-import InputField from '../../components/common/InputField';
-import SelectField from '../../components/common/SelectField';
+import { useAuth } from '../../contexts/AuthContext';
 import FamilyService from '../../services/familyService';
 import ChildService from '../../services/childService';
 import DashboardService from '../../services/dashboardService';
@@ -14,133 +9,490 @@ import chatService from '../../services/chatService';
 import toast from 'react-hot-toast';
 import {
   Book,
-  Users,
+  CheckCircle2,
   TrendingUp,
+  Award,
   Clock,
+  Flame,
   Plus,
   AlertCircle,
   Home,
-  CheckCircle2,
+  Pencil,
+  Trash2,
   RefreshCw,
-  ChevronRight,
-  Sparkles,
   Copy,
-  BarChart3,
+  Eye,
+  EyeOff,
+  X,
   MessageCircle,
 } from 'lucide-react';
-import { Family, Child, ChildAccountCredentials, ReadingActivitySummary } from '../../types';
+import {
+  Container,
+  Section,
+  Grid,
+  Card,
+  StatCard,
+  ActivityItem,
+  NavItem,
+} from '../../components/common/StitchComponents';
+import Navbar from '../../components/common/Navbar';
+import { Family, Child, ChildAccountCredentials } from '../../types';
 
-const avatarEmojiRegex = /^(\p{Extended_Pictographic}|\uFE0F|\u200D)+$/u;
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface RecentAssignmentRow {
+  id: string;
+  childId?: string;
+  childAvatar?: string;
+  childName: string;
+  storyTitle: string;
+  status: string;
+  dueDate?: string;
+  createdAt?: string;
+}
 
-const isValidAvatar = (value: string) => {
-  if (!value.trim()) return true;
+interface RecentCompletionRow {
+  id: string;
+  childId?: string;
+  childAvatar?: string;
+  childName: string;
+  storyTitle: string;
+  status: string;
+  completedAt?: string;
+}
 
-  const isUrl = /^https?:\/\//i.test(value);
-  if (isUrl) {
-    try {
-      new URL(value);
-      return true;
-    } catch {
-      return false;
-    }
-  }
+interface ChildPerformanceRow {
+  id: string;
+  childId: string;
+  name: string;
+  avatar: string;
+  assignments: {
+    total: number;
+    assigned: number;
+    inProgress: number;
+    completed: number;
+    completionRate: number;
+  };
+}
 
-  return avatarEmojiRegex.test(value.trim());
+// ─── Sidebar Nav ─────────────────────────────────────────────────────────────
+const Sidebar: React.FC<{
+  activeTab: string;
+  onNavigate: (route: string) => void;
+  unreadMessages: number;
+}> = ({ activeTab, onNavigate, unreadMessages }) => {
+  const navItems = [
+    { icon: 'home', label: 'Home', route: '/' },
+    { icon: 'library_books', label: 'Library', route: '/stories' },
+    { icon: 'science', label: 'Lab (Assignments)', route: '/assignments' },
+    { icon: 'group', label: 'Family', route: '/family-settings' },
+    { icon: 'archive', label: 'Progress', route: '/progress' },
+    { icon: 'military_tech', label: 'Rewards', route: '/gamification' },
+    { icon: 'chat', label: 'Chat', route: '/chat', badge: unreadMessages },
+  ];
+
+  return (
+    <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-surface-container-low p-4 gap-1 flex-shrink-0">
+      <div className="px-4 py-6 mb-2">
+        <span className="text-xl font-bold serif-text text-primary tracking-tight">The Sanctuary</span>
+      </div>
+      {navItems.map((item) => (
+        <NavItem
+          key={item.route}
+          icon={item.icon}
+          label={item.label}
+          active={activeTab === item.route}
+          onClick={() => onNavigate(item.route)}
+          badge={item.badge}
+        />
+      ))}
+    </aside>
+  );
 };
 
-const formatRelativeTime = (value?: string) => {
-  if (!value) return 'Just now';
-  const timestamp = new Date(value).getTime();
-  if (Number.isNaN(timestamp)) return 'Just now';
+// ─── Quick Action Card ────────────────────────────────────────────────────────
+const QuickActionCard: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  color: string;
+  onClick: () => void;
+}> = ({ icon, label, color, onClick }) => (
+  <Card interactive onClick={onClick} className="flex flex-col items-center justify-center gap-3 py-8 text-center cursor-pointer">
+    <div
+      className="w-16 h-16 rounded-2xl flex items-center justify-center"
+      style={{ backgroundColor: color + '30', color: color }}
+    >
+      {icon}
+    </div>
+    <span className="font-semibold text-sm text-on-surface">{label}</span>
+  </Card>
+);
 
-  const deltaMs = Date.now() - timestamp;
-  const deltaMinutes = Math.max(Math.floor(deltaMs / 60000), 0);
+// ─── Child Card (in dashboard) ────────────────────────────────────────────────
+const ChildCard: React.FC<{
+  child: Child;
+  performance?: ChildPerformanceRow;
+  isDeleting: boolean;
+  isResetting: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onResetPassword: () => void;
+  onViewProgress: () => void;
+}> = ({ child, performance, isDeleting, isResetting, onEdit, onDelete, onResetPassword, onViewProgress }) => {
+  const rate = performance?.assignments.completionRate ?? 0;
+  const completed = performance?.assignments.completed ?? 0;
+  const total = performance?.assignments.total ?? 0;
 
-  if (deltaMinutes < 1) return 'Just now';
-  if (deltaMinutes < 60) return `${deltaMinutes}m ago`;
+  return (
+    <Card className="flex flex-col gap-3">
+      {/* Avatar + name */}
+      <div className="flex items-center gap-3">
+        <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
+          {child.avatar?.startsWith('http') ? (
+            <img src={child.avatar} alt={child.name} className="w-full h-full object-cover" />
+          ) : (
+            <span>{child.avatar || '🧒'}</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-on-surface truncate">{child.name}</p>
+          <p className="text-xs text-on-surface-variant capitalize">
+            Age {child.age} · {child.readingLevel || 'Beginner'}
+          </p>
+        </div>
+      </div>
 
-  const deltaHours = Math.floor(deltaMinutes / 60);
-  if (deltaHours < 24) return `${deltaHours}h ago`;
+      {/* Progress bar */}
+      <div>
+        <div className="flex justify-between text-xs text-on-surface-variant mb-1">
+          <span>Assignment progress</span>
+          <span>{completed}/{total} done</span>
+        </div>
+        <div className="h-2 rounded-full bg-surface-container-high overflow-hidden">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${Math.min(100, rate)}%` }}
+          />
+        </div>
+      </div>
 
-  const deltaDays = Math.floor(deltaHours / 24);
-  return `${deltaDays}d ago`;
+      {/* Action row */}
+      <div className="flex gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={onViewProgress}
+          className="flex-1 btn-primary text-xs py-2"
+        >
+          Progress
+        </button>
+        <button
+          type="button"
+          onClick={onEdit}
+          title="Edit child"
+          className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant"
+        >
+          <Pencil size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={onResetPassword}
+          disabled={isResetting}
+          title="Reset password"
+          className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={isResetting ? 'animate-spin' : ''} />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={isDeleting}
+          title="Delete child"
+          className="p-2 rounded-lg bg-error/10 hover:bg-error/20 transition-colors text-error disabled:opacity-50"
+        >
+          <Trash2 size={14} className={isDeleting ? 'animate-pulse' : ''} />
+        </button>
+      </div>
+    </Card>
+  );
 };
 
+// ─── Input Field helper ───────────────────────────────────────────────────────
+const InputField: React.FC<{
+  label: string;
+  name: string;
+  value: string | number;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  type?: string;
+  error?: string;
+  min?: number;
+  max?: number;
+}> = ({ label, name, value, onChange, placeholder, type = 'text', error, min, max }) => (
+  <div>
+    <label htmlFor={name} className="block text-sm font-semibold text-on-surface mb-1">{label}</label>
+    <input
+      id={name}
+      name={name}
+      type={type}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      min={min}
+      max={max}
+      className={`w-full px-4 py-3 rounded-xl bg-surface-container border-0 text-on-surface placeholder-outline focus:ring-2 focus:ring-primary/40 outline-none transition ${error ? 'ring-2 ring-error' : ''}`}
+    />
+    {error && <p className="text-xs text-error mt-1">{error}</p>}
+  </div>
+);
+
+// ─── Add/Edit Child Modal ─────────────────────────────────────────────────────
+const AddChildModal: React.FC<{
+  editingChild: Child | null;
+  formData: { name: string; age: number; avatar: string; readingLevel: string };
+  formErrors: Record<string, string>;
+  isSaving: boolean;
+  onChange: (field: string, value: string | number) => void;
+  onSave: () => void;
+  onClose: () => void;
+}> = ({ editingChild, formData, formErrors, isSaving, onChange, onSave, onClose }) => {
+  const avatarEmojis = ['👧', '👦', '🧒', '👨', '👩', '🤓', '😊', '🎒'];
+  const readingLevels = [
+    { value: 'beginner', label: 'Beginner' },
+    { value: 'intermediate', label: 'Intermediate' },
+    { value: 'advanced', label: 'Advanced' },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-md p-6 animate-scale-in">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="serif-text text-xl font-bold text-on-surface">
+            {editingChild ? 'Edit Reader' : 'Add a Reader'}
+          </h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container transition-colors">
+            <X size={20} className="text-on-surface-variant" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <InputField
+            label="Child's Name"
+            name="name"
+            value={formData.name}
+            onChange={(e) => onChange('name', e.target.value)}
+            placeholder="e.g., Sophie"
+            error={formErrors.name}
+          />
+
+          <InputField
+            label="Age"
+            name="age"
+            type="number"
+            value={formData.age}
+            onChange={(e) => onChange('age', parseInt(e.target.value, 10))}
+            min={1}
+            max={18}
+            error={formErrors.age}
+          />
+
+          {/* Avatar picker */}
+          <div>
+            <p className="text-sm font-semibold text-on-surface mb-2">Avatar</p>
+            <div className="flex flex-wrap gap-2">
+              {avatarEmojis.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => onChange('avatar', emoji)}
+                  className={`w-10 h-10 rounded-xl text-xl transition-all ${
+                    formData.avatar === emoji
+                      ? 'bg-primary text-white ring-2 ring-primary ring-offset-2'
+                      : 'bg-surface-container hover:bg-surface-container-high'
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              value={formData.avatar}
+              onChange={(e) => onChange('avatar', e.target.value)}
+              placeholder="Or enter emoji / image URL"
+              className="mt-2 w-full px-3 py-2 rounded-xl bg-surface-container text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            {formErrors.avatar && <p className="text-xs text-error mt-1">{formErrors.avatar}</p>}
+          </div>
+
+          {/* Reading level */}
+          <div>
+            <p className="text-sm font-semibold text-on-surface mb-2">Reading Level</p>
+            <div className="flex gap-2">
+              {readingLevels.map((level) => (
+                <button
+                  key={level.value}
+                  type="button"
+                  onClick={() => onChange('readingLevel', level.value)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    formData.readingLevel === level.value
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
+                >
+                  {level.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 rounded-2xl border border-outline-variant text-on-surface font-semibold hover:bg-surface-container transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving}
+            className="flex-1 py-3 rounded-2xl bg-primary text-on-primary font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
+          >
+            {isSaving ? 'Saving…' : editingChild ? 'Update' : 'Add Reader'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Credentials Modal ────────────────────────────────────────────────────────
+const CredentialsModal: React.FC<{
+  credentials: AddChildCredentials;
+  onClose: () => void;
+  onCopy: (value: string, label: string) => void;
+}> = ({ credentials, onClose, onCopy }) => {
+  const [showPw, setShowPw] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-md p-6 animate-scale-in">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="serif-text text-xl font-bold text-on-surface">Reader Credentials</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container transition-colors">
+            <X size={20} className="text-on-surface-variant" />
+          </button>
+        </div>
+
+        <p className="text-sm text-on-surface-variant mb-5">
+          Share these with your child. They must change their password on first login.
+        </p>
+
+        <div className="space-y-3">
+          {/* Email */}
+          <div className="flex items-center justify-between bg-surface-container rounded-2xl px-4 py-3">
+            <div>
+              <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-widest mb-0.5">Login Email</p>
+              <p className="text-sm font-mono text-on-surface break-all">{credentials.email || '—'}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onCopy(credentials.email, 'Email')}
+              className="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
+            >
+              <Copy size={16} />
+            </button>
+          </div>
+
+          {/* Password */}
+          <div className="flex items-center justify-between bg-surface-container rounded-2xl px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-widest mb-0.5">Temporary Password</p>
+              <p className="text-sm font-mono text-on-surface break-all">
+                {showPw ? credentials.temporaryPassword : '••••••••'}
+              </p>
+            </div>
+            <div className="flex gap-1 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowPw(!showPw)}
+                className="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
+              >
+                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => onCopy(credentials.temporaryPassword, 'Password')}
+                className="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
+              >
+                <Copy size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 p-4 bg-primary-container/20 rounded-2xl">
+          <p className="text-xs text-on-surface-variant">
+            ⚠️ This password is temporary. Your child will be asked to set a new one on their first login.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full mt-5 py-3 rounded-2xl bg-primary text-on-primary font-semibold hover:bg-primary/90 transition-colors"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // ── Family & children state ──
   const [family, setFamily] = useState<Family | null>(null);
   const [children, setChildren] = useState<Child[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [isCreatingFamily, setIsCreatingFamily] = useState(false);
+
+  // ── Stats ──
+  const [summaryStats, setSummaryStats] = useState({
+    totalAssignments: 0, assigned: 0, inProgress: 0, completed: 0, completionRate: 0,
+  });
+  const [readingStats, setReadingStats] = useState({ weeklyMinutes: 0, topStreak: 0 });
+  const [recentAssignments, setRecentAssignments] = useState<RecentAssignmentRow[]>([]);
+  const [recentCompletions, setRecentCompletions] = useState<RecentCompletionRow[]>([]);
+  const [childPerformance, setChildPerformance] = useState<ChildPerformanceRow[]>([]);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState('');
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  // ── Create family ──
   const [newFamilyName, setNewFamilyName] = useState('');
   const [familyNameError, setFamilyNameError] = useState('');
+  const [isCreatingFamily, setIsCreatingFamily] = useState(false);
+
+  // ── Child modal ──
   const [showAddChildModal, setShowAddChildModal] = useState(false);
   const [editingChild, setEditingChild] = useState<Child | null>(null);
+  const [formData, setFormData] = useState({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner' });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSavingChild, setIsSavingChild] = useState(false);
   const [deletingChildId, setDeletingChildId] = useState('');
   const [resettingChildId, setResettingChildId] = useState('');
-  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
-  const [newChildCredentials, setNewChildCredentials] = useState<ChildAccountCredentials | null>(null);
-  const [summaryStats, setSummaryStats] = useState({
-    totalAssignments: 0,
-    assigned: 0,
-    inProgress: 0,
-    completed: 0,
-    completionRate: 0,
-  });
-  const [readingStats, setReadingStats] = useState({
-    weeklyMinutes: 0,
-    topStreak: 0,
-  });
-  const [recentAssignments, setRecentAssignments] = useState<Array<{
-    id: string;
-    childId: string;
-    childAvatar?: string;
-    childName: string;
-    storyTitle: string;
-    status: string;
-    dueDate?: string;
-    createdAt?: string;
-  }>>([]);
-  const [recentCompletions, setRecentCompletions] = useState<Array<{
-    id: string;
-    childId: string;
-    childAvatar?: string;
-    childName: string;
-    storyTitle: string;
-    status: string;
-    completedAt?: string;
-  }>>([]);
-  const [childPerformance, setChildPerformance] = useState<Array<{
-    id: string;
-    childId: string;
-    name: string;
-    avatar: string;
-    assignments: {
-      total: number;
-      assigned: number;
-      inProgress: number;
-      completed: number;
-      completionRate: number;
-    };
-  }>>([]);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string>('');
-  const [weekActivity, setWeekActivity] = useState<ReadingActivitySummary | null>(null);
 
-  const [formData, setFormData] = useState<{
-    name: string;
-    age: number;
-    avatar: string;
-    readingLevel: 'beginner' | 'intermediate' | 'advanced';
-  }>({
-    name: '',
-    age: 5,
-    avatar: '👧',
-    readingLevel: 'beginner',
-  });
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // ── Credentials modal ──
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [newChildCredentials, setNewChildCredentials] = useState<AddChildCredentials | null>(null);
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const isValidAvatar = (v: string) =>
+    /^https?:\/\/.+/.test(v) || [...v].length <= 2;
 
   const validateChildForm = () => {
     const newErrors: Record<string, string> = {};
@@ -148,21 +500,16 @@ const ParentDashboard: React.FC = () => {
     const trimmedAvatar = formData.avatar.trim();
 
     if (!trimmedName) {
-      newErrors.name = 'Child name is required';
-    } else if (trimmedName.length < 2 || trimmedName.length > 50) {
-      newErrors.name = 'Child name must be between 2 and 50 characters';
+      newErrors.name = 'Name is required';
+    } else if (trimmedName.length < 2 || trimmedName.length > 100) {
+      newErrors.name = 'Name must be between 2 and 100 characters';
     }
-
-    if (!Number.isInteger(formData.age) || formData.age < 1 || formData.age > 17) {
-      newErrors.age = 'Age must be a whole number between 1 and 17';
+    if (!formData.age || formData.age < 1 || formData.age > 18) {
+      newErrors.age = 'Age must be between 1 and 18';
     }
-
-    if (trimmedAvatar.length > 2048) {
-      newErrors.avatar = 'Avatar must be 2048 characters or less';
-    } else if (!isValidAvatar(trimmedAvatar)) {
+    if (trimmedAvatar && !isValidAvatar(trimmedAvatar)) {
       newErrors.avatar = 'Avatar must be an emoji or a valid http/https URL';
     }
-
     setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -175,16 +522,15 @@ const ParentDashboard: React.FC = () => {
     setRecentCompletions([]);
     setChildPerformance([]);
     setLastUpdatedAt('');
-    setWeekActivity(null);
   };
 
+  // ── Load data ─────────────────────────────────────────────────────────────────
   const loadData = async () => {
     try {
       setIsLoading(true);
       setLoadError('');
 
       let familyData: Family | null = null;
-
       try {
         familyData = await FamilyService.getMyFamily();
       } catch (error: any) {
@@ -195,16 +541,12 @@ const ParentDashboard: React.FC = () => {
         }
         throw error;
       }
-
       setFamily(familyData);
 
-      // Load unread messages
       try {
         const unreadCount = await chatService.getUnread();
         setUnreadMessages(unreadCount);
-      } catch (error) {
-        console.error('Failed to load unread messages:', error);
-      }
+      } catch { /* silent */ }
 
       const [childrenData, summaryData, familyDashboardData] = await Promise.all([
         ChildService.getChildren(),
@@ -231,8 +573,6 @@ const ParentDashboard: React.FC = () => {
           completed: Number(summaryData.completed) || 0,
           completionRate: Number(summaryData.completionRate) || 0,
         });
-      } else {
-        setSummaryStats({ totalAssignments: 0, assigned: 0, inProgress: 0, completed: 0, completionRate: 0 });
       }
 
       const rawRecent = familyDashboardData?.recentAssignments || [];
@@ -286,30 +626,17 @@ const ParentDashboard: React.FC = () => {
               ReadingService.getWeeklyReadingTime(child.id).catch(() => ({ totalTime: 0 })),
               ReadingService.getReadingStreak(child.id).catch(() => ({ streak: 0 })),
             ]);
-
             return {
               weeklyMinutes: Number(weekly?.totalTime) || 0,
               streak: Number(streak?.streak) || 0,
             };
           })
         );
-
         const totalWeekly = readingData.reduce((sum, item) => sum + item.weeklyMinutes, 0);
         const topStreak = readingData.reduce((max, item) => Math.max(max, item.streak), 0);
         setReadingStats({ weeklyMinutes: totalWeekly, topStreak });
       } else {
         setReadingStats({ weeklyMinutes: 0, topStreak: 0 });
-      }
-
-      if (childrenData.length > 0) {
-        try {
-          const wa = await ReadingService.getFamilyActivitySummary(7);
-          setWeekActivity(wa);
-        } catch {
-          setWeekActivity(null);
-        }
-      } else {
-        setWeekActivity(null);
       }
 
       setLastUpdatedAt(new Date().toISOString());
@@ -322,30 +649,34 @@ const ParentDashboard: React.FC = () => {
     }
   };
 
+  useEffect(() => { loadData(); }, []);
+
+  // Poll for unread messages
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!family) return;
+    const interval = setInterval(async () => {
+      try {
+        const count = await chatService.getUnread();
+        setUnreadMessages(count);
+      } catch { /* silent */ }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [family]);
 
+  // ── Family creation ───────────────────────────────────────────────────────────
   const handleCreateFamily = async () => {
-    const trimmedFamilyName = newFamilyName.trim();
-
-    if (!trimmedFamilyName) {
-      setFamilyNameError('Family name is required');
-      return;
+    const trimmed = newFamilyName.trim();
+    if (!trimmed) { setFamilyNameError('Family name is required'); return; }
+    if (trimmed.length < 2 || trimmed.length > 100) {
+      setFamilyNameError('Family name must be between 2 and 100 characters'); return;
     }
-
-    if (trimmedFamilyName.length < 2 || trimmedFamilyName.length > 100) {
-      setFamilyNameError('Family name must be between 2 and 100 characters');
-      return;
-    }
-
     try {
       setIsCreatingFamily(true);
-      const createdFamily = await FamilyService.createFamily({ familyName: trimmedFamilyName });
-      setFamily(createdFamily);
+      const created = await FamilyService.createFamily({ familyName: trimmed });
+      setFamily(created);
       setFamilyNameError('');
       setNewFamilyName('');
-      toast.success('Family created successfully');
+      toast.success('Family created successfully!');
       await loadData();
     } catch (error: any) {
       setFamilyNameError(error?.response?.data?.message || 'Failed to create family');
@@ -354,16 +685,10 @@ const ParentDashboard: React.FC = () => {
     }
   };
 
+  // ── Child add/edit ────────────────────────────────────────────────────────────
   const handleAddChild = async () => {
-    if (!family?.id) {
-      toast.error('Create a family group before adding children');
-      return;
-    }
-
-    if (!validateChildForm()) {
-      toast.error('Please correct the highlighted fields');
-      return;
-    }
+    if (!family?.id) { toast.error('Create a family group before adding children'); return; }
+    if (!validateChildForm()) { toast.error('Please correct the highlighted fields'); return; }
 
     try {
       setIsSavingChild(true);
@@ -375,24 +700,17 @@ const ParentDashboard: React.FC = () => {
       };
 
       if (editingChild) {
-        const updated = await ChildService.updateChild(editingChild.id, {
-          ...payload,
-        });
+        const updated = await ChildService.updateChild(editingChild.id, payload);
         setChildren(children.map(c => c.id === editingChild.id ? updated : c));
-        toast.success('Child updated successfully');
+        toast.success('Reader updated successfully');
       } else {
-        const addChildResponse = await ChildService.addChild({
-          ...payload,
-          family: family.id,
-        });
-        const newChild = addChildResponse.child;
-        setChildren([...children, newChild]);
-        setNewChildCredentials(addChildResponse.credentials);
+        const resp = await ChildService.addChild({ ...payload, family: family.id });
+        setChildren([...children, resp.child]);
+        setNewChildCredentials(resp.credentials);
         setShowCredentialsModal(true);
-        toast.success('Child added successfully');
+        toast.success('Reader added successfully!');
       }
 
-      // Reset form and close modal
       setFormData({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner' });
       setShowAddChildModal(false);
       setEditingChild(null);
@@ -403,16 +721,11 @@ const ParentDashboard: React.FC = () => {
       if (Array.isArray(backendErrors)) {
         const mapped: Record<string, string> = {};
         backendErrors.forEach((item: any) => {
-          if (item?.field && item?.message) {
-            mapped[item.field] = item.message;
-          }
+          if (item?.field && item?.message) mapped[item.field] = item.message;
         });
-        if (Object.keys(mapped).length > 0) {
-          setFormErrors((prev) => ({ ...prev, ...mapped }));
-        }
+        if (Object.keys(mapped).length > 0) setFormErrors(prev => ({ ...prev, ...mapped }));
       }
-
-      toast.error(error?.response?.data?.message || 'Failed to save child');
+      toast.error(error?.response?.data?.message || 'Failed to save reader');
     } finally {
       setIsSavingChild(false);
     }
@@ -432,15 +745,14 @@ const ParentDashboard: React.FC = () => {
 
   const handleDeleteChild = async (childId: string) => {
     if (!window.confirm('Are you sure you want to delete this child?')) return;
-
     try {
       setDeletingChildId(childId);
       await ChildService.deleteChild(childId);
       setChildren(children.filter(c => c.id !== childId));
-      toast.success('Child deleted successfully');
+      toast.success('Reader deleted successfully');
       await loadData();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to delete child');
+      toast.error(error?.response?.data?.message || 'Failed to delete reader');
     } finally {
       setDeletingChildId('');
     }
@@ -454,795 +766,414 @@ const ParentDashboard: React.FC = () => {
   };
 
   const handleResetChildPassword = async (childId: string) => {
-    const selectedChild = children.find((item) => item.id === childId);
-    const childName = selectedChild?.name || 'this child';
-
-    if (!window.confirm(`Reset password for ${childName}?`)) return;
-
+    const child = children.find(c => c.id === childId);
+    if (!window.confirm(`Reset password for ${child?.name || 'this child'}?`)) return;
     try {
       setResettingChildId(childId);
-      const response = await ChildService.resetChildPassword(childId);
-      setNewChildCredentials(response.credentials);
+      const resp = await ChildService.resetChildPassword(childId);
+      setNewChildCredentials(resp.credentials);
       setShowCredentialsModal(true);
-      toast.success(`Password reset for ${childName}`);
+      toast.success(`Password reset for ${child?.name || 'reader'}`);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to reset child password');
+      toast.error(error?.response?.data?.message || 'Failed to reset password');
     } finally {
       setResettingChildId('');
     }
   };
 
-  const handleCloseCredentialsModal = () => {
-    setShowCredentialsModal(false);
-    setNewChildCredentials(null);
-  };
-
   const copyToClipboard = async (value: string, label: string) => {
-    if (!value) {
-      toast.error(`No ${label.toLowerCase()} available to copy`);
-      return;
-    }
-
+    if (!value) { toast.error(`No ${label.toLowerCase()} available to copy`); return; }
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(value);
       } else {
-        const textArea = document.createElement('textarea');
-        textArea.value = value;
-        textArea.setAttribute('readonly', '');
-        textArea.style.position = 'absolute';
-        textArea.style.left = '-9999px';
-        document.body.appendChild(textArea);
-        textArea.select();
+        const ta = document.createElement('textarea');
+        ta.value = value;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
         document.execCommand('copy');
-        document.body.removeChild(textArea);
+        document.body.removeChild(ta);
       }
-
       toast.success(`${label} copied`);
     } catch {
       toast.error(`Failed to copy ${label.toLowerCase()}`);
     }
   };
 
-  const avatarEmojis = ['👧', '👦', '🧒', '👨', '👩', '🤓', '😊', '🎒'];
-  const readingLevels = [
-    { value: 'beginner', label: 'Beginner' },
-    { value: 'intermediate', label: 'Intermediate' },
-    { value: 'advanced', label: 'Advanced' },
+  // ── Quick actions ─────────────────────────────────────────────────────────────
+  const quickActions = [
+    { id: 'stories', label: 'Browse Library', icon: <Book size={28} />, color: '#8e4e14', route: '/stories' },
+    { id: 'assignments', label: 'Assign Reading', icon: <CheckCircle2 size={28} />, color: '#006878', route: '/assignments' },
+    { id: 'progress', label: 'View Progress', icon: <TrendingUp size={28} />, color: '#7a573d', route: '/progress' },
+    { id: 'gamification', label: 'Rewards', icon: <Award size={28} />, color: '#f4a261', route: '/gamification' },
   ];
 
-  const parseReadingLevel = (value: string): 'beginner' | 'intermediate' | 'advanced' => {
-    if (value === 'beginner' || value === 'intermediate' || value === 'advanced') {
-      return value;
-    }
-    return 'beginner';
-  };
+  // ── Loading ───────────────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-14 h-14 rounded-full border-4 border-surface-container-high border-t-primary animate-spin mx-auto" />
+          <p className="text-on-surface-variant font-medium">Loading your library...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Set up polling for unread messages
-  useEffect(() => {
-    if (!family) return;
+  // ── Error ─────────────────────────────────────────────────────────────────────
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-surface flex flex-col">
+        <Navbar familyName={family?.familyName} unreadMessages={unreadMessages} />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <Card className="max-w-md w-full text-center py-12">
+            <AlertCircle className="mx-auto mb-4 text-error" size={36} />
+            <h2 className="serif-text text-2xl font-bold text-on-surface mb-2">Unable to load dashboard</h2>
+            <p className="text-on-surface-variant mb-6">{loadError}</p>
+            <div className="flex justify-center gap-3">
+              <button onClick={loadData} className="btn-primary">Try Again</button>
+              <button onClick={() => navigate('/family-settings')} className="btn-outline">Family Settings</button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
-    const interval = setInterval(async () => {
-      try {
-        const unreadCount = await chatService.getUnread();
-        setUnreadMessages(unreadCount);
-      } catch (error) {
-        console.error('Failed to check unread messages:', error);
-      }
-    }, 3000); // Check every 3 seconds
+  // ── No family yet ─────────────────────────────────────────────────────────────
+  if (!family) {
+    return (
+      <div className="min-h-screen bg-surface flex flex-col">
+        <Navbar unreadMessages={unreadMessages} />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <Card className="max-w-lg w-full animate-slide-up">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Home className="text-primary" size={22} />
+              </div>
+              <div>
+                <h1 className="serif-text text-2xl font-bold text-on-surface mb-1">Create Your Family Group</h1>
+                <p className="text-on-surface-variant text-sm">
+                  To add children, assign stories, and track reading progress, start by creating your family profile.
+                </p>
+              </div>
+            </div>
 
-    return () => clearInterval(interval);
-  }, [family]);
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="familyName" className="block text-sm font-semibold text-on-surface mb-1">
+                  Family Name
+                </label>
+                <input
+                  id="familyName"
+                  type="text"
+                  value={newFamilyName}
+                  onChange={(e) => { setNewFamilyName(e.target.value); if (familyNameError) setFamilyNameError(''); }}
+                  placeholder="e.g., The Silva Family"
+                  className={`w-full px-4 py-3 rounded-xl bg-surface-container border-0 text-on-surface placeholder-outline focus:ring-2 focus:ring-primary/40 outline-none transition ${familyNameError ? 'ring-2 ring-error' : ''}`}
+                />
+                {familyNameError && <p className="text-xs text-error mt-1">{familyNameError}</p>}
+              </div>
 
+              <button
+                type="button"
+                onClick={handleCreateFamily}
+                disabled={isCreatingFamily || !newFamilyName.trim()}
+                className="w-full py-3 rounded-2xl bg-primary text-on-primary font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+              >
+                {isCreatingFamily ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-on-primary/40 border-t-on-primary rounded-full animate-spin" />
+                    Creating…
+                  </>
+                ) : (
+                  <><Plus size={18} /> Create Family</>
+                )}
+              </button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main dashboard ────────────────────────────────────────────────────────────
   const outstandingAssignments = summaryStats.assigned + summaryStats.inProgress;
   const completionProgress =
     summaryStats.totalAssignments > 0
       ? Math.min(Math.round((summaryStats.completed / summaryStats.totalAssignments) * 100), 100)
       : 0;
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar title="Dashboard" />
-        <div className="container-responsive py-8 text-center">
-          <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your family data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar title="Dashboard" />
-        <div className="container-responsive py-10">
-          <div className="card max-w-2xl mx-auto text-center py-12">
-            <AlertCircle className="mx-auto mb-4 text-red-600" size={36} />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Unable to load your dashboard</h2>
-            <p className="text-gray-600 mb-6">{loadError}</p>
-            <div className="flex justify-center gap-3">
-              <button onClick={loadData} className="btn-primary">Try Again</button>
-              <button onClick={() => navigate('/family-settings')} className="btn-secondary">Family Settings</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!family) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar title="Dashboard" />
-        <div className="container-responsive py-10">
-          <div className="card max-w-3xl mx-auto">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-12 h-12 rounded-full bg-nestory-100 flex items-center justify-center">
-                <Home className="text-nestory-700" size={22} />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your Family Group</h1>
-                <p className="text-gray-600">To add children, assign stories, and track reading progress, start by creating your family profile.</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <InputField
-                label="Family Name"
-                name="familyName"
-                value={newFamilyName}
-                onChange={(e) => {
-                  setNewFamilyName(e.target.value);
-                  if (familyNameError) setFamilyNameError('');
-                }}
-                placeholder="e.g., The Silva Family"
-                error={familyNameError}
-                required
-              />
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={handleCreateFamily}
-                  className="btn-primary"
-                  disabled={isCreatingFamily}
-                >
-                  {isCreatingFamily ? 'Creating Family...' : 'Create Family'}
-                </button>
-                <button
-                  onClick={() => navigate('/family-settings')}
-                  className="btn-secondary"
-                >
-                  Open Family Settings
-                </button>
-              </div>
-
-              <p className="text-sm text-gray-500">
-                Backend rules: only parents can manage families, and each parent can have only one family group.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const activityFeed = [
+    ...recentCompletions.map(c => ({
+      icon: 'emoji_events',
+      title: `${c.childName} completed "${c.storyTitle}"`,
+      subtitle: 'Reading completed',
+      time: c.completedAt ? new Date(c.completedAt).toLocaleDateString() : '',
+    })),
+    ...recentAssignments.map(a => ({
+      icon: 'assignment',
+      title: `${a.childName} assigned "${a.storyTitle}"`,
+      subtitle: `Status: ${a.status}`,
+      time: a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '',
+    })),
+  ].slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <Navbar title="Dashboard" />
+    <div className="min-h-screen bg-surface flex flex-col">
+      <Navbar familyName={family?.familyName} unreadMessages={unreadMessages} />
 
-      <div className="container-responsive py-8">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-10 animate-fade-in">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Parent Dashboard</h1>
-            <p className="text-gray-600 text-lg">{family?.familyName || 'Your Family'}  <span className="text-gray-400">•</span>  {children.length} {children.length === 1 ? 'child' : 'children'}</p>
-            {lastUpdatedAt && (
-              <p className="text-xs text-gray-500 mt-2">
-                Last updated {new Date(lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      <div className="flex flex-1">
+        <Sidebar activeTab="/" onNavigate={navigate} unreadMessages={unreadMessages} />
+
+        <main className="flex-1 min-w-0 overflow-y-auto">
+          <Container className="py-8">
+
+            {/* Welcome Banner */}
+            <div className="mb-8 animate-slide-up">
+              <h1 className="text-4xl serif-text font-bold text-primary leading-tight">
+                Curate your child's<br />intellectual voyage.
+              </h1>
+              <p className="mt-3 text-on-surface-variant text-lg max-w-2xl">
+                Welcome back, <strong>{user?.name || 'Parent'}</strong>. Your family sanctuary,{' '}
+                <em>{family.familyName}</em>, is ready.
               </p>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-3 animate-slide-down">
-            <button
-              onClick={() => loadData()}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <RefreshCw size={18} />
-              Refresh Metrics
-            </button>
-            <button
-              onClick={() => navigate('/stories')}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Book size={20} />
-              Browse Stories
-            </button>
-            <button
-              onClick={() => navigate('/gamification')}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Sparkles size={18} />
-              View Gamification
-            </button>
-            <button
-              onClick={() => navigate('/chat')}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 relative"
-            >
-              <MessageCircle size={18} />
-              Family Chat
-              {unreadMessages > 0 && (
-                <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
-                  {unreadMessages > 99 ? '99+' : unreadMessages}
-                </div>
+              {lastUpdatedAt && (
+                <p className="text-xs text-outline mt-1">
+                  Updated {new Date(lastUpdatedAt).toLocaleTimeString()}
+                </p>
               )}
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-10">
-          <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
-            <StatCard
-              title="Assigned"
-              value={summaryStats.assigned}
-              icon={Book}
-              color="blue"
-              subtext="Pending to start"
-            />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '50ms' }}>
-            <StatCard
-              title="In Progress"
-              value={summaryStats.inProgress}
-              icon={TrendingUp}
-              color="orange"
-              subtext="Currently being read"
-            />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
-            <StatCard
-              title="Completed"
-              value={summaryStats.completed}
-              icon={CheckCircle2}
-              color="green"
-              subtext={`${summaryStats.totalAssignments} total assignments`}
-            />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '150ms' }}>
-            <StatCard
-              title="Completion Rate"
-              value={`${summaryStats.completionRate}%`}
-              icon={Users}
-              color="purple"
-              subtext="Across all children"
-            />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
-            <StatCard
-              title="Family Reading"
-              value={(readingStats.weeklyMinutes / 60).toFixed(1)}
-              icon={Clock}
-              color="pink"
-              subtext={`${readingStats.topStreak} day top streak`}
-            />
-          </div>
-        </div>
-
-        {weekActivity && children.length > 0 && (
-          <div className="card mb-8 border-nestory-200 bg-gradient-to-br from-white to-nestory-50/40">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <BarChart3 className="text-nestory-600" size={20} />
-                  Week in review
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Pages and minutes from children tapping Save progress (last {weekActivity.days} days).
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {new Date(weekActivity.periodStart).toLocaleDateString()} –{' '}
-                  {new Date(weekActivity.periodEnd).toLocaleDateString()}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary text-sm shrink-0 self-start"
-                onClick={() => navigate('/progress')}
-              >
-                Full progress report
-              </button>
-            </div>
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Pages logged</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalPagesLogged}</p>
-              </div>
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Minutes logged</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalMinutesLogged}</p>
-              </div>
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Progress saves</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.progressSaveCount}</p>
-              </div>
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Children with activity</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {weekActivity.byChild?.filter((c) => c.progressSaveCount > 0).length ?? 0}
-                </p>
-              </div>
-            </div>
-            {weekActivity.byChild && weekActivity.byChild.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-sm font-semibold text-gray-800 mb-2">By child</p>
-                <ul className="grid sm:grid-cols-2 gap-2 text-sm text-gray-700">
-                  {weekActivity.byChild.map((c) => (
-                    <li key={c.childId} className="flex flex-col sm:flex-row sm:justify-between gap-1 rounded-lg bg-gray-50 px-3 py-2">
-                      <span className="font-medium">{c.childName}</span>
-                      <span className="text-gray-600">
-                        {c.pages} pg · {c.minutes} min · {c.progressSaveCount} saves
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="card mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-nestory-700 flex items-center gap-2">
-                <Sparkles size={16} /> At a Glance
-              </p>
-              <h2 className="text-xl font-bold text-gray-900 mt-1">Family Assignment Momentum</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {summaryStats.completed} completed, {outstandingAssignments} still active across your family.
-              </p>
-            </div>
-            <div className="min-w-[220px]">
-              <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-gray-600">Completion Progress</span>
-                <span className="font-semibold text-gray-900">{completionProgress}%</span>
-              </div>
-              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-3 bg-gradient-to-r from-green-400 to-green-600 rounded-full" style={{ width: `${completionProgress}%` }} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Child Performance Cards */}
-        <div className="card mb-10 animate-slide-up">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Child Performance</h2>
-              <p className="text-sm text-gray-600 mt-1">Track progress and completion rates</p>
-            </div>
-            <button onClick={() => navigate('/assignments')} className="btn-secondary">View All</button>
-          </div>
-
-          {childPerformance.length === 0 ? (
-            <p className="text-gray-600 text-center py-8">Add a child and assign a story to see live performance analytics.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              {childPerformance.map((item, idx) => (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(`/child/${item.childId}`)}
-                  className="text-left rounded-xl border border-gray-200 bg-white hover:bg-gradient-to-br hover:from-blue-50 hover:to-nestory-50 p-5 hover:border-nestory-400 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] animate-scale-in"
-                  style={{ animationDelay: `${idx * 75}ms` }}
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-2xl shadow-sm">
-                      {item.avatar || '🧒'}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 text-lg">{item.name}</p>
-                      <p className="text-xs text-gray-600">{item.assignments.total} total assignments</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-center mb-4">
-                    <div className="rounded-lg bg-blue-50 py-3 border border-blue-100 hover:border-blue-300 transition-colors">
-                      <p className="text-xs font-medium text-blue-700">Assigned</p>
-                      <p className="font-bold text-lg text-blue-900">{item.assignments.assigned}</p>
-                    </div>
-                    <div className="rounded-lg bg-amber-50 py-3 border border-amber-100 hover:border-amber-300 transition-colors">
-                      <p className="text-xs font-medium text-amber-700">In Progress</p>
-                      <p className="font-bold text-lg text-amber-900">{item.assignments.inProgress}</p>
-                    </div>
-                    <div className="rounded-lg bg-green-50 py-3 border border-green-100 hover:border-green-300 transition-colors">
-                      <p className="text-xs font-medium text-green-700">Completed</p>
-                      <p className="font-bold text-lg text-green-900">{item.assignments.completed}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-gray-700">Completion Rate</p>
-                    <span className="font-bold text-gray-900">{item.assignments.completionRate}%</span>
-                  </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-3 bg-gradient-to-r from-nestory-400 to-nestory-600 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(item.assignments.completionRate, 100)}%` }}
-                    />
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Children Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10 animate-slide-up">
-          <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Family Members</h2>
-                <p className="text-sm text-gray-600 mt-1">{children.length} {children.length === 1 ? 'child' : 'children'} in your family</p>
-              </div>
-              <button
-                onClick={() => setShowAddChildModal(true)}
-                className="btn-primary flex items-center gap-2"
-                disabled={!family}
-              >
-                <Plus size={18} />
-                Add Child
-              </button>
             </div>
 
-            {children.length === 0 ? (
-              <div className="card text-center py-12">
-                <p className="text-gray-600 mb-4">No children added yet</p>
-                <button
-                  onClick={() => setShowAddChildModal(true)}
-                  className="btn-primary mx-auto"
-                >
-                  Add Your First Child
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {children.map((child) => (
-                  <ChildCard
-                    key={child.id}
-                    child={child}
-                    onEdit={handleEditChild}
-                    onResetPassword={handleResetChildPassword}
-                    onDelete={handleDeleteChild}
-                    isDeleting={deletingChildId === child.id}
-                    isResettingPassword={resettingChildId === child.id}
-                    onClick={() => navigate(`/child/${child.id}`)}
+            {/* Stats Strip */}
+            <Grid columns={4} gap="lg" className="mb-10 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+              <StatCard
+                label="Reading Streak"
+                value={`${readingStats.topStreak} Days`}
+                icon={<Flame size={28} className="text-error" />}
+                trend={readingStats.topStreak > 0 ? 'up' : undefined}
+                trendValue="Best this month!"
+              />
+              <StatCard
+                label="Outstanding"
+                value={outstandingAssignments}
+                icon={<CheckCircle2 size={28} className="text-tertiary" />}
+              />
+              <StatCard
+                label="Completion Rate"
+                value={`${completionProgress}%`}
+                icon={<TrendingUp size={28} className="text-secondary" />}
+                trend={completionProgress >= 70 ? 'up' : 'down'}
+              />
+              <StatCard
+                label="Weekly Reading"
+                value={`${Math.round(readingStats.weeklyMinutes / 7) || 0} Min/day`}
+                icon={<Clock size={28} className="text-primary" />}
+              />
+            </Grid>
+
+            {/* Quick Actions */}
+            <Section title="Quick Actions" className="mb-8 animate-slide-up" style={{ animationDelay: '0.15s' }}>
+              <Grid columns={4} gap="md">
+                {quickActions.map((action) => (
+                  <QuickActionCard
+                    key={action.id}
+                    icon={action.icon}
+                    label={action.label}
+                    color={action.color}
+                    onClick={() => navigate(action.route)}
                   />
                 ))}
-              </div>
-            )}
-          </div>
+              </Grid>
+            </Section>
 
-          {/* Quick Actions */}
-          <div className="card h-fit animate-slide-down">
-            <h3 className="text-lg font-bold mb-5 flex items-center gap-2">
-              <Sparkles size={20} className="text-nestory-600" />
-              Quick Actions
-            </h3>
-            <div className="space-y-2">
-              <button
-                onClick={() => setShowAddChildModal(true)}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-blue-50 transition-colors duration-200"
-              >
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Plus size={18} className="text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Add Child</p>
-                  <p className="text-xs text-gray-500">Create new member</p>
-                </div>
-              </button>
-              <button
-                onClick={() => navigate('/stories')}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-green-50 transition-colors duration-200"
-              >
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <Book size={18} className="text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Browse Stories</p>
-                  <p className="text-xs text-gray-500">Find & assign books</p>
-                </div>
-              </button>
-              <button
-                onClick={() => navigate('/assignments')}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-purple-50 transition-colors duration-200"
-              >
-                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                  <TrendingUp size={18} className="text-purple-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Manage Assignments</p>
-                  <p className="text-xs text-gray-500">Track & manage</p>
-                </div>
-              </button>
-              <button
-                onClick={() => navigate('/progress')}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-orange-50 transition-colors duration-200"
-              >
-                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-                  <BarChart3 size={18} className="text-orange-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Reading Progress</p>
-                  <p className="text-xs text-gray-500">View analytics</p>
-                </div>
-              </button>
-              <button
-                onClick={() => navigate('/family-settings')}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-              >
-                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                  <Users size={18} className="text-gray-700" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Family Settings</p>
-                  <p className="text-xs text-gray-500">Manage profile</p>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
+            {/* Two-Column Region */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
 
-        {/* Recent Activity */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-slide-up">
-          <div className="card">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Recent Assignments</h3>
-                <p className="text-sm text-gray-600 mt-1">Latest activity</p>
-              </div>
-              {recentAssignments.length > 0 && (
-                <button
-                  onClick={() => navigate('/assignments')}
-                  className="text-sm text-nestory-600 hover:text-nestory-700 font-medium"
+              {/* Children Readers (2/3 width) */}
+              <div className="lg:col-span-2">
+                <Section
+                  title="Your Readers"
+                  subtitle={`${children.length} reader${children.length !== 1 ? 's' : ''} in your family library`}
+                  action={
+                    <button
+                      onClick={() => {
+                        setEditingChild(null);
+                        setFormData({ name: '', age: 5, avatar: '👧', readingLevel: 'beginner' });
+                        setFormErrors({});
+                        setShowAddChildModal(true);
+                      }}
+                      className="btn-outline text-sm py-2 px-4 flex items-center gap-1"
+                    >
+                      <Plus size={16} /> Add Reader
+                    </button>
+                  }
                 >
-                  View All →
-                </button>
-              )}
-            </div>
-            {recentAssignments.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-                <Book size={32} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-600">No recent assignments yet.</p>
-                <p className="text-sm text-gray-500 mt-1">Assign stories to get started</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentAssignments.slice(0, 5).map((activity, idx) => (
-                  <button
-                    key={activity.id}
-                    className="w-full text-left rounded-lg border border-gray-200 p-4 flex items-center justify-between hover:border-nestory-400 hover:bg-nestory-50 hover:shadow-md transition-all duration-200 transform hover:translate-x-1 animate-slide-up"
-                    onClick={() => navigate(`/child/${activity.childId}`)}
-                    style={{ animationDelay: `${idx * 50}ms` }}
-                  >
-                    <div className="flex items-center gap-3 flex-grow min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-lg flex-shrink-0">
-                        {activity.childAvatar || '🧒'}
-                      </div>
-                      <div className="min-w-0 flex-grow">
-                        <p className="font-semibold text-gray-900 truncate">{activity.childName}</p>
-                        <p className="text-sm text-gray-600 truncate">{activity.storyTitle}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{formatRelativeTime(activity.createdAt)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                      <span className="badge bg-blue-100 text-blue-800 capitalize text-xs">
-                        {activity.status.replace('_', ' ')}
-                      </span>
-                      <ChevronRight size={16} className="text-gray-400" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                  {children.length === 0 ? (
+                    <Card
+                      interactive
+                      onClick={() => setShowAddChildModal(true)}
+                      className="flex flex-col items-center justify-center py-16 text-center cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-5xl text-outline-variant mb-4">child_care</span>
+                      <h3 className="serif-text font-bold text-xl text-on-surface mb-2">Add Your First Reader</h3>
+                      <p className="text-on-surface-variant text-sm max-w-xs">
+                        Invite a child to join your family sanctuary and begin their reading journey.
+                      </p>
+                    </Card>
+                  ) : (
+                    <Grid columns={children.length > 2 ? 3 : 2} gap="md">
+                      {children.map((child) => {
+                        const perf = childPerformance.find(p => p.childId === child.id || p.id === child.id);
+                        return (
+                          <ChildCard
+                            key={child.id}
+                            child={child}
+                            performance={perf}
+                            isDeleting={deletingChildId === child.id}
+                            isResetting={resettingChildId === child.id}
+                            onEdit={() => handleEditChild(child)}
+                            onDelete={() => handleDeleteChild(child.id)}
+                            onResetPassword={() => handleResetChildPassword(child.id)}
+                            onViewProgress={() => navigate(`/child/${child.id}`)}
+                          />
+                        );
+                      })}
+                    </Grid>
+                  )}
+                </Section>
 
-          <div className="card">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Recent Completions</h3>
-                <p className="text-sm text-gray-600 mt-1">Achievements unlocked</p>
-              </div>
-              {recentCompletions.length > 0 && (
-                <button
-                  onClick={() => navigate('/progress')}
-                  className="text-sm text-green-600 hover:text-green-700 font-medium"
+                {/* Chat shortcut */}
+                <Card
+                  interactive
+                  onClick={() => navigate('/chat')}
+                  className="mt-6 flex items-center justify-between cursor-pointer group"
                 >
-                  View All →
-                </button>
-              )}
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-secondary/10 flex items-center justify-center">
+                      <MessageCircle size={22} className="text-secondary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-on-surface">Family Chat</p>
+                      <p className="text-xs text-on-surface-variant">
+                        {unreadMessages > 0 ? `${unreadMessages} unread message${unreadMessages !== 1 ? 's' : ''}` : 'No new messages'}
+                      </p>
+                    </div>
+                  </div>
+                  {unreadMessages > 0 && (
+                    <span className="px-3 py-1 rounded-full bg-error text-white text-xs font-bold">
+                      {unreadMessages > 99 ? '99+' : unreadMessages}
+                    </span>
+                  )}
+                </Card>
+              </div>
+
+              {/* Right Column: Activity + Insight */}
+              <div className="space-y-6">
+                {/* Recent Activity */}
+                <Card>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold serif-text text-on-surface">Recent Activity</h3>
+                    <button onClick={() => navigate('/progress')} className="text-xs font-bold text-primary hover:underline">
+                      See all
+                    </button>
+                  </div>
+                  <div className="divide-y divide-outline-variant/20">
+                    {activityFeed.length === 0 ? (
+                      <p className="text-sm text-on-surface-variant py-4 text-center">No activity yet</p>
+                    ) : (
+                      activityFeed.map((item, i) => (
+                        <ActivityItem key={i} icon={item.icon} title={item.title} subtitle={item.subtitle} time={item.time} />
+                      ))
+                    )}
+                  </div>
+                </Card>
+
+                {/* Weekly Insight */}
+                <Card className="bg-primary-container/20">
+                  <div className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-primary text-2xl mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      lightbulb
+                    </span>
+                    <div>
+                      <h4 className="font-bold text-sm text-on-surface mb-1">Weekly Insight</h4>
+                      <p className="text-xs text-on-surface-variant leading-relaxed">
+                        {children.length === 0
+                          ? 'Add your first reader to start tracking reading progress.'
+                          : summaryStats.completionRate >= 70
+                          ? `Great job! Your family's completion rate is ${completionProgress}% this week.`
+                          : `Your family has ${outstandingAssignments} outstanding assignment${outstandingAssignments !== 1 ? 's' : ''}. Keep going!`}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Featured for the family */}
+                <Card>
+                  <h4 className="font-bold serif-text text-on-surface mb-4">Featured for the Family</h4>
+                  <div className="space-y-3">
+                    {[
+                      { title: 'Meditations on the Cosmos', tag: 'Science & Philosophy · 12+' },
+                      { title: 'The Whispering Woods', tag: 'Fantasy · 8–11 years' },
+                    ].map((book) => (
+                      <div
+                        key={book.title}
+                        onClick={() => navigate('/stories')}
+                        className="flex items-center gap-3 cursor-pointer group"
+                      >
+                        <div className="w-10 h-14 bg-surface-container rounded-md flex items-center justify-center flex-shrink-0">
+                          <span className="material-symbols-outlined text-outline-variant text-base">menu_book</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-on-surface group-hover:text-primary transition-colors">{book.title}</p>
+                          <p className="text-xs text-on-surface-variant">{book.tag}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => navigate('/stories')}
+                      className="w-full mt-2 py-2.5 rounded-full border border-outline-variant text-primary text-sm font-semibold hover:bg-surface-container-low transition-colors"
+                    >
+                      Explore Full Library
+                    </button>
+                  </div>
+                </Card>
+              </div>
             </div>
-            {recentCompletions.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-                <CheckCircle2 size={32} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-600">No completed assignments yet.</p>
-                <p className="text-sm text-gray-500 mt-1">Celebrate milestones here</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentCompletions.slice(0, 5).map((activity, idx) => (
-                  <button
-                    key={activity.id}
-                    className="w-full text-left rounded-lg border border-gray-200 bg-gradient-to-r from-green-50/50 to-emerald-50/50 p-4 flex items-center justify-between hover:border-green-400 hover:shadow-md transition-all duration-200 transform hover:translate-x-1 animate-slide-up"
-                    onClick={() => navigate(`/child/${activity.childId}`)}
-                    style={{ animationDelay: `${idx * 50}ms` }}
-                  >
-                    <div className="flex items-center gap-3 flex-grow min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-lg flex-shrink-0">
-                        {activity.childAvatar || '🧒'}
-                      </div>
-                      <div className="min-w-0 flex-grow">
-                        <p className="font-semibold text-gray-900 truncate">{activity.childName}</p>
-                        <p className="text-sm text-gray-600 truncate">{activity.storyTitle}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {activity.completedAt
-                            ? `Completed ${formatRelativeTime(activity.completedAt)}`
-                            : 'Recently completed'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                      <span className="badge bg-green-100 text-green-800 text-xs">✓ Done</span>
-                      <ChevronRight size={16} className="text-gray-400" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+
+          </Container>
+
+          <footer className="py-6 text-center text-xs text-outline tracking-widest uppercase border-t border-outline-variant/30 mt-8">
+            © 2024 The Curated Sanctuary · Family Reading Library
+          </footer>
+        </main>
       </div>
 
-      {/* Add/Edit Child Modal */}
-      <Modal
-        isOpen={showAddChildModal}
-        title={editingChild ? 'Edit Child' : 'Add New Child'}
-        onClose={handleCloseModal}
-        onConfirm={handleAddChild}
-        confirmText={editingChild ? 'Update' : 'Add Child'}
-        size="md"
-        isLoading={isSavingChild}
-      >
-        <div className="space-y-6">
-          {/* Avatar Selection */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Choose Avatar
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {avatarEmojis.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => setFormData({ ...formData, avatar: emoji })}
-                  type="button"
-                  className={`text-3xl p-3 rounded-lg border-2 transition-all ${
-                    formData.avatar === emoji
-                      ? 'border-nestory-600 bg-nestory-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* ── Modals ── */}
+      {showAddChildModal && (
+        <AddChildModal
+          editingChild={editingChild}
+          formData={formData}
+          formErrors={formErrors}
+          isSaving={isSavingChild}
+          onChange={(field, value) => setFormData(prev => ({ ...prev, [field]: value }))}
+          onSave={handleAddChild}
+          onClose={handleCloseModal}
+        />
+      )}
 
-          {/* Name */}
-          <InputField
-            label="Child's Name"
-            name="name"
-            value={formData.name}
-            onChange={(e) => {
-              setFormData({ ...formData, name: e.target.value });
-              if (formErrors.name) {
-                setFormErrors((prev) => ({ ...prev, name: '' }));
-              }
-            }}
-            placeholder="e.g., Emma"
-            error={formErrors.name}
-            required
-          />
-
-          {/* Age */}
-          <InputField
-            label="Age"
-            name="age"
-            type="number"
-            value={formData.age}
-            onChange={(e) => {
-              const value = parseInt(e.target.value, 10);
-              setFormData({ ...formData, age: Number.isNaN(value) ? 0 : value });
-              if (formErrors.age) {
-                setFormErrors((prev) => ({ ...prev, age: '' }));
-              }
-            }}
-            min="1"
-            max="17"
-            error={formErrors.age}
-            required
-          />
-
-          <InputField
-            label="Avatar (Emoji or URL)"
-            name="avatar"
-            value={formData.avatar}
-            onChange={(e) => {
-              setFormData({ ...formData, avatar: e.target.value });
-              if (formErrors.avatar) {
-                setFormErrors((prev) => ({ ...prev, avatar: '' }));
-              }
-            }}
-            placeholder="e.g., 👧 or https://example.com/avatar.png"
-            error={formErrors.avatar}
-          />
-
-          {/* Reading Level */}
-          <SelectField
-            label="Reading Level"
-            name="readingLevel"
-            value={formData.readingLevel}
-            onChange={(e) => setFormData({ ...formData, readingLevel: parseReadingLevel(e.target.value) })}
-            options={readingLevels}
-          />
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={showCredentialsModal}
-        title="Child Login Credentials"
-        onClose={handleCloseCredentialsModal}
-        size="md"
-      >
-        <div className="space-y-3">
-          <p className="text-sm text-gray-700">
-            Share these credentials with your child. They will be prompted to change this temporary password after first login.
-          </p>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Login Email</p>
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <p className="font-semibold text-gray-900 break-all">{newChildCredentials?.email}</p>
-              <button
-                type="button"
-                className="btn-secondary whitespace-nowrap inline-flex items-center gap-2"
-                onClick={() => copyToClipboard(newChildCredentials?.email || '', 'Email')}
-              >
-                <Copy size={16} />
-                Copy
-              </button>
-            </div>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Temporary Password</p>
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <p className="font-semibold text-gray-900">{newChildCredentials?.temporaryPassword}</p>
-              <button
-                type="button"
-                className="btn-secondary whitespace-nowrap inline-flex items-center gap-2"
-                onClick={() => copyToClipboard(newChildCredentials?.temporaryPassword || '', 'Password')}
-              >
-                <Copy size={16} />
-                Copy
-              </button>
-            </div>
-          </div>
-          <div className="pt-2">
-            <button className="btn-primary" onClick={handleCloseCredentialsModal}>Done</button>
-          </div>
-        </div>
-      </Modal>
+      {showCredentialsModal && newChildCredentials && (
+        <CredentialsModal
+          credentials={newChildCredentials}
+          onClose={() => { setShowCredentialsModal(false); setNewChildCredentials(null); }}
+          onCopy={copyToClipboard}
+        />
+      )}
     </div>
   );
 };
 
 export default ParentDashboard;
-

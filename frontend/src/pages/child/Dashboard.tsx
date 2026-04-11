@@ -259,100 +259,90 @@ const ChildDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar title="My Reading" />
+    <div className="min-h-screen bg-surface">
+      <Navbar title="My Reading" unreadMessages={unreadMessages} />
 
       <div className="container-responsive py-8">
-        <div className="mb-8">
-          <button
-            type="button"
-            onClick={() => navigate('/child/progress')}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 transition-colors"
-          >
-            <BarChart3 size={18} />
-            View my reading progress
-          </button>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-1">
-                Welcome, {user?.name || 'Reader'}
-              </h1>
-              <p className="text-gray-600">
-                Track your progress and continue your reading journey.
-              </p>
-            </div>
-
+        {/* Page Header */}
+        <div className="mb-8 animate-slide-up">
+          <h1 className="text-4xl serif-text font-bold text-primary leading-tight">
+            Welcome back, {user?.name?.split(' ')[0] || 'Reader'} 👋
+          </h1>
+          <p className="mt-2 text-on-surface-variant text-lg">
+            Your curated reading journey awaits. Keep the streak going!
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
             <button
-              onClick={() => navigate('/child/gamification')}
-              className="btn-primary inline-flex items-center gap-2"
               type="button"
+              onClick={() => navigate('/child/progress')}
+              className="btn-primary inline-flex items-center gap-2"
             >
-              <Sparkles size={18} />
-              View Gamification
+              <BarChart3 size={18} />
+              My Progress
             </button>
             <button
+              type="button"
+              onClick={() => navigate('/child/gamification')}
+              className="btn-outline inline-flex items-center gap-2"
+            >
+              <Sparkles size={18} />
+              Gamification
+            </button>
+            <button
+              type="button"
               onClick={() => navigate('/child/chat')}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 relative"
+              className="relative inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors"
             >
               <MessageCircle size={18} />
               Family Chat
               {unreadMessages > 0 && (
-                <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
-                  {unreadMessages > 99 ? '99+' : unreadMessages}
-                </div>
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-error text-on-error text-xs font-bold rounded-full flex items-center justify-center">
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
               )}
             </button>
           </div>
         </div>
 
-        <div className="card mb-8">
+        {/* Search Bar */}
+        <div className="card mb-8 animate-slide-up" style={{ animationDelay: '0.05s' }}>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleExternalSearch();
-                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleExternalSearch(); }}
                 placeholder="Search books in library or Google..."
-                className="input-base pl-10"
+                className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-b-2 border-outline-variant focus:border-primary outline-none text-on-surface rounded-t-lg transition-colors"
               />
             </div>
-
             <button
               type="button"
               className="btn-primary"
               onClick={handleExternalSearch}
               disabled={isSearchingExternal}
             >
-              {isSearchingExternal ? 'Searching...' : 'Search'}
+              {isSearchingExternal ? 'Searching…' : 'Search'}
             </button>
           </div>
-
           {!!searchQuery.trim() && localMatches.length > 0 && (
-            <p className="text-sm text-green-700 mt-3">
-              Found {localMatches.length} matching book(s) in your library.
+            <p className="text-sm text-tertiary mt-3 font-medium">
+              ✓ Found {localMatches.length} matching book(s) in your library.
             </p>
           )}
-
-          {!!searchQuery.trim() &&
-            localMatches.length === 0 &&
-            externalResults.length > 0 && (
-              <p className="text-sm text-blue-700 mt-3">
-                Not found in library. Showing Google Books results and notifying
-                admin.
-              </p>
-            )}
+          {!!searchQuery.trim() && localMatches.length === 0 && externalResults.length > 0 && (
+            <p className="text-sm text-secondary mt-3 font-medium">
+              Not found in library. Showing Google Books results and notifying admin.
+            </p>
+          )}
         </div>
 
+        {/* Search Results */}
         {!!searchQuery.trim() && localMatches.length > 0 && (
           <div className="card mb-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Library Matches
-            </h2>
+            <h2 className="serif-text font-bold text-xl text-on-surface mb-4">Library Matches</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {localMatches.map((story) => {
                 const sid = story.id || story._id;
@@ -361,9 +351,7 @@ const ChildDashboard: React.FC = () => {
                   <StoryCard
                     key={sid || story.title}
                     story={story}
-                    onSelect={() =>
-                      beginReadByStoryId(sid ? String(sid) : undefined, readKey)
-                    }
+                    onSelect={() => beginReadByStoryId(sid ? String(sid) : undefined, readKey)}
                     clickable={startingReadKey === null}
                   />
                 );
@@ -372,159 +360,111 @@ const ChildDashboard: React.FC = () => {
           </div>
         )}
 
-        {!!searchQuery.trim() &&
-          localMatches.length === 0 &&
-          externalResults.length > 0 && (
-            <div className="card mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Google Books Results
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {externalResults.map((story) => (
-                  <StoryCard
-                    key={story.id}
-                    story={story}
-                    onSelect={() => {
-                      if (story.previewLink) {
-                        window.location.href = story.previewLink;
-                        return;
-                      }
-                      toast('Preview is not available for this result');
-                    }}
-                    clickable
-                  />
-                ))}
+        {!!searchQuery.trim() && localMatches.length === 0 && externalResults.length > 0 && (
+          <div className="card mb-8">
+            <h2 className="serif-text font-bold text-xl text-on-surface mb-4">Google Books Results</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {externalResults.map((story) => (
+                <StoryCard
+                  key={story.id}
+                  story={story}
+                  onSelect={() => {
+                    if (story.previewLink) { window.location.href = story.previewLink; return; }
+                    toast('Preview is not available for this result');
+                  }}
+                  clickable
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Stats Strip */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+          {[
+            { label: 'Stories Available', value: isLoading ? '…' : stories.length, icon: 'library_books' },
+            { label: 'Beginner Friendly', value: isLoading ? '…' : beginnerCount, icon: 'auto_stories' },
+            { label: 'Middle Grade', value: isLoading ? '…' : middleGradeCount, icon: 'school' },
+            { label: 'My Assignments', value: isLoading ? '…' : assignmentStats.total, icon: 'assignment' },
+          ].map((stat) => (
+            <div key={stat.label} className="card flex items-start gap-3 p-5">
+              <div className="p-2 rounded-lg bg-surface-container-high flex-shrink-0">
+                <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  {stat.icon}
+                </span>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{stat.label}</p>
+                <p className="text-2xl font-bold serif-text text-primary">{stat.value}</p>
               </div>
             </div>
-          )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Stories Available"
-            value={isLoading ? '...' : stories.length}
-            icon={BookOpen}
-            color="blue"
-            subtext="In your library"
-          />
-          <StatCard
-            title="Beginner Friendly"
-            value={isLoading ? '...' : beginnerCount}
-            icon={Flame}
-            color="orange"
-            subtext="Easy stories"
-          />
-          <StatCard
-            title="Middle Grade"
-            value={isLoading ? '...' : middleGradeCount}
-            icon={Award}
-            color="green"
-            subtext="Age-fit picks"
-          />
-          <StatCard
-            title="Quick Picks"
-            value={isLoading ? '...' : quickPicks.length}
-            icon={Clock}
-            color="purple"
-            subtext="Ready to read"
-          />
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1">My Assignments</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {isLoading ? '...' : assignmentStats.total}
-            </p>
-          </div>
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1">Assigned</p>
-            <p className="text-2xl font-bold text-blue-700">
-              {isLoading ? '...' : assignmentStats.assigned}
-            </p>
-          </div>
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1">In Progress</p>
-            <p className="text-2xl font-bold text-amber-700">
-              {isLoading ? '...' : assignmentStats.inProgress}
-            </p>
-          </div>
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1">Completed</p>
-            <p className="text-2xl font-bold text-green-700">
-              {isLoading ? '...' : assignmentStats.completed}
-            </p>
-          </div>
+        {/* Assignment Status Mini Strip */}
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          {[
+            { label: 'Assigned', value: assignmentStats.assigned, color: 'text-secondary' },
+            { label: 'In Progress', value: assignmentStats.inProgress, color: 'text-primary' },
+            { label: 'Completed', value: assignmentStats.completed, color: 'text-tertiary' },
+          ].map((s) => (
+            <div key={s.label} className="card text-center py-5">
+              <p className={`text-3xl font-bold serif-text ${s.color}`}>{isLoading ? '…' : s.value}</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mt-1">{s.label}</p>
+            </div>
+          ))}
         </div>
 
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
+            {/* Reading Progress */}
             <div className="card">
-              <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">
-                  Your reading progress
-                </h2>
+              <div className="flex items-center gap-3 mb-5">
+                <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>import_contacts</span>
+                <h2 className="serif-text font-bold text-xl text-on-surface">Your Reading Progress</h2>
               </div>
 
               {isLoading ? (
-                <p className="text-gray-600">Loading progress...</p>
+                <div className="space-y-3">
+                  {[1, 2].map((i) => <div key={i} className="skeleton h-20 w-full" />)}
+                </div>
               ) : activeSessions.length === 0 ? (
-                <p className="text-gray-600">
-                  Open a book below to start a reading session. Books need a page
-                  count in the library to open in the reader.
-                </p>
+                <div className="flex flex-col items-center py-10 text-center">
+                  <span className="material-symbols-outlined text-5xl text-outline-variant mb-3">menu_book</span>
+                  <p className="text-on-surface-variant">Open a book below to start a reading session.</p>
+                  <p className="text-xs text-on-surface-variant mt-1">Books need a page count in the library to open in the reader.</p>
+                </div>
               ) : (
                 <ul className="space-y-4">
                   {activeSessions.map((row) => {
                     const sid = sessionStoryId(row);
                     const book = row.bookId;
-                    const title =
-                      book &&
-                      typeof book === 'object' &&
-                      'title' in book &&
-                      book.title
-                        ? book.title
-                        : 'Book';
-                    const author =
-                      book &&
-                      typeof book === 'object' &&
-                      'author' in book
-                        ? book.author
-                        : undefined;
+                    const title = book && typeof book === 'object' && 'title' in book && book.title ? book.title : 'Book';
+                    const author = book && typeof book === 'object' && 'author' in book ? book.author : undefined;
 
                     return (
-                      <li
-                        key={row._id}
-                        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-gray-200 p-4"
-                      >
+                      <li key={row._id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4">
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-900">{title}</p>
-                          {author ? (
-                            <p className="text-sm text-gray-600">{author}</p>
-                          ) : null}
-
-                          <div className="mt-2 h-2 rounded-full bg-gray-200 overflow-hidden max-w-md">
+                          <p className="font-semibold text-on-surface">{title}</p>
+                          {author && <p className="text-sm text-on-surface-variant">{author}</p>}
+                          <div className="mt-3 h-2 rounded-full bg-surface-container overflow-hidden max-w-md">
                             <div
-                              className="h-full rounded-full bg-nestory-600 transition-all"
-                              style={{
-                                width: `${Math.min(100, row.progress)}%`,
-                              }}
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{ width: `${Math.min(100, row.progress)}%` }}
                             />
                           </div>
-
-                          <p className="text-xs text-gray-500 mt-2">
-                            {row.pagesRead} / {row.totalPages} pages (
-                            {Math.round(row.progress)}%)
+                          <p className="text-xs text-outline mt-1.5">
+                            {row.pagesRead} / {row.totalPages} pages ({Math.round(row.progress)}%)
                           </p>
                         </div>
-
                         <button
                           type="button"
                           disabled={!sid || startingReadKey !== null}
                           onClick={() => sid && navigate(`/child/read/${row._id}`)}
-                          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 disabled:opacity-50 transition-colors"
+                          className="shrink-0 btn-primary text-sm py-2.5 px-5 disabled:opacity-50"
                         >
-                          Continue reading
+                          Continue Reading
                         </button>
                       </li>
                     );
@@ -533,74 +473,55 @@ const ChildDashboard: React.FC = () => {
               )}
             </div>
 
+            {/* Assigned Stories */}
             <div className="card">
-              <div className="flex items-center gap-2 mb-4">
-                <CalendarDays className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">
-                  My Assigned Stories
-                </h2>
+              <div className="flex items-center gap-3 mb-5">
+                <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>assignment</span>
+                <h2 className="serif-text font-bold text-xl text-on-surface">My Assigned Stories</h2>
               </div>
 
               {isLoading ? (
-                <p className="text-gray-600">Loading assignments...</p>
+                <div className="space-y-3">
+                  {[1, 2].map((i) => <div key={i} className="skeleton h-20 w-full" />)}
+                </div>
               ) : pendingAssignments.length === 0 ? (
-                <p className="text-gray-600">
-                  No active assignments yet. Great job keeping up!
-                </p>
+                <div className="flex flex-col items-center py-10 text-center">
+                  <span className="material-symbols-outlined text-5xl text-tertiary mb-3" style={{ fontVariationSettings: "'FILL' 1" }}>task_alt</span>
+                  <p className="font-semibold text-on-surface">All caught up!</p>
+                  <p className="text-sm text-on-surface-variant mt-1">No active assignments yet. Great job keeping up!</p>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {pendingAssignments.map((assignment) => {
-                    const assignmentStoryId =
-                      assignment.storyId ||
-                      assignment.story?._id ||
-                      assignment.story?.id;
+                    const assignmentStoryId = assignment.storyId || assignment.story?._id || assignment.story?.id;
                     const readKey = `a-${assignment.id}`;
 
                     return (
                       <div
                         key={assignment.id}
-                        className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 hover:border-nestory-300 hover:bg-nestory-50/40 transition-colors sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4 hover:border-primary/40 transition-colors sm:flex-row sm:items-center sm:justify-between"
                       >
                         <button
                           type="button"
-                          onClick={() =>
-                            navigate(`/child/assignments/${assignment.id}`)
-                          }
+                          onClick={() => navigate(`/child/assignments/${assignment.id}`)}
                           className="flex-1 text-left min-w-0"
                         >
-                          <p className="font-semibold text-gray-900">
-                            {assignment.story?.title || 'Untitled story'}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {assignment.story?.author || 'Unknown author'}
-                          </p>
+                          <p className="font-semibold text-on-surface">{assignment.story?.title || 'Untitled story'}</p>
+                          <p className="text-sm text-on-surface-variant">{assignment.story?.author || 'Unknown author'}</p>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className="badge bg-blue-100 text-blue-800 capitalize">
-                              {assignment.status.replace('_', ' ')}
-                            </span>
+                            <span className="badge badge-primary capitalize">{assignment.status.replace('_', ' ')}</span>
                             {assignment.dueDate && (
-                              <span className="badge bg-gray-100 text-gray-700">
-                                Due{' '}
-                                {new Date(
-                                  assignment.dueDate
-                                ).toLocaleDateString()}
-                              </span>
+                              <span className="badge badge-outline">Due {new Date(assignment.dueDate).toLocaleDateString()}</span>
                             )}
                           </div>
                         </button>
-
                         <button
                           type="button"
-                          onClick={() =>
-                            beginReadByStoryId(
-                              assignmentStoryId,
-                              readKey
-                            )
-                          }
+                          onClick={() => beginReadByStoryId(assignmentStoryId, readKey)}
                           disabled={startingReadKey !== null}
-                          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="shrink-0 btn-primary text-sm py-2.5 px-5 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {startingReadKey === readKey ? 'Opening…' : 'Read book'}
+                          {startingReadKey === readKey ? 'Opening…' : 'Read Book'}
                         </button>
                       </div>
                     );
@@ -609,32 +530,28 @@ const ChildDashboard: React.FC = () => {
               )}
             </div>
 
+            {/* Story Picks */}
             <div className="card">
-              <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">Story Picks</h2>
+              <div className="flex items-center gap-3 mb-5">
+                <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                <h2 className="serif-text font-bold text-xl text-on-surface">Story Picks For You</h2>
               </div>
-
               {isLoading ? (
-                <p className="text-gray-600">Loading story recommendations...</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => <div key={i} className="skeleton h-56 w-full rounded-xl" />)}
+                </div>
               ) : quickPicks.length === 0 ? (
-                <p className="text-gray-600">No stories available yet.</p>
+                <p className="text-on-surface-variant text-center py-8">No stories available yet.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {quickPicks.map((story) => {
                     const sid = story.id || story._id;
                     const readKey = `s-${sid}`;
-
                     return (
                       <StoryCard
                         key={sid || story.title}
                         story={story}
-                        onSelect={() =>
-                          beginReadByStoryId(
-                            sid ? String(sid) : undefined,
-                            readKey
-                          )
-                        }
+                        onSelect={() => beginReadByStoryId(sid ? String(sid) : undefined, readKey)}
                         clickable={startingReadKey === null}
                       />
                     );
@@ -644,30 +561,57 @@ const ChildDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Reading Tips
-            </h2>
-            <div className="space-y-3">
-              {[
-                { emoji: '📘', text: 'Read 15 minutes daily' },
-                { emoji: '📝', text: 'Tell a parent what you learned' },
-                { emoji: '🎯', text: 'Finish one story this week' },
-              ].map((achievement) => (
-                <div
-                  key={achievement.text}
-                  className="rounded-lg border border-gray-200 bg-gray-50 p-3 flex items-center gap-3"
-                >
-                  <span className="text-xl">{achievement.emoji}</span>
-                  <span className="font-medium text-gray-700">
-                    {achievement.text}
-                  </span>
-                </div>
-              ))}
+          {/* Right Sidebar */}
+          <div className="space-y-6">
+            {/* Reading Tips */}
+            <div className="card">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+                <h3 className="serif-text font-bold text-on-surface">Reading Tips</h3>
+              </div>
+              <div className="space-y-3">
+                {[
+                  { icon: '📘', text: 'Read 15 minutes daily to build your streak' },
+                  { icon: '📝', text: 'Tell a parent what you learned today' },
+                  { icon: '🎯', text: 'Finish one story this week to earn badges' },
+                ].map((tip) => (
+                  <div key={tip.text} className="rounded-xl bg-surface-container-low p-3 flex items-start gap-3">
+                    <span className="text-xl flex-shrink-0">{tip.icon}</span>
+                    <span className="text-sm font-medium text-on-surface-variant leading-snug">{tip.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div className="card">
+              <h3 className="serif-text font-bold text-on-surface mb-4">Quick Links</h3>
+              <div className="space-y-2">
+                {[
+                  { icon: 'library_books', label: 'Browse Full Library', route: '/stories' },
+                  { icon: 'military_tech', label: 'View My Badges', route: '/child/gamification' },
+                  { icon: 'chat', label: 'Family Chat', route: '/child/chat' },
+                  { icon: 'bar_chart', label: 'My Reading Stats', route: '/child/progress' },
+                ].map((link) => (
+                  <button
+                    key={link.route}
+                    type="button"
+                    onClick={() => navigate(link.route)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all font-medium text-sm"
+                  >
+                    <span className="material-symbols-outlined text-lg">{link.icon}</span>
+                    {link.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <footer className="py-6 text-center text-xs text-outline tracking-widest uppercase border-t border-outline-variant/30 mt-10">
+        © 2024 The Curated Sanctuary · Happy Reading!
+      </footer>
     </div>
   );
 };
