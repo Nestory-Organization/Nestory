@@ -4,11 +4,22 @@ import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
 import StoryCard from '../../components/common/StoryCard';
+import {
+  BookOpen,
+  Flame,
+  Clock,
+  Award,
+  CalendarDays,
+  BarChart3,
+  Sparkles,
+  Search,
+} from 'lucide-react';
 import { BookOpen, Flame, Clock, Award, CalendarDays, BarChart3, Sparkles, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StoryService from '../../services/storyService';
 import AssignmentService from '../../services/assignmentService';
 import ReadingService from '../../services/readingService';
+import SearchRequestService from '../../services/searchRequestService';
 import chatService from '../../services/chatService';
 import { Story, Assignment, MyReadingSessionRow } from '../../types';
 
@@ -24,6 +35,7 @@ const ChildDashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+
   const [stories, setStories] = useState<Story[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [activeSessions, setActiveSessions] = useState<MyReadingSessionRow[]>([]);
@@ -31,11 +43,57 @@ const ChildDashboard: React.FC = () => {
   const [startingReadKey, setStartingReadKey] = useState<string | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
-  const beginReadByStoryId = async (storyId: string | undefined, loadingKey: string) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchingExternal, setIsSearchingExternal] = useState(false);
+  const [externalResults, setExternalResults] = useState<Story[]>([]);
+
+  const loadDashboardData = async (showLoader = true) => {
+    try {
+      if (showLoader) setIsLoading(true);
+
+      const [response, childAssignments, sessions] = await Promise.all([
+        StoryService.getStories(1, 24),
+        AssignmentService.getMyAssignments(),
+        ReadingService.getMySessions('active').catch(
+          () => [] as MyReadingSessionRow[]
+        ),
+      ]);
+
+      const normalizedStories = (response.stories || []).map((story) => ({
+        ...story,
+        coverImage: normalizeCoverImage(story.coverImage),
+      }));
+
+      setStories(normalizedStories);
+      setAssignments(childAssignments || []);
+      setActiveSessions(sessions);
+    } catch (error: unknown) {
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (
+          error as { response?: { data?: { message?: string } } }
+        ).response?.data?.message === 'string'
+          ? (error as { response?: { data?: { message?: string } } }).response
+              ?.data?.message
+          : 'Failed to load child dashboard';
+
+      toast.error(message || 'Failed to load child dashboard');
+    } finally {
+      if (showLoader) setIsLoading(false);
+    }
+  };
+
+  const beginReadByStoryId = async (
+    storyId: string | undefined,
+    loadingKey: string
+  ) => {
     if (!storyId?.trim()) {
       toast.error('This book is not available to open yet.');
       return;
     }
+
     try {
       setStartingReadKey(loadingKey);
       const { _id } = await ReadingService.startMySession({ storyId });
@@ -45,10 +103,13 @@ const ChildDashboard: React.FC = () => {
         typeof error === 'object' &&
         error !== null &&
         'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message ===
-          'string'
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+        typeof (
+          error as { response?: { data?: { message?: string } } }
+        ).response?.data?.message === 'string'
+          ? (error as { response?: { data?: { message?: string } } }).response
+              ?.data?.message
           : 'Could not open this book';
+
       toast.error(message || 'Could not open this book');
     } finally {
       setStartingReadKey(null);
@@ -56,40 +117,13 @@ const ChildDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    const loadStories = async () => {
-      try {
-        setIsLoading(true);
-        const [response, childAssignments, sessions] = await Promise.all([
-          StoryService.getStories(1, 24),
-          AssignmentService.getMyAssignments(),
-          ReadingService.getMySessions('active').catch(() => [] as MyReadingSessionRow[]),
-        ]);
+    loadDashboardData(true);
 
-        const normalizedStories = (response.stories || []).map((story) => ({
-          ...story,
-          coverImage: normalizeCoverImage(story.coverImage),
-        }));
+    const interval = setInterval(() => {
+      loadDashboardData(false);
+    }, 10000);
 
-        setStories(normalizedStories);
-        setAssignments(childAssignments || []);
-        setActiveSessions(sessions);
-      } catch (error: unknown) {
-        const message =
-          typeof error === 'object' &&
-          error !== null &&
-          'response' in error &&
-          typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message ===
-            'string'
-            ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-            : 'Failed to load child dashboard';
-
-        toast.error(message || 'Failed to load child dashboard');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadStories();
+    return () => clearInterval(interval);
   }, [location.key]);
 
   // Load and poll for unread messages
@@ -122,10 +156,24 @@ const ChildDashboard: React.FC = () => {
 
   const quickPicks = useMemo(() => stories.slice(0, 6), [stories]);
 
+  const localMatches = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return stories.filter(
+      (story) =>
+        story.title?.toLowerCase().includes(q) ||
+        story.author?.toLowerCase().includes(q)
+    );
+  }, [searchQuery, stories]);
+
   const assignmentStats = useMemo(() => {
     const assigned = assignments.filter((item) => item.status === 'assigned').length;
-    const inProgress = assignments.filter((item) => item.status === 'in_progress').length;
-    const completed = assignments.filter((item) => item.status === 'completed').length;
+    const inProgress = assignments.filter(
+      (item) => item.status === 'in_progress'
+    ).length;
+    const completed = assignments.filter(
+      (item) => item.status === 'completed'
+    ).length;
 
     return {
       total: assignments.length,
@@ -146,26 +194,85 @@ const ChildDashboard: React.FC = () => {
     return typeof ref === 'string' ? ref : '';
   };
 
+  const handleExternalSearch = async () => {
+    const query = searchQuery.trim();
+
+    if (!query) {
+      toast.error('Enter a book name');
+      return;
+    }
+
+    if (localMatches.length > 0) {
+      setExternalResults([]);
+      toast.success('Found matching books in your library');
+      return;
+    }
+
+    try {
+      setIsSearchingExternal(true);
+
+      const results = await StoryService.searchGoogle(query);
+
+      const mappedResults: Story[] = (results || []).map((book: any) => ({
+        id: book.googleBookId,
+        title: book.title || 'Untitled',
+        author: book.author || 'Unknown',
+        description: book.description || '',
+        ageGroup: 'middle-grade',
+        genres: ['External Search'],
+        readingLevel: 'intermediate',
+        coverImage: normalizeCoverImage(book.coverImage),
+        pageCount: Number(book.pageCount || 0),
+        source: 'google',
+        googleBookId: book.googleBookId,
+        previewLink: book.previewLink || '',
+        createdBy: '',
+        createdAt: '',
+        updatedAt: '',
+      }));
+
+      setExternalResults(mappedResults);
+
+      if (mappedResults.length > 0) {
+        const top = mappedResults[0];
+
+        await SearchRequestService.createRequest({
+          query,
+          suggestedBookName: top.title,
+          googleBookId: top.googleBookId,
+          author: top.author,
+          coverImage: top.coverImage,
+          previewLink: top.previewLink,
+          pageCount: top.pageCount,
+        });
+
+        toast.success('Google results loaded and admin notified');
+      } else {
+        toast('No external results found');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to search external books');
+    } finally {
+      setIsSearchingExternal(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar title="My Reading" />
 
       <div className="container-responsive py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">
-            Welcome, {user?.name || 'Reader'}
-          </h1>
-          <p className="text-gray-600">
-            Track your progress and continue your reading journey.
-          </p>
           <button
             type="button"
             onClick={() => navigate('/child/progress')}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 transition-colors"
+            className="mb-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 transition-colors"
           >
             <BarChart3 size={18} />
             View my reading progress
           </button>
+
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-1">
@@ -175,9 +282,11 @@ const ChildDashboard: React.FC = () => {
                 Track your progress and continue your reading journey.
               </p>
             </div>
+
             <button
               onClick={() => navigate('/child/gamification')}
               className="btn-primary inline-flex items-center gap-2"
+              type="button"
             >
               <Sparkles size={18} />
               View Gamification
@@ -196,6 +305,98 @@ const ChildDashboard: React.FC = () => {
             </button>
           </div>
         </div>
+
+        <div className="card mb-8">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleExternalSearch();
+                }}
+                placeholder="Search books in library or Google..."
+                className="input-base pl-10"
+              />
+            </div>
+
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleExternalSearch}
+              disabled={isSearchingExternal}
+            >
+              {isSearchingExternal ? 'Searching...' : 'Search'}
+            </button>
+          </div>
+
+          {!!searchQuery.trim() && localMatches.length > 0 && (
+            <p className="text-sm text-green-700 mt-3">
+              Found {localMatches.length} matching book(s) in your library.
+            </p>
+          )}
+
+          {!!searchQuery.trim() &&
+            localMatches.length === 0 &&
+            externalResults.length > 0 && (
+              <p className="text-sm text-blue-700 mt-3">
+                Not found in library. Showing Google Books results and notifying
+                admin.
+              </p>
+            )}
+        </div>
+
+        {!!searchQuery.trim() && localMatches.length > 0 && (
+          <div className="card mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Library Matches
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {localMatches.map((story) => {
+                const sid = story.id || story._id;
+                const readKey = `l-${sid}`;
+                return (
+                  <StoryCard
+                    key={sid || story.title}
+                    story={story}
+                    onSelect={() =>
+                      beginReadByStoryId(sid ? String(sid) : undefined, readKey)
+                    }
+                    clickable={startingReadKey === null}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {!!searchQuery.trim() &&
+          localMatches.length === 0 &&
+          externalResults.length > 0 && (
+            <div className="card mb-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                Google Books Results
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {externalResults.map((story) => (
+                  <StoryCard
+                    key={story.id}
+                    story={story}
+                    onSelect={() => {
+                      if (story.previewLink) {
+                        window.location.href = story.previewLink;
+                        return;
+                      }
+                      toast('Preview is not available for this result');
+                    }}
+                    clickable
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
@@ -260,15 +461,17 @@ const ChildDashboard: React.FC = () => {
             <div className="card">
               <div className="flex items-center gap-2 mb-4">
                 <BookOpen className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">Your reading progress</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Your reading progress
+                </h2>
               </div>
 
               {isLoading ? (
                 <p className="text-gray-600">Loading progress...</p>
               ) : activeSessions.length === 0 ? (
                 <p className="text-gray-600">
-                  Open a book below to start a reading session. Books need a page count in the library
-                  to open in the reader.
+                  Open a book below to start a reading session. Books need a page
+                  count in the library to open in the reader.
                 </p>
               ) : (
                 <ul className="space-y-4">
@@ -276,26 +479,45 @@ const ChildDashboard: React.FC = () => {
                     const sid = sessionStoryId(row);
                     const book = row.bookId;
                     const title =
-                      book && typeof book === 'object' && 'title' in book && book.title
+                      book &&
+                      typeof book === 'object' &&
+                      'title' in book &&
+                      book.title
                         ? book.title
                         : 'Book';
                     const author =
-                      book && typeof book === 'object' && 'author' in book ? book.author : undefined;
+                      book &&
+                      typeof book === 'object' &&
+                      'author' in book
+                        ? book.author
+                        : undefined;
+
                     return (
-                      <li key={row._id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-gray-200 p-4">
+                      <li
+                        key={row._id}
+                        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-gray-200 p-4"
+                      >
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-gray-900">{title}</p>
-                          {author ? <p className="text-sm text-gray-600">{author}</p> : null}
+                          {author ? (
+                            <p className="text-sm text-gray-600">{author}</p>
+                          ) : null}
+
                           <div className="mt-2 h-2 rounded-full bg-gray-200 overflow-hidden max-w-md">
                             <div
                               className="h-full rounded-full bg-nestory-600 transition-all"
-                              style={{ width: `${Math.min(100, row.progress)}%` }}
+                              style={{
+                                width: `${Math.min(100, row.progress)}%`,
+                              }}
                             />
                           </div>
+
                           <p className="text-xs text-gray-500 mt-2">
-                            {row.pagesRead} / {row.totalPages} pages ({Math.round(row.progress)}%)
+                            {row.pagesRead} / {row.totalPages} pages (
+                            {Math.round(row.progress)}%)
                           </p>
                         </div>
+
                         <button
                           type="button"
                           disabled={!sid || startingReadKey !== null}
@@ -314,7 +536,9 @@ const ChildDashboard: React.FC = () => {
             <div className="card">
               <div className="flex items-center gap-2 mb-4">
                 <CalendarDays className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">My Assigned Stories</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  My Assigned Stories
+                </h2>
               </div>
 
               {isLoading ? (
@@ -327,8 +551,11 @@ const ChildDashboard: React.FC = () => {
                 <div className="space-y-3">
                   {pendingAssignments.map((assignment) => {
                     const assignmentStoryId =
-                      assignment.storyId || assignment.story?._id || assignment.story?.id;
+                      assignment.storyId ||
+                      assignment.story?._id ||
+                      assignment.story?.id;
                     const readKey = `a-${assignment.id}`;
+
                     return (
                       <div
                         key={assignment.id}
@@ -336,7 +563,9 @@ const ChildDashboard: React.FC = () => {
                       >
                         <button
                           type="button"
-                          onClick={() => navigate(`/child/assignments/${assignment.id}`)}
+                          onClick={() =>
+                            navigate(`/child/assignments/${assignment.id}`)
+                          }
                           className="flex-1 text-left min-w-0"
                         >
                           <p className="font-semibold text-gray-900">
@@ -351,14 +580,23 @@ const ChildDashboard: React.FC = () => {
                             </span>
                             {assignment.dueDate && (
                               <span className="badge bg-gray-100 text-gray-700">
-                                Due {new Date(assignment.dueDate).toLocaleDateString()}
+                                Due{' '}
+                                {new Date(
+                                  assignment.dueDate
+                                ).toLocaleDateString()}
                               </span>
                             )}
                           </div>
                         </button>
+
                         <button
                           type="button"
-                          onClick={() => beginReadByStoryId(assignmentStoryId, readKey)}
+                          onClick={() =>
+                            beginReadByStoryId(
+                              assignmentStoryId,
+                              readKey
+                            )
+                          }
                           disabled={startingReadKey !== null}
                           className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
@@ -386,12 +624,18 @@ const ChildDashboard: React.FC = () => {
                   {quickPicks.map((story) => {
                     const sid = story.id || story._id;
                     const readKey = `s-${sid}`;
+
                     return (
                       <StoryCard
                         key={sid || story.title}
                         story={story}
-                        onSelect={() => beginReadByStoryId(sid ? String(sid) : undefined, readKey)}
-                        disabled={startingReadKey !== null}
+                        onSelect={() =>
+                          beginReadByStoryId(
+                            sid ? String(sid) : undefined,
+                            readKey
+                          )
+                        }
+                        clickable={startingReadKey === null}
                       />
                     );
                   })}
@@ -401,7 +645,9 @@ const ChildDashboard: React.FC = () => {
           </div>
 
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Reading Tips</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              Reading Tips
+            </h2>
             <div className="space-y-3">
               {[
                 { emoji: '📘', text: 'Read 15 minutes daily' },
@@ -413,7 +659,9 @@ const ChildDashboard: React.FC = () => {
                   className="rounded-lg border border-gray-200 bg-gray-50 p-3 flex items-center gap-3"
                 >
                   <span className="text-xl">{achievement.emoji}</span>
-                  <span className="font-medium text-gray-700">{achievement.text}</span>
+                  <span className="font-medium text-gray-700">
+                    {achievement.text}
+                  </span>
                 </div>
               ))}
             </div>
