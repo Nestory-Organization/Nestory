@@ -2,7 +2,11 @@ const UserProgress = require('../../models/gamification/UserProgress');
 const Badge = require('../../models/gamification/Badge');
 const Achievement = require('../../models/gamification/Achievement');
 const PointTransaction = require('../../models/gamification/PointTransaction');
+const DailyChallenge = require('../../models/gamification/DailyChallenge');
 const User = require('../../models/User');
+const Child = require('../../models/Child');
+const GamificationService = require('../../services/gamification/gamificationService');
+const { generateDailyChallenge } = require('../../services/gamification/aiChallengeService');
 
 // Helper function to check if achievement is available to user
 const checkAchievementAvailability = (progress, achievement) => {
@@ -18,6 +22,33 @@ const checkAchievementAvailability = (progress, achievement) => {
     }
   }
   return true;
+};
+
+const getDateKey = (inputDate = new Date()) => {
+  const d = new Date(inputDate);
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const resolveUserAndChild = async (userId, childId) => {
+  const user = await User.findById(userId).select('role parentAccount childProfile');
+
+  let actualUserId = userId;
+  let actualChildId = childId;
+
+  if (user && user.role === 'child') {
+    actualUserId = user.parentAccount || userId;
+    if (!actualChildId) {
+      actualChildId = user.childProfile || null;
+    }
+  }
+
+  return {
+    actualUserId,
+    actualChildId
+  };
 };
 
 // @desc    Get user progress/stats
@@ -670,6 +701,234 @@ exports.getTransactionHistory = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching transaction history',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Generate today's AI challenge
+// @route   POST /api/gamification/challenges/generate
+// @access  Private
+exports.generateTodayChallenge = async (req, res) => {
+  try {
+    const { userId, childId, forceNew = false } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide userId'
+      });
+    }
+
+    const { actualUserId, actualChildId } = await resolveUserAndChild(userId, childId);
+    const dateKey = getDateKey();
+
+    const query = {
+      user: actualUserId,
+      child: actualChildId || null,
+      dateKey
+    };
+
+    const existingChallenge = await DailyChallenge.findOne(query);
+
+    if (existingChallenge && forceNew !== true) {
+      return res.status(200).json({
+        success: true,
+        message: 'Today challenge already exists',
+        data: existingChallenge
+      });
+    }
+
+    const progressQuery = { user: actualUserId };
+    if (actualChildId) {
+      progressQuery.child = actualChildId;
+    }
+
+    let progress = await UserProgress.findOne(progressQuery);
+    if (!progress) {
+      progress = await UserProgress.create({
+        user: actualUserId,
+        child: actualChildId || null
+      });
+    }
+
+    let childProfile = null;
+    if (actualChildId) {
+      childProfile = await Child.findById(actualChildId).select('age readingLevel name');
+    }
+
+    const challengePayload = await generateDailyChallenge({
+      childProfile,
+      progress,
+      dateKey
+    });
+
+    const challenge = await DailyChallenge.findOneAndUpdate(
+      query,
+      {
+        $set: {
+          title: challengePayload.title,
+          description: challengePayload.description,
+          challengeType: challengePayload.challengeType,
+          targetValue: challengePayload.targetValue,
+          rewardPoints: challengePayload.rewardPoints,
+          generatedBy: challengePayload.generatedBy,
+          metadata: challengePayload.metadata,
+          currentProgress: 0,
+          isCompleted: false,
+          completedAt: null
+        }
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true
+      }
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Daily challenge generated successfully',
+      data: challenge
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error generating daily challenge',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get today's challenge
+// @route   GET /api/gamification/challenges/today/:userId
+// @access  Private
+exports.getTodayChallenge = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { childId } = req.query;
+
+    const { actualUserId, actualChildId } = await resolveUserAndChild(userId, childId);
+
+    const challenge = await DailyChallenge.findOne({
+      user: actualUserId,
+      child: actualChildId || null,
+      dateKey: getDateKey()
+    });
+
+    if (!challenge) {
+      return res.status(404).json({
+        success: false,
+        message: 'No challenge generated for today'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: challenge
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching today challenge',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Update challenge progress
+// @route   POST /api/gamification/challenges/progress
+// @access  Private
+exports.updateTodayChallengeProgress = async (req, res) => {
+  try {
+    const { userId, childId, progressIncrement = 1, challengeId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide userId'
+      });
+    }
+
+    if (!Number.isFinite(Number(progressIncrement)) || Number(progressIncrement) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'progressIncrement must be a positive number'
+      });
+    }
+
+    const { actualUserId, actualChildId } = await resolveUserAndChild(userId, childId);
+
+    let challenge;
+    if (challengeId) {
+      challenge = await DailyChallenge.findById(challengeId);
+    } else {
+      challenge = await DailyChallenge.findOne({
+        user: actualUserId,
+        child: actualChildId || null,
+        dateKey: getDateKey()
+      });
+    }
+
+    if (!challenge) {
+      return res.status(404).json({
+        success: false,
+        message: 'Daily challenge not found'
+      });
+    }
+
+    if (challenge.isCompleted) {
+      return res.status(200).json({
+        success: true,
+        message: 'Challenge already completed',
+        data: challenge
+      });
+    }
+
+    challenge.currentProgress = Math.min(
+      challenge.targetValue,
+      challenge.currentProgress + Number(progressIncrement)
+    );
+
+    if (challenge.currentProgress >= challenge.targetValue) {
+      challenge.isCompleted = true;
+      challenge.completedAt = new Date();
+      await challenge.save();
+
+      const awardResult = await GamificationService.awardPointsToUser(
+        actualUserId,
+        challenge.rewardPoints,
+        'manual',
+        `Completed daily AI challenge: ${challenge.title}`,
+        actualChildId || null,
+        { model: 'None', id: null }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: 'Challenge completed and points awarded',
+        data: {
+          challenge,
+          reward: {
+            pointsAwarded: challenge.rewardPoints,
+            totalPoints: awardResult.progress.totalPoints,
+            level: awardResult.progress.level
+          }
+        }
+      });
+    }
+
+    await challenge.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Challenge progress updated',
+      data: challenge
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating challenge progress',
       error: error.message
     });
   }
