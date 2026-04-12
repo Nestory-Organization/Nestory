@@ -333,9 +333,9 @@ const FamilyChatPage: React.FC = () => {
                       <Send size={20} />
                     </button>
                     <div className="absolute -top-12 right-0 flex gap-2">
-                       <button onClick={() => setNewMessage(p => p + ' ??')} className="px-3 py-1.5 bg-white border-2 border-[#E8E2D5] rounded-xl text-lg hover:scale-110 transition-transform shadow-sm font-bold">??</button>
-                       <button onClick={() => setNewMessage(p => p + ' ??')} className="px-3 py-1.5 bg-white border-2 border-[#E8E2D5] rounded-xl text-lg hover:scale-110 transition-transform shadow-sm font-bold">??</button>
-                       <button onClick={() => setNewMessage(p => p + ' ??')} className="px-3 py-1.5 bg-white border-2 border-[#E8E2D5] rounded-xl text-lg hover:scale-110 transition-transform shadow-sm font-bold">??</button>
+                       <button onClick={() => setNewMessage(p => p + ' 👋')} className="px-3 py-1.5 bg-white border-2 border-[#E8E2D5] rounded-xl text-lg hover:scale-110 transition-transform shadow-sm font-bold">👋</button>
+                       <button onClick={() => setNewMessage(p => p + ' 📖')} className="px-3 py-1.5 bg-white border-2 border-[#E8E2D5] rounded-xl text-lg hover:scale-110 transition-transform shadow-sm font-bold">📖</button>
+                       <button onClick={() => setNewMessage(p => p + ' 🎉')} className="px-3 py-1.5 bg-white border-2 border-[#E8E2D5] rounded-xl text-lg hover:scale-110 transition-transform shadow-sm font-bold">🎉</button>
                     </div>
                   </div>
                </div>

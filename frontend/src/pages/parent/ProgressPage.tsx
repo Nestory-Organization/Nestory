@@ -117,41 +117,57 @@ const ParentProgressPage: React.FC = () => {
         </div>
 
         {weekActivity && (
-          <div className="card mb-8 border-nestory-200 bg-gradient-to-br from-white to-nestory-50/50">
-            <h2 className="text-lg font-bold text-gray-900">This week (family)</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Pages and minutes from progress saves (last {weekActivity.days} days), all children
-              combined.
-            </p>
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-lg bg-white/90 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Pages</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalPagesLogged}</p>
+          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-200/40 p-10 mb-12 animate-in fade-in slide-in-from-bottom-6 duration-700 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50"></div>
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em]">Family Activity</span>
               </div>
-              <div className="rounded-lg bg-white/90 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Minutes</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalMinutesLogged}</p>
+              <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Weekly <span className="text-indigo-600">Insights</span></h2>
+              <p className="text-gray-500 font-bold text-sm mt-2 uppercase tracking-widest leading-relaxed">
+                Combined reading metrics for all children (Last {weekActivity.days} days)
+              </p>
+              
+              <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 transition-all hover:bg-white hover:shadow-lg group">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-1">Total Pages</p>
+                  <p className="text-4xl font-black text-gray-900 group-hover:text-indigo-600 transition-colors tracking-tighter">{weekActivity.totalPagesLogged}</p>
+                </div>
+                <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 transition-all hover:bg-white hover:shadow-lg group">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-1">Total Minutes</p>
+                  <p className="text-4xl font-black text-gray-900 group-hover:text-indigo-600 transition-colors tracking-tighter">{weekActivity.totalMinutesLogged}</p>
+                </div>
+                <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 transition-all hover:bg-white hover:shadow-lg group">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-1">Progress Saves</p>
+                  <p className="text-4xl font-black text-gray-900 group-hover:text-indigo-600 transition-colors tracking-tighter">{weekActivity.progressSaveCount}</p>
+                </div>
+                <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 transition-all hover:bg-white hover:shadow-lg group text-right">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-1">Period</p>
+                  <p className="text-sm font-black text-gray-800 uppercase tracking-tight">
+                    {new Date(weekActivity.periodStart).toLocaleDateString([], { month: 'short', day: 'numeric' })} – {new Date(weekActivity.periodEnd).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
               </div>
-              <div className="rounded-lg bg-white/90 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Saves</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.progressSaveCount}</p>
-              </div>
-              <div className="rounded-lg bg-white/90 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Period</p>
-                <p className="text-sm font-semibold text-gray-800 mt-2">
-                  {new Date(weekActivity.periodStart).toLocaleDateString()} –{' '}
-                  {new Date(weekActivity.periodEnd).toLocaleDateString()}
-                </p>
-              </div>
+
+              {weekActivity.byDay && weekActivity.byDay.length > 0 && (
+                <div className="mt-10 h-[400px] w-full bg-gray-50/30 rounded-[2.5rem] p-10 border border-gray-100 shadow-inner group">
+                  <div className="flex items-center justify-between mb-6">
+                     <span className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em]">Minutes per day</span>
+                     <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                           <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
+                           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reading Time</span>
+                        </div>
+                     </div>
+                  </div>
+                  <ReadingWeeklyBarChart
+                    byDay={weekActivity.byDay}
+                    isParent={true}
+                    title="Family Reading Activity"
+                  />
+                </div>
+              )}
             </div>
-            {weekActivity.byDay && weekActivity.byDay.length > 0 ? (
-              <div className="mt-6 rounded-xl bg-white/90 border border-gray-100 p-4">
-                <ReadingWeeklyBarChart
-                  byDay={weekActivity.byDay}
-                  title={`Family minutes & pages per day (last ${weekActivity.days} days)`}
-                />
-              </div>
-            ) : null}
           </div>
         )}
 

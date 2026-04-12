@@ -93,7 +93,14 @@ const ChildProgressPage = () => {
                     </div>
 
                     {weekActivity.byDay && weekActivity.byDay.length > 0 && (
-                      <div className="h-[300px] w-full bg-white/50 rounded-3xl p-4 border border-white/80">
+                      <div className="h-[350px] w-full bg-white/70 rounded-[2.5rem] p-8 border border-white shadow-inner">
+                         <div className="flex items-center justify-between mb-4">
+                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em]">Reading Pulse</span>
+                            <div className="flex gap-2">
+                               <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+                               <div className="w-2 h-2 rounded-full bg-rose-200"></div>
+                            </div>
+                         </div>
                          <ReadingWeeklyBarChart byDay={weekActivity.byDay} title="Reading Status" />
                       </div>
                     )}
@@ -125,7 +132,7 @@ const ChildProgressPage = () => {
                                     <div className="text-[8px] font-bold text-gray-400 uppercase tracking-[0.2em]">Completed</div>
                                   </div>
                                   <div className="w-16 h-16 rounded-2xl bg-[#F5F1E9] flex items-center justify-center border border-[#E8E2D5] group-hover:scale-110 transition-transform">
-                                    <span className="text-2xl">??</span>
+                                    <span className="text-2xl">🔥</span>
                                   </div>
                               </div>
                             </div>
@@ -161,7 +168,7 @@ const ChildProgressPage = () => {
               <section className="bg-orange-400 rounded-[2.5rem] p-8 text-white shadow-xl shadow-orange-200/40 relative overflow-hidden group">
                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
                  <h2 className="text-2xl font-black uppercase tracking-tight mb-4 relative z-10">Hero Tip!</h2>
-                 <p className="text-orange-50 font-bold text-sm leading-relaxed mb-6 relative z-10">Reading every day builds your "Stamina Stat"! ?? Try to read at least 10 minutes before bed to keep your streak alive.</p>
+                 <p className="text-orange-50 font-bold text-sm leading-relaxed mb-6 relative z-10">Reading every day builds your "Stamina Stat"! ⚡ Try to read at least 10 minutes before bed to keep your streak alive.</p>
                  <div className="p-4 bg-orange-500/50 rounded-2xl border border-orange-300/30 flex items-center gap-4 relative z-10">
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-orange-200/50">
                        <TrendingUp className="text-orange-500" size={20} />
@@ -179,7 +186,7 @@ const ChildProgressPage = () => {
                     {[
                        { title: "First Page", desc: "Log your first page read", icon: "?", done: true },
                        { title: "Speedster", desc: "Read for 30 mins in one go", icon: "?", done: false },
-                       { title: "Book Worm", desc: "Finish your first book", icon: "??", done: false }
+                       { title: "Book Worm", desc: "Finish your first book", icon: "🐛", done: false }
                     ].map((ach, idx) => (
                        <div key={idx} className={`flex items-center gap-4 p-4 rounded-2xl border ${ach.done ? "bg-rose-50 border-rose-100" : "bg-gray-50 border-gray-100 opacity-60"}`}>
                           <span className="text-2xl">{ach.icon}</span>

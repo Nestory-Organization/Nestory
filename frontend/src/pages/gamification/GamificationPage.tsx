@@ -220,7 +220,7 @@ const GamificationPage: React.FC = () => {
               
               {earnedBadges.length === 0 ? (
                 <div className="py-16 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-100">
-                   <p className="text-gray-400 font-black uppercase tracking-widest text-xs">No badges yet. Start reading to earn some! ??</p>
+                   <p className="text-gray-400 font-black uppercase tracking-widest text-xs">No badges yet. Start reading to earn some! 📚</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
@@ -228,7 +228,7 @@ const GamificationPage: React.FC = () => {
                     <div key={item.id || `earned-${item.badge.id}`} className="group bg-[#F5F1E9]/50 border border-[#E8E2D5] rounded-[2rem] p-6 hover:bg-white hover:shadow-xl transition-all">
                       <div className="flex items-center justify-between mb-4">
                         <div className="w-14 h-14 bg-white rounded-2xl border border-[#E8E2D5] flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-                          {item.badge.icon || "??"}
+                          {item.badge.icon || "🏅"}
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-black text-rose-500">{item.badge.points}</div>
@@ -254,12 +254,12 @@ const GamificationPage: React.FC = () => {
                </div>
                <div className="space-y-6">
                  {availableBadges.length === 0 ? (
-                   <div className="py-8 text-center text-gray-400 uppercase text-xs font-black tracking-widest">You have earned all available badges! ??</div>
+                   <div className="py-8 text-center text-gray-400 uppercase text-xs font-black tracking-widest">You have earned all available badges! 🎊</div>
                  ) : (
                    availableBadges.slice(0, 4).map((badge) => (
                      <div key={badge.id || badge.name} className="flex items-center gap-6 p-6 bg-gray-50/50 rounded-3xl border border-gray-100 hover:bg-white transition-all opacity-70 hover:opacity-100 group">
                        <div className="w-14 h-14 rounded-2xl bg-white border border-gray-100 flex items-center justify-center grayscale group-hover:grayscale-0 transition-all text-2xl shadow-sm">
-                          {badge.icon || "??"}
+                          {badge.icon || "🔒"}
                        </div>
                        <div className="flex-1">
                           <div className="flex justify-between items-start mb-1">
@@ -291,11 +291,11 @@ const GamificationPage: React.FC = () => {
                     leaderboard.map((entry, idx) => (
                       <div key={entry.id || entry.user?.id || entry.child?.id || idx} className={`flex items-center gap-4 p-5 rounded-3xl border transition-all ${idx === 0 ? "bg-amber-50 border-amber-200 scale-105 shadow-md" : (entry.user?.id === user?.id || entry.child?.id === user?.id) ? "bg-rose-50 border-rose-200" : "bg-white border-[#E8E2D5]"}`}>
                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black ${idx === 0 ? "bg-amber-100 text-amber-700" : (idx === 1 ? "bg-gray-100 text-gray-600" : (idx === 2 ? "bg-orange-100 text-orange-700" : "text-gray-400"))}`}>
-                            {idx === 0 ? "??" : idx === 1 ? "??" : idx === 2 ? "??" : idx + 1}
+                            {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : idx + 1}
                          </div>
                          <div className="flex-1 min-w-0">
                             <p className="font-black text-gray-800 truncate uppercase tracking-tight text-sm">
-                              {entry.child?.displayName || entry.child?.name || entry.user?.displayName || entry.user?.name || "Explorer"}
+                              {entry.child?.name || "Unknown"}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{entry.totalPoints} XP</span>
