@@ -285,6 +285,62 @@ To verify both deployments are working:
 
 ---
 
+## Deployment Evidence Screenshots
+
+### **Backend Deployment (Render)**
+
+![Backend Deployment Evidence](./docs/backend-deployment.png)
+
+_Screenshot showing:_
+
+- Render dashboard with `nestory_backend` service status
+- Build logs showing successful 2.9s deployment
+- All environment variables configured
+- Service running on production environment
+- Backend API accessible at: https://nestory-backend.onrender.com/
+
+---
+
+### **Frontend Deployment (Vercel)**
+
+![Frontend Deployment Evidence](./docs/frontend-deployment.png)
+
+_Screenshot showing:_
+
+- Vercel deployment dashboard with "Ready Latest" status
+- Build logs showing successful Vite compilation
+- All domains configured
+- Build time: 11 seconds
+- Frontend accessible at: https://nestory-ten.vercel.app/
+
+---
+
+### **Live Application Running**
+
+![Live Application Screenshot](./docs/live-app.png)
+
+_Screenshot showing:_
+
+- Application loaded successfully in browser
+- Parent login interface or home page
+- Responsive design working correctly
+- All styles and components rendering properly
+
+---
+
+### **API Integration Testing**
+
+![API Testing Evidence](./docs/api-testing.png)
+
+_Screenshot showing:_
+
+- Successful API calls to backend
+- API responses with correct data
+- Real-time features working (if applicable)
+- Error handling working correctly
+
+---
+
 ## Technology Stack
 
 **Frontend:**
