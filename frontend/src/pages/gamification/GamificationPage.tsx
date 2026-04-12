@@ -21,6 +21,13 @@ import {
 
 const maxLeaderboardItems = 6;
 
+// Generate a consistent emoji based on child name
+const getChildEmoji = (name: string): string => {
+  const emojis = ['🧒', '👧', '👦', '🎀', '⭐', '🌟', '🎨', '🎭', '🎪', '🎯'];
+  const index = name.charCodeAt(0) % emojis.length;
+  return emojis[index];
+};
+
 const GamificationPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -136,9 +143,23 @@ const GamificationPage: React.FC = () => {
                 <div className="flex items-center gap-6 mb-8 relative z-10">
                   <div className="w-20 h-20 rounded-3xl bg-rose-50 border-4 border-white shadow-md flex items-center justify-center overflow-hidden shrink-0">
                     {child.avatar ? (
-                      <img src={child.avatar} alt={child.name} className="w-full h-full object-cover" />
+                      <img 
+                        src={child.avatar} 
+                        alt={child.name} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // If image fails to load, show emoji
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const emoji = getChildEmoji(child.name);
+                          const span = document.createElement('span');
+                          span.className = 'text-4xl';
+                          span.textContent = emoji;
+                          target.parentElement?.appendChild(span);
+                        }}
+                      />
                     ) : (
-                      <span className="text-3xl font-black text-rose-500">{child.name.charAt(0)}</span>
+                      <span className="text-4xl">{getChildEmoji(child.name)}</span>
                     )}
                   </div>
                   <div className="min-w-0">
@@ -190,7 +211,7 @@ const GamificationPage: React.FC = () => {
             { label: "Total XP", val: progress?.totalPoints ?? 0, icon: <Sparkles className="text-blue-500" />, bg: "bg-blue-50", key: "xp" },
             { label: "My Level", val: progress?.level ?? 1, icon: <Trophy className="text-purple-500" />, bg: "bg-purple-50", key: "lvl" },
             { label: "Max Streak", val: `${progress?.currentStreak ?? 0}d`, icon: <Flame className="text-orange-500" />, bg: "bg-orange-50", key: "streak" },
-            { label: "Books Done", val: progress?.stats.assignmentsCompleted ?? 0, icon: <ListChecks className="text-rose-500" />, bg: "bg-rose-50", key: "books" }
+            { label: "Books Done", val: progress?.stats.storiesRead ?? 0, icon: <ListChecks className="text-rose-500" />, bg: "bg-rose-50", key: "books" }
           ].map((s) => (
             <div key={s.key} className="bg-white p-8 rounded-[2.5rem] border border-[#E8E2D5] shadow-sm text-center transform hover:scale-105 transition-all group">
               <div className={`w-16 h-16 ${s.bg} rounded-3xl flex items-center justify-center mb-4 mx-auto border border-white shadow-inner`}>
