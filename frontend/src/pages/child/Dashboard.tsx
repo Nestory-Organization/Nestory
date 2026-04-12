@@ -1,138 +1,75 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import Navbar from '../../components/common/Navbar';
-import StatCard from '../../components/common/StatCard';
-import StoryCard from '../../components/common/StoryCard';
-import {
-  BookOpen,
-  Flame,
-  Clock,
-  Award,
-  CalendarDays,
-  BarChart3,
-  Sparkles,
-  Search,
-  MessageCircle
-} from 'lucide-react';
-import toast from 'react-hot-toast';
-import StoryService from '../../services/storyService';
-import AssignmentService from '../../services/assignmentService';
-import ReadingService from '../../services/readingService';
-import SearchRequestService from '../../services/searchRequestService';
-import chatService from '../../services/chatService';
-import { Story, Assignment, MyReadingSessionRow } from '../../types';
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import StoryService from "../../services/storyService";
+import AssignmentService from "../../services/assignmentService";
+import ReadingService from "../../services/readingService";
+import SearchRequestService from "../../services/searchRequestService";
+import chatService from "../../services/chatService";
+import { Story, Assignment, MyReadingSessionRow } from "../../types";
+import toast from "react-hot-toast";
+import { MessageCircle, Sparkles, TrendingUp, Trophy } from "lucide-react";
 
-const FALLBACK_COVER =
-  'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80';
+import ChildSidebar from "../../components/common/ChildSidebar";
+import BookTopBar from "../../components/child/BookTopBar";
+import PlayfulStoryCard from "../../components/child/PlayfulStoryCard";
 
-const normalizeCoverImage = (url?: string) => {
+const FALLBACK_COVER = "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80";
+
+const normalizeCoverImage = (url) => {
   if (!url || !url.trim()) return FALLBACK_COVER;
-  return url.replace(/^http:\/\//i, 'https://');
+  return url.replace(/^http:\/\//i, "https://");
 };
 
-const ChildDashboard: React.FC = () => {
+const ChildDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
 
-  const [stories, setStories] = useState<Story[]>([]);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [activeSessions, setActiveSessions] = useState<MyReadingSessionRow[]>([]);
+  const [stories, setStories] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [activeSessions, setActiveSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [startingReadKey, setStartingReadKey] = useState<string | null>(null);
+  const [startingReadKey, setStartingReadKey] = useState(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearchingExternal, setIsSearchingExternal] = useState(false);
-  const [externalResults, setExternalResults] = useState<Story[]>([]);
+  const [externalResults, setExternalResults] = useState([]);
 
   const loadDashboardData = async (showLoader = true) => {
     try {
       if (showLoader) setIsLoading(true);
-
       const [response, childAssignments, sessions] = await Promise.all([
-        StoryService.getStories(1, 24),
+        StoryService.getStories(1, 48),
         AssignmentService.getMyAssignments(),
-        ReadingService.getMySessions('active').catch(
-          () => [] as MyReadingSessionRow[]
-        ),
+        ReadingService.getMySessions("active").catch(() => []),
       ]);
-
-      const normalizedStories = (response.stories || []).map((story) => ({
-        ...story,
-        coverImage: normalizeCoverImage(story.coverImage),
+      const normalizedStories = (response.stories || []).map((s) => ({
+        ...s,
+        coverImage: normalizeCoverImage(s.coverImage),
       }));
-
       setStories(normalizedStories);
       setAssignments(childAssignments || []);
       setActiveSessions(sessions);
-    } catch (error: unknown) {
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (
-          error as { response?: { data?: { message?: string } } }
-        ).response?.data?.message === 'string'
-          ? (error as { response?: { data?: { message?: string } } }).response
-              ?.data?.message
-          : 'Failed to load child dashboard';
-
-      toast.error(message || 'Failed to load child dashboard');
+    } catch (e) {
+      toast.error("Dashboard error");
     } finally {
       if (showLoader) setIsLoading(false);
     }
   };
 
-  const beginReadByStoryId = async (
-    storyId: string | undefined,
-    loadingKey: string
-  ) => {
+  const beginReadByStoryId = async (storyId, loadingKey) => {
     if (!storyId?.trim()) {
-      toast.error('This book is not available to open yet.');
+      toast.error("Not available");
       return;
     }
-
     try {
       setStartingReadKey(loadingKey);
-
-      // If this is an assignment (loadingKey starts with 'a-'), update its status to in_progress
-      if (loadingKey.startsWith('a-')) {
-        const assignmentId = loadingKey.substring(2); // Remove 'a-' prefix
-        const assignment = assignments.find((a) => a.id === assignmentId);
-        
-        if (assignment && assignment.status === 'assigned') {
-          try {
-            await AssignmentService.updateMyAssignmentStatus(assignmentId, 'in_progress');
-            // Update the local assignments list
-            setAssignments(
-              assignments.map((a) =>
-                a.id === assignmentId ? { ...a, status: 'in_progress' } : a
-              )
-            );
-          } catch (statusError) {
-            console.warn('Failed to update assignment status:', statusError);
-            // Continue with reading even if status update fails
-          }
-        }
-      }
-
       const { _id } = await ReadingService.startMySession({ storyId });
       navigate(`/child/read/${_id}`);
-    } catch (error: unknown) {
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (
-          error as { response?: { data?: { message?: string } } }
-        ).response?.data?.message === 'string'
-          ? (error as { response?: { data?: { message?: string } } }).response
-              ?.data?.message
-          : 'Could not open this book';
-
-      toast.error(message || 'Could not open this book');
+    } catch (e) {
+      toast.error("Could not open");
     } finally {
       setStartingReadKey(null);
     }
@@ -140,552 +77,164 @@ const ChildDashboard: React.FC = () => {
 
   useEffect(() => {
     loadDashboardData(true);
-
-    const interval = setInterval(() => {
-      loadDashboardData(false);
-    }, 10000);
-
-    return () => clearInterval(interval);
+    const i = setInterval(() => loadDashboardData(false), 15000);
+    return () => clearInterval(i);
   }, [location.key]);
 
-  // Load and poll for unread messages
-  useEffect(() => {
-    const loadUnread = async () => {
-      try {
-        const unreadCount = await chatService.getUnread();
-        setUnreadMessages(unreadCount);
-      } catch (error) {
-        console.error('Failed to load unread messages:', error);
-      }
-    };
-
-    loadUnread();
-
-    // Poll every 3 seconds
-    const interval = setInterval(loadUnread, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const beginnerCount = useMemo(
-    () => stories.filter((story) => story.readingLevel === 'beginner').length,
-    [stories]
-  );
-
-  const middleGradeCount = useMemo(
-    () => stories.filter((story) => story.ageGroup === 'middle-grade').length,
-    [stories]
-  );
-
-  const quickPicks = useMemo(() => stories.slice(0, 6), [stories]);
-
+  const quickPicks = useMemo(() => stories.slice(0, 14), [stories]);
   const localMatches = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
-    return stories.filter(
-      (story) =>
-        story.title?.toLowerCase().includes(q) ||
-        story.author?.toLowerCase().includes(q)
-    );
+    return stories.filter(s => s.title?.toLowerCase().includes(q) || s.author?.toLowerCase().includes(q));
   }, [searchQuery, stories]);
 
-  const assignmentStats = useMemo(() => {
-    const assigned = assignments.filter((item) => item.status === 'assigned').length;
-    const inProgress = assignments.filter(
-      (item) => item.status === 'in_progress'
-    ).length;
-    const completed = assignments.filter(
-      (item) => item.status === 'completed'
-    ).length;
+  const stats = useMemo(() => ({
+    completed: assignments.filter(a => a.status === "completed").length,
+    total: assignments.length
+  }), [assignments]);
 
-    return {
-      total: assignments.length,
-      assigned,
-      inProgress,
-      completed,
-    };
-  }, [assignments]);
-
-  const pendingAssignments = useMemo(
-    () => assignments.filter((item) => item.status !== 'completed').slice(0, 6),
-    [assignments]
-  );
-
-  const sessionStoryId = (row: MyReadingSessionRow): string => {
-    const ref = row.bookId;
-    if (ref && typeof ref === 'object' && '_id' in ref) return String(ref._id);
-    return typeof ref === 'string' ? ref : '';
-  };
-
-  const handleExternalSearch = async () => {
+  const handleSearch = async () => {
     const query = searchQuery.trim();
-
-    if (!query) {
-      toast.error('Enter a book name');
-      return;
-    }
-
-    if (localMatches.length > 0) {
-      setExternalResults([]);
-      toast.success('Found matching books in your library');
-      return;
-    }
-
+    if (!query) return;
     try {
       setIsSearchingExternal(true);
-
-      const results = await StoryService.searchGoogle(query);
-
-      const mappedResults: Story[] = (results || []).map((book: any) => ({
-        id: book.googleBookId,
-        title: book.title || 'Untitled',
-        author: book.author || 'Unknown',
-        description: book.description || '',
-        ageGroup: 'middle-grade',
-        genres: ['External Search'],
-        readingLevel: 'intermediate',
-        coverImage: normalizeCoverImage(book.coverImage),
-        pageCount: Number(book.pageCount || 0),
-        source: 'google',
-        googleBookId: book.googleBookId,
-        previewLink: book.previewLink || '',
-        createdBy: '',
-        createdAt: '',
-        updatedAt: '',
-      }));
-
-      setExternalResults(mappedResults);
-
-      if (mappedResults.length > 0) {
-        const top = mappedResults[0];
-
-        await SearchRequestService.createRequest({
-          query,
-          suggestedBookName: top.title,
-          googleBookId: top.googleBookId,
-          author: top.author,
-          coverImage: top.coverImage,
-          previewLink: top.previewLink,
-          pageCount: top.pageCount,
-        });
-
-        toast.success('Google results loaded and admin notified');
-      } else {
-        toast('No external results found');
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to search external books');
+      const res = await StoryService.searchGoogle(query);
+      setExternalResults((res || []).map(b => ({
+        id: b.googleBookId,
+        title: b.title || "Untitled",
+        author: b.author || "Unknown",
+        coverImage: normalizeCoverImage(b.coverImage),
+        source: "google",
+        previewLink: b.previewLink
+      })));
+    } catch (e) {
+      toast.error("Search failed");
     } finally {
       setIsSearchingExternal(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar title="My Reading" />
+    <div className="min-h-screen bg-[#F5F1E9] pl-20 pb-10 transition-colors duration-500">
+      <ChildSidebar />
+      <div className="max-w-[1600px] mx-auto px-10 pt-4">
+        <BookTopBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} onSearch={handleSearch} isLoading={isSearchingExternal} />
 
-      <div className="container-responsive py-8">
-        <div className="mb-8">
-          <button
-            type="button"
-            onClick={() => navigate('/child/progress')}
-            className="mb-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 transition-colors"
-          >
-            <BarChart3 size={18} />
-            View my reading progress
-          </button>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-1">
-                Welcome, {user?.name || 'Reader'}
-              </h1>
-              <p className="text-gray-600">
-                Track your progress and continue your reading journey.
-              </p>
-            </div>
-
-            <button
-              onClick={() => navigate('/child/gamification')}
-              className="btn-primary inline-flex items-center gap-2"
-              type="button"
-            >
-              <Sparkles size={18} />
-              View Gamification
-            </button>
-            <button
-              onClick={() => navigate('/child/chat')}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 relative"
-            >
-              <MessageCircle size={18} />
-              Family Chat
-              {unreadMessages > 0 && (
-                <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
-                  {unreadMessages > 99 ? '99+' : unreadMessages}
+        {!!searchQuery.trim() && (localMatches.length > 0 || externalResults.length > 0) && (
+          <div className="space-y-12 mb-16 px-2">
+            {localMatches.length > 0 && (
+              <section>
+                <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase mb-6">Library Matches</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-6">
+                  {localMatches.map(s => <PlayfulStoryCard key={s.id||s._id} story={s} onSelect={() => beginReadByStoryId(s.id||s._id, "l-"+s.id)} />)}
                 </div>
-              )}
-            </button>
-          </div>
-        </div>
-
-        <div className="card mb-8">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 text-gray-400" size={18} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleExternalSearch();
-                }}
-                placeholder="Search books in library or Google..."
-                className="input-base pl-10"
-              />
-            </div>
-
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={handleExternalSearch}
-              disabled={isSearchingExternal}
-            >
-              {isSearchingExternal ? 'Searching...' : 'Search'}
-            </button>
-          </div>
-
-          {!!searchQuery.trim() && localMatches.length > 0 && (
-            <p className="text-sm text-green-700 mt-3">
-              Found {localMatches.length} matching book(s) in your library.
-            </p>
-          )}
-
-          {!!searchQuery.trim() &&
-            localMatches.length === 0 &&
-            externalResults.length > 0 && (
-              <p className="text-sm text-blue-700 mt-3">
-                Not found in library. Showing Google Books results and notifying
-                admin.
-              </p>
+              </section>
             )}
-        </div>
-
-        {!!searchQuery.trim() && localMatches.length > 0 && (
-          <div className="card mb-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Library Matches
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {localMatches.map((story) => {
-                const sid = story.id || story._id;
-                const readKey = `l-${sid}`;
-                return (
-                  <StoryCard
-                    key={sid || story.title}
-                    story={story}
-                    onSelect={() =>
-                      beginReadByStoryId(sid ? String(sid) : undefined, readKey)
-                    }
-                    clickable={startingReadKey === null}
-                  />
-                );
-              })}
-            </div>
+            {externalResults.length > 0 && (
+              <section>
+                <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase mb-6">Google results</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-6">
+                  {externalResults.map(s => <PlayfulStoryCard key={s.id} story={s} onSelect={() => s.previewLink ? window.open(s.previewLink, "_blank") : null} />)}
+                </div>
+              </section>
+            )}
           </div>
         )}
 
-        {!!searchQuery.trim() &&
-          localMatches.length === 0 &&
-          externalResults.length > 0 && (
-            <div className="card mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Google Books Results
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {externalResults.map((story) => (
-                  <StoryCard
-                    key={story.id}
-                    story={story}
-                    onSelect={() => {
-                      if (story.previewLink) {
-                        window.location.href = story.previewLink;
-                        return;
-                      }
-                      toast('Preview is not available for this result');
-                    }}
-                    clickable
-                  />
-                ))}
+        <section className="mb-12">
+          <div className="flex items-end gap-3 mb-6 px-2">
+            <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase">Latest</h2>
+            <button className="text-[10px] font-bold text-gray-400 hover:text-rose-500 underline uppercase tracking-widest decoration-2 underline-offset-4">(view all)</button>
+          </div>
+          <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide px-2">
+            {stories.slice(0, 10).map(s => (
+              <div key={s.id||s._id} className="min-w-[160px] w-[180px] shrink-0">
+                <PlayfulStoryCard story={s} onSelect={() => beginReadByStoryId(s.id||s._id, "s-"+s.id)} />
               </div>
-            </div>
-          )}
+            ))}
+          </div>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Stories Available"
-            value={isLoading ? '...' : stories.length}
-            icon={BookOpen}
-            color="blue"
-            subtext="In your library"
-          />
-          <StatCard
-            title="Beginner Friendly"
-            value={isLoading ? '...' : beginnerCount}
-            icon={Flame}
-            color="orange"
-            subtext="Easy stories"
-          />
-          <StatCard
-            title="Middle Grade"
-            value={isLoading ? '...' : middleGradeCount}
-            icon={Award}
-            color="green"
-            subtext="Age-fit picks"
-          />
-          <StatCard
-            title="Quick Picks"
-            value={isLoading ? '...' : quickPicks.length}
-            icon={Clock}
-            color="purple"
-            subtext="Ready to read"
-          />
+        <section className="mb-12">
+          <div className="flex items-end gap-3 mb-8 px-2">
+            <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase">Recommended Books</h2>
+            <button className="text-[10px] font-bold text-gray-400 hover:text-rose-500 underline uppercase tracking-widest decoration-2 underline-offset-4">(view all)</button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-x-6 gap-y-10 px-2 opacity-95">
+            {quickPicks.map(s => <PlayfulStoryCard key={"r-"+(s.id||s._id)} story={s} onSelect={() => beginReadByStoryId(s.id||s._id, "r-"+s.id)} />)}
+          </div>
+        </section>
+
+        {/* Quick Access Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12 px-2">
+           <button 
+             onClick={() => navigate("/child/chat")}
+             className="bg-white p-8 rounded-[2.5rem] border border-[#E8E2D5] shadow-sm hover:scale-105 transition-all group relative overflow-hidden text-left"
+           >
+              <div className="absolute top-0 right-0 w-24 h-24 bg-rose-50 rounded-bl-[3rem] -z-10 group-hover:scale-110 transition-transform"></div>
+              <div className="flex items-center gap-4 mb-4">
+                 <div className="w-12 h-12 bg-rose-500 rounded-2xl flex items-center justify-center text-white shadow-lg border-b-4 border-rose-700">
+                    <MessageCircle size={24} />
+                 </div>
+                 <h3 className="text-lg font-black text-gray-800 uppercase tracking-tight">Family Chat</h3>
+              </div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Share stories with your family!</p>
+           </button>
+
+           <button 
+             onClick={() => navigate("/child/gamification")}
+             className="bg-white p-8 rounded-[2.5rem] border border-[#E8E2D5] shadow-sm hover:scale-105 transition-all group relative overflow-hidden text-left"
+           >
+              <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-[3rem] -z-10 group-hover:scale-110 transition-transform"></div>
+              <div className="flex items-center gap-4 mb-4">
+                 <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg border-b-4 border-blue-700">
+                    <Trophy size={24} />
+                 </div>
+                 <h3 className="text-lg font-black text-gray-800 uppercase tracking-tight">Awards</h3>
+              </div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">See your badges & levels!</p>
+           </button>
+
+           <button 
+             onClick={() => navigate("/child/progress")}
+             className="bg-white p-8 rounded-[2.5rem] border border-[#E8E2D5] shadow-sm hover:scale-105 transition-all group relative overflow-hidden text-left"
+           >
+              <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50 rounded-bl-[3rem] -z-10 group-hover:scale-110 transition-transform"></div>
+              <div className="flex items-center gap-4 mb-4">
+                 <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center text-white shadow-lg border-b-4 border-orange-700">
+                    <TrendingUp size={24} />
+                 </div>
+                 <h3 className="text-lg font-black text-gray-800 uppercase tracking-tight">Reading Stats</h3>
+              </div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Your journey at a glance!</p>
+           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1">My Assignments</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {isLoading ? '...' : assignmentStats.total}
-            </p>
-          </div>
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1">Assigned</p>
-            <p className="text-2xl font-bold text-blue-700">
-              {isLoading ? '...' : assignmentStats.assigned}
-            </p>
-          </div>
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1">In Progress</p>
-            <p className="text-2xl font-bold text-amber-700">
-              {isLoading ? '...' : assignmentStats.inProgress}
-            </p>
-          </div>
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1">Completed</p>
-            <p className="text-2xl font-bold text-green-700">
-              {isLoading ? '...' : assignmentStats.completed}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="card">
-              <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">
-                  Your reading progress
-                </h2>
-              </div>
-
-              {isLoading ? (
-                <p className="text-gray-600">Loading progress...</p>
-              ) : activeSessions.length === 0 ? (
-                <p className="text-gray-600">
-                  Open a book below to start a reading session. Books need a page
-                  count in the library to open in the reader.
-                </p>
-              ) : (
-                <ul className="space-y-4">
-                  {activeSessions.map((row) => {
-                    const sid = sessionStoryId(row);
-                    const book = row.bookId;
-                    const title =
-                      book &&
-                      typeof book === 'object' &&
-                      'title' in book &&
-                      book.title
-                        ? book.title
-                        : 'Book';
-                    const author =
-                      book &&
-                      typeof book === 'object' &&
-                      'author' in book
-                        ? book.author
-                        : undefined;
-
-                    return (
-                      <li
-                        key={row._id}
-                        className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-gray-200 p-4"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-900">{title}</p>
-                          {author ? (
-                            <p className="text-sm text-gray-600">{author}</p>
-                          ) : null}
-
-                          <div className="mt-2 h-2 rounded-full bg-gray-200 overflow-hidden max-w-md">
-                            <div
-                              className="h-full rounded-full bg-nestory-600 transition-all"
-                              style={{
-                                width: `${Math.min(100, row.progress)}%`,
-                              }}
-                            />
-                          </div>
-
-                          <p className="text-xs text-gray-500 mt-2">
-                            {row.pagesRead} / {row.totalPages} pages (
-                            {Math.round(row.progress)}%)
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={!sid || startingReadKey !== null}
-                          onClick={() => sid && navigate(`/child/read/${row._id}`)}
-                          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 disabled:opacity-50 transition-colors"
-                        >
-                          Continue reading
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-
-            <div className="card">
-              <div className="flex items-center gap-2 mb-4">
-                <CalendarDays className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">
-                  My Assigned Stories
-                </h2>
-              </div>
-
-              {isLoading ? (
-                <p className="text-gray-600">Loading assignments...</p>
-              ) : pendingAssignments.length === 0 ? (
-                <p className="text-gray-600">
-                  No active assignments yet. Great job keeping up!
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {pendingAssignments.map((assignment) => {
-                    const assignmentStoryId =
-                      assignment.storyId ||
-                      assignment.story?._id ||
-                      assignment.story?.id;
-                    const readKey = `a-${assignment.id}`;
-
-                    return (
-                      <div
-                        key={assignment.id}
-                        className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 hover:border-nestory-300 hover:bg-nestory-50/40 transition-colors sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            navigate(`/child/assignments/${assignment.id}`)
-                          }
-                          className="flex-1 text-left min-w-0"
-                        >
-                          <p className="font-semibold text-gray-900">
-                            {assignment.story?.title || 'Untitled story'}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {assignment.story?.author || 'Unknown author'}
-                          </p>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className="badge bg-blue-100 text-blue-800 capitalize">
-                              {assignment.status.replace('_', ' ')}
-                            </span>
-                            {assignment.dueDate && (
-                              <span className="badge bg-gray-100 text-gray-700">
-                                Due{' '}
-                                {new Date(
-                                  assignment.dueDate
-                                ).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            beginReadByStoryId(
-                              assignmentStoryId,
-                              readKey
-                            )
-                          }
-                          disabled={startingReadKey !== null}
-                          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {startingReadKey === readKey ? 'Opening…' : 'Read book'}
-                        </button>
-                      </div>
-                    );
-                  })}
+        <div className="mt-20 pt-10 border-t border-[#E8E2D5] opacity-90">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-white/40 p-6 rounded-[2rem] border border-white/60">
+              <h3 className="font-black text-gray-800 mb-4 uppercase tracking-widest text-xs text-center">Activity</h3>
+              <div className="flex justify-around items-center">
+                <div className="text-center">
+                  <div className="text-2xl font-black text-rose-500">{stats.completed}</div>
+                  <div className="text-[10px] font-bold text-gray-400 uppercase">Done</div>
                 </div>
-              )}
-            </div>
-
-            <div className="card">
-              <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="text-nestory-600" size={22} />
-                <h2 className="text-xl font-bold text-gray-900">Story Picks</h2>
+                <div className="w-[1px] h-6 bg-gray-200"></div>
+                <div className="text-center">
+                  <div className="text-2xl font-black text-orange-500">{activeSessions.length}</div>
+                  <div className="text-[10px] font-bold text-gray-400 uppercase">Reading</div>
+                </div>
               </div>
-
-              {isLoading ? (
-                <p className="text-gray-600">Loading story recommendations...</p>
-              ) : quickPicks.length === 0 ? (
-                <p className="text-gray-600">No stories available yet.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {quickPicks.map((story) => {
-                    const sid = story.id || story._id;
-                    const readKey = `s-${sid}`;
-
-                    return (
-                      <StoryCard
-                        key={sid || story.title}
-                        story={story}
-                        onSelect={() =>
-                          beginReadByStoryId(
-                            sid ? String(sid) : undefined,
-                            readKey
-                          )
-                        }
-                        clickable={startingReadKey === null}
-                      />
-                    );
-                  })}
-                </div>
-              )}
             </div>
-          </div>
-
-          <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Reading Tips
-            </h2>
-            <div className="space-y-3">
-              {[
-                { emoji: '📘', text: 'Read 15 minutes daily' },
-                { emoji: '📝', text: 'Tell a parent what you learned' },
-                { emoji: '🎯', text: 'Finish one story this week' },
-              ].map((achievement) => (
-                <div
-                  key={achievement.text}
-                  className="rounded-lg border border-gray-200 bg-gray-50 p-3 flex items-center gap-3"
-                >
-                  <span className="text-xl">{achievement.emoji}</span>
-                  <span className="font-medium text-gray-700">
-                    {achievement.text}
-                  </span>
-                </div>
-              ))}
+            <div className="md:col-span-2 bg-white/40 p-6 rounded-[2rem] border border-white/60 flex flex-col sm:flex-row items-center justify-between px-10 gap-4">
+              <div>
+                <h3 className="font-black text-gray-800 mb-1 uppercase tracking-widest text-xs text-rose-500">Your Journey</h3>
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-tighter">You explored {stories.length} stories!</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => navigate("/child/chat")} className="px-5 py-2.5 bg-white text-gray-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-rose-50 transition-all border border-[#E8E2D5]">Chat</button>
+                <button onClick={() => navigate("/child/progress")} className="px-5 py-2.5 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg hover:bg-rose-600 transition-all">Stats</button>
+              </div>
             </div>
           </div>
         </div>

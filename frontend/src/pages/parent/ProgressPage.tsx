@@ -95,31 +95,24 @@ const ParentProgressPage: React.FC = () => {
       : 'Reading progress — family';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex-1 overflow-auto">
       <div className="no-print">
-        <Navbar title="Reading progress" />
+        <Navbar title="Reading Progress" />
       </div>
 
-      <div className="container-responsive py-8 max-w-4xl mx-auto">
-        <button
-          type="button"
-          onClick={() => navigate('/dashboard')}
-          className="no-print btn-secondary mb-6 inline-flex items-center gap-2"
-        >
-          <ArrowLeft size={18} />
-          Back to dashboard
-        </button>
-
-        <div className="flex items-start gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-nestory-100 flex items-center justify-center shrink-0">
-            <BarChart3 className="text-nestory-600" size={26} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Reading progress</h1>
-            <p className="text-gray-600 mt-1">
-              See each child’s assignment progress, how finished dates compare to due dates, and what pace
-              is needed to hit deadlines.
-            </p>
+      <div className="container-responsive py-8 px-4 lg:px-8 max-w-7xl mx-auto">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-10 animate-fade-in">
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-nestory-500 to-nestory-700 flex items-center justify-center shadow-lg shadow-nestory-100 shrink-0">
+              <BarChart3 className="text-white" size={32} />
+            </div>
+            <div>
+              <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight lg:text-5xl mb-2">Reading Progress</h1>
+              <p className="text-gray-600 text-lg max-w-2xl">
+                See each child’s assignment progress, how finished dates compare to due dates, and what pace
+                is needed to hit deadlines.
+              </p>
+            </div>
           </div>
         </div>
 

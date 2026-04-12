@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, MessageCircle, Send, Users, Trash2 } from 'lucide-react';
-import Navbar from '../../components/common/Navbar';
+import { ArrowLeft, MessageCircle, Send, Users, Trash2, Rocket } from 'lucide-react';
+import ChildSidebar from "../../components/common/ChildSidebar";
+import BookTopBar from "../../components/child/BookTopBar";
 import { useAuth } from '../../contexts/AuthContext';
 import chatService from '../../services/chatService';
 import { ChatGroupSummary, ChatMessage } from '../../types';
@@ -30,6 +31,7 @@ const FamilyChatPage: React.FC = () => {
   const joinedRef = useRef(false);
 
   const myRole = user?.role || 'parent';
+  const isParent = myRole === 'parent';
 
   const load = async () => {
     setLoading(true);
@@ -42,12 +44,8 @@ const FamilyChatPage: React.FC = () => {
       setMessages(rows);
     } catch (error: unknown) {
       const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message ===
-          'string'
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+        error && typeof error === 'object' && 'response' in error
+          ? (error as any).response?.data?.message
           : 'Failed to load chat';
       toast.error(message || 'Failed to load chat');
     } finally {
@@ -72,366 +70,275 @@ const FamilyChatPage: React.FC = () => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Memoize handlers to ensure stable references for socket listeners
   const handleIncoming = useCallback((payload: { message?: ChatMessage }) => {
-    console.log("[Chat] EVENT: chat:new-message received:", payload);
-    if (!payload?.message) {
-      console.warn("[Chat] Received message event with no message data");
-      return;
-    }
-    
+    if (!payload?.message) return;
     const msg = payload.message;
-    console.log("[Chat] Message details:", { id: msg.id, sender: msg.senderName, type: msg.messageType });
-    
     setMessages((prev) => {
-      const exists = prev.some((item) => item.id === msg.id);
-      if (exists) {
-        console.log("[Chat] Message already exists, skipping");
-        return prev;
-      }
-      console.log("[Chat] Adding message, new count:", prev.length + 1);
+      if (prev.some((item) => item.id === msg.id)) return prev;
       return [...prev, msg];
     });
   }, []);
 
   const handleTyping = useCallback((payload: { name?: string; userId?: string; isTyping?: boolean }) => {
-    console.log("[Chat] Typing event received:", payload);
     if (!payload?.name) return;
-    
     setTypingUsers((prev) => {
       if (payload.isTyping) {
-        return prev.includes(payload.name as string) ? prev : [...prev, payload.name as string];
+        return prev.includes(payload.name!) ? prev : [...prev, payload.name!];
       }
       return prev.filter((name) => name !== payload.name);
     });
   }, []);
 
-  const handleRead = useCallback((payload: any) => {
-    console.log("[Chat] Read receipt event:", payload);
-  }, []);
-
-  const joinRoom = useCallback(async (socket: any) => {
-    if (joinedRef.current) {
-      console.log("[Chat] Already joined room, skipping");
-      return;
-    }
-
-    console.log("[Chat] Attempting to join room");
-    return new Promise((resolve) => {
-      socket.emit('chat:join', {}, (ack: { ok: boolean; message?: string; room?: string }) => {
-        if (!ack?.ok) {
-          console.error("[Chat] Failed to join room:", ack?.message);
-          toast.error(ack?.message || "Failed to join chat room");
-          resolve(false);
-        } else {
-          console.log("[Chat] Successfully joined room:", ack?.room);
-          joinedRef.current = true;
-          resolve(true);
-        }
-      });
-    });
-  }, []);
-
-  // Set up socket connection and listeners ONCE on mount
   useEffect(() => {
-    if (!token) {
-      console.log("[Chat] No token, skipping socket setup");
-      return;
-    }
-
-    console.log("[Chat] Initializing socket connection");
+    if (!token) return;
     const socket = chatService.connectSocket(token);
     socketRef.current = socket;
 
-    // Define event handlers
     const onConnect = () => {
-      console.log("[Chat] Socket CONNECTED:", socket.id);
-      if (!socketRef.current) return;
-      
-      // Immediately try to join the room after connecting
-      console.log("[Chat] Emitting chat:join");
-      socketRef.current.emit('chat:join', {}, (ack: any) => {
-        if (!ack?.ok) {
-          console.error("[Chat] Join failed:", ack?.message);
-          toast.error(ack?.message || "Failed to join chat room");
-        } else {
-          console.log("[Chat] Joined room successfully:", ack?.room);
-          joinedRef.current = true;
-        }
+      socket.emit('chat:join', {}, (ack: any) => {
+        if (ack?.ok) joinedRef.current = true;
       });
     };
 
-    const onConnectError = (error: any) => {
-      console.error("[Chat] CONNECT_ERROR:", error);
-    };
-
-    const onDisconnect = (reason: string) => {
-      console.log("[Chat] Socket DISCONNECTED:", reason);
-      joinedRef.current = false;
-    };
-
-    // Attach listeners
-    console.log("[Chat] Attaching socket event listeners");
     socket.on("connect", onConnect);
-    socket.on("connect_error", onConnectError);
-    socket.on("disconnect", onDisconnect);
     socket.on("chat:new-message", handleIncoming);
     socket.on("chat:typing", handleTyping);
-    socket.on("chat:read", handleRead);
 
-    // If socket is already connected, manually trigger join
-    if (socket.connected) {
-      console.log("[Chat] Socket already connected, triggering join");
-      onConnect();
-    }
+    if (socket.connected) onConnect();
 
-    // Cleanup ONLY on unmount
     return () => {
-      console.log("[Chat] UNMOUNTING - removing listeners");
       socket.off("connect", onConnect);
-      socket.off("connect_error", onConnectError);
-      socket.off("disconnect", onDisconnect);
       socket.off("chat:new-message", handleIncoming);
       socket.off("chat:typing", handleTyping);
-      socket.off("chat:read", handleRead);
-      // Don't call disconnect - let chatService manage it
     };
-  }, [token]); // Only re-run when token changes
+  }, [token, handleIncoming, handleTyping]);
 
   useEffect(() => {
-    if (!unreadFromOthers.length) return;
-    chatService.markRead(unreadFromOthers).catch(() => {});
+    if (unreadFromOthers.length) chatService.markRead(unreadFromOthers).catch(() => {});
   }, [unreadFromOthers]);
 
   const notifyTyping = useCallback(() => {
-    if (!token || !socketRef.current) {
-      console.log("[Chat] Cannot send typing - token or socket unavailable");
-      return;
-    }
-    
-    const socket = socketRef.current;
-    console.log("[Chat] Sending typing indicator to socket");
-    socket.emit('chat:typing', { isTyping: true });
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
+    if (!socketRef.current) return;
+    socketRef.current.emit('chat:typing', { isTyping: true });
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      console.log("[Chat] Sending typing stopped");
-      socket.emit('chat:typing', { isTyping: false });
+      socketRef.current?.emit('chat:typing', { isTyping: false });
     }, 1200);
-  }, [token]);
+  }, []);
 
   const handleSend = async () => {
     const content = newMessage.trim();
     if (!content) return;
-
     try {
       setSending(true);
-      console.log("[Chat] Sending message via REST API:", content);
       const created = await chatService.sendMessage(content);
-      console.log("[Chat] Message sent successfully:", created.id);
-      setMessages((prev) => {
-        const exists = prev.some((msg) => msg.id === created.id);
-        if (exists) return prev;
-        return [...prev, created];
-      });
+      setMessages((prev) => prev.some(m => m.id === created.id) ? prev : [...prev, created]);
       setNewMessage('');
-    } catch (error: unknown) {
-      console.error("[Chat] Send message error:", error);
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message ===
-          'string'
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : 'Failed to send message';
-      toast.error(message || 'Failed to send message');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to send message');
     } finally {
       setSending(false);
     }
   };
 
   const handleClearChat = async () => {
-    if (!window.confirm('Are you sure you want to clear all chat messages? This action cannot be undone.')) {
-      return;
-    }
-
+    if (!window.confirm('Clear all messages?')) return;
     try {
       setClearing(true);
       await chatService.clearChat();
       setMessages([]);
-      toast.success('Chat cleared successfully');
-    } catch (error: unknown) {
-      console.error("[Chat] Clear chat error:", error);
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message ===
-          'string'
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : 'Failed to clear chat';
-      toast.error(message || 'Failed to clear chat');
+      toast.success('Chat cleared');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to clear chat');
     } finally {
       setClearing(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar title="Family Chat" />
+    <div className={`min-h-screen ${isParent ? "bg-white" : "bg-[#F5F1E9] pl-20 transition-colors duration-500"}`}>
+      {!isParent && <ChildSidebar />}
+      
+      <div className={`max-w-[1400px] mx-auto ${isParent ? "px-4 sm:px-6 lg:px-8 py-8" : "px-10 pt-4"}`}>
+        {!isParent && <BookTopBar searchQuery="" setSearchQuery={() => {}} onSearch={() => {}} />}
 
-      <div className="container-responsive py-8 max-w-4xl mx-auto">
-        <button
-          type="button"
-          onClick={() => navigate(user?.role === 'child' ? '/child' : '/dashboard')}
-          className="btn-secondary mb-6 inline-flex items-center gap-2 transition-all hover:drop-shadow-md"
-        >
-          <ArrowLeft size={18} />
-          Back
-        </button>
-
-        <div className="card mb-6 flex items-center justify-between gap-4 bg-gradient-to-r from-white to-nestory-50/30 border-nestory-200">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-                <MessageCircle size={24} className="text-white" />
-              </div>
-              {group?.name || 'Family Chat'}
-            </h1>
-            <p className="text-sm text-gray-600 mt-2">
-              Chat with your family and get reading activity updates.
-            </p>
-          </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8 mt-6">
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-2xl font-bold text-gray-900">{group?.members?.length || 0}</div>
-              <div className="text-xs text-gray-600 flex items-center gap-1 justify-end mt-1">
-                <Users size={14} />
-                <span>{group?.members?.length === 1 ? 'member' : 'members'}</span>
-              </div>
-            </div>
-            {myRole === 'parent' && (
-              <button
-                type="button"
-                onClick={handleClearChat}
-                disabled={clearing || messages.length === 0}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                title="Clear all chat messages"
+            {!isParent && (
+              <button 
+                onClick={() => navigate("/child")} 
+                className="p-3 bg-white rounded-2xl border border-[#E8E2D5] hover:bg-rose-50 transition-colors shadow-sm active:scale-95"
               >
-                <Trash2 size={18} />
-                <span className="text-sm">Clear Chat</span>
+                <ArrowLeft size={20} className="text-gray-600" />
               </button>
             )}
+            <div>
+              <h1 className={`text-3xl font-black text-gray-800 tracking-tight uppercase ${isParent ? "text-4xl md:text-5xl" : ""}`}>
+                Family <span className="text-rose-500">Chat</span>
+              </h1>
+              <p className="text-xs font-black text-gray-400 uppercase tracking-widest mt-1">
+                {isParent ? "Coordinate and celebrate reading together." : "Talk to your family and share your progress!"}
+              </p>
+            </div>
           </div>
+          
+          {isParent && (
+            <button
+              onClick={handleClearChat}
+              disabled={clearing || messages.length === 0}
+              className="flex items-center gap-2 px-6 py-3 bg-rose-50 text-rose-600 rounded-2xl font-black uppercase text-xs tracking-widest border border-rose-100 hover:bg-rose-100 transition-all disabled:opacity-50"
+            >
+              <Trash2 size={16} />
+              Clear History
+            </button>
+          )}
         </div>
 
-        <div className="card p-0 overflow-hidden border-nestory-200 shadow-lg">
-          <div className="h-[60vh] overflow-y-auto p-5 bg-gradient-to-b from-white via-white to-gray-50/30">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-12 h-12 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin"></div>
-                  <p className="text-gray-600 font-medium">Loading chat...</p>
-                </div>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="text-center py-20 text-gray-600 h-full flex flex-col items-center justify-center">
-                <div className="w-16 h-16 rounded-full bg-nestory-100 flex items-center justify-center mb-4">
-                  <MessageCircle className="text-nestory-400" size={32} />
-                </div>
-                <p className="text-lg font-semibold text-gray-900 mb-2">No messages yet</p>
-                <p className="text-sm">Start the conversation with your family!</p>
-              </div>
-            ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          {/* Members Sidebar (Both but styled differently) */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-[2.5rem] p-8 border border-[#E8E2D5] shadow-sm">
+              <h2 className="text-sm font-black text-gray-800 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <Users size={18} className="text-rose-500" />
+                Family Team
+              </h2>
               <div className="space-y-4">
-                {messages.map((message) => {
-                  const isMine = message.senderUser === user?.id;
-                  const isSystem = message.senderRole === 'system';
-
-                  if (isSystem) {
-                    return (
-                      <div key={message.id} className="flex justify-center my-2">
-                        <span className="inline-block rounded-full bg-gradient-to-r from-nestory-50 to-blue-50 border border-nestory-200 px-4 py-2 text-xs font-medium text-nestory-700 shadow-sm">
-                          {message.content}
-                        </span>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div
-                      key={message.id}
-                      className={`flex ${isMine ? 'justify-end' : 'justify-start'} animate-fade-in`}
-                    >
-                      <div
-                        className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-md transition-all duration-200 hover:shadow-lg ${
-                          isMine
-                            ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-br-sm'
-                            : 'bg-white border border-gray-200 text-gray-900 rounded-bl-sm hover:border-gray-300'
-                        }`}
-                      >
-                        {!isMine && (
-                          <p className="text-xs font-bold text-nestory-700 mb-2 uppercase tracking-wide">
-                            {message.senderName}
-                          </p>
-                        )}
-                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
-                        <p className={`text-[11px] mt-2 font-medium ${
-                          isMine ? 'text-blue-100 opacity-80' : 'text-gray-500'
-                        }`}>
-                          {formatTime(message.createdAt)}
-                        </p>
-                      </div>
+                {group?.members?.map((member: any) => (
+                  <div key={member.id} className="flex items-center gap-3 p-3 rounded-2xl border border-transparent hover:border-[#F5F1E9] hover:bg-[#F5F1E9]/30 transition-all group">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-50 to-rose-100 flex items-center justify-center font-black text-rose-500 border border-rose-200 group-hover:scale-110 transition-transform">
+                      {member?.displayName?.charAt(0) || 'E'}
                     </div>
-                  );
-                })}
-                <div ref={endRef} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-black text-gray-800 truncate uppercase">{member?.displayName || 'Family Member'}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{member?.role || 'Member'}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
+
+            <div className="bg-gray-900 rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden group">
+               <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-500/20 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+               <div className="relative z-10">
+                 <p className="text-[10px] font-black opacity-50 uppercase tracking-widest mb-2">Chat Stats</p>
+                 <div className="flex items-baseline gap-2">
+                   <p className="text-4xl font-black">{messages.length}</p>
+                   <span className="text-xs font-bold opacity-60">Messages</span>
+                 </div>
+                 <div className="mt-6 p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center gap-3">
+                    <Rocket size={16} className="text-rose-400" />
+                    <p className="text-xs font-bold leading-relaxed opacity-80 italic">
+                      Reading together is a superpower!
+                    </p>
+                 </div>
+               </div>
+            </div>
           </div>
 
-          <div className="border-t border-gray-200 p-4 bg-gradient-to-b from-white to-gray-50 space-y-3">
-            {typingUsers.length > 0 && (
-              <div className="flex items-center gap-2 px-3 py-1">
-                <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-nestory-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-nestory-500 animate-bounce" style={{ animationDelay: '100ms' }}></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-nestory-500 animate-bounce" style={{ animationDelay: '200ms' }}></div>
-                </div>
-                <span className="text-xs text-gray-600 font-medium">{typingUsers.join(', ')} typing...</span>
-              </div>
-            )}
-            <div className="flex gap-3 items-end">
-              <div className="flex-1 relative">
-                <input
-                  value={newMessage}
-                  onChange={(event) => {
-                    setNewMessage(event.target.value);
-                    notifyTyping();
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-0 focus:border-nestory-500 transition-colors duration-200 placeholder-gray-400"
-                  placeholder="Type a message..."
-                  maxLength={1500}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={sending || !newMessage.trim()}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:-translate-y-0"
-              >
-                <Send size={18} />
-              </button>
+          {/* Chat Area */}
+          <div className="xl:col-span-3 flex flex-col gap-6">
+            <div className="bg-white rounded-[2.5rem] border border-[#E8E2D5] shadow-sm flex flex-col h-[65vh] relative overflow-hidden">
+               {/* Messages List */}
+               <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px]">
+                  {loading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+                       <div className="w-20 h-20 bg-[#F5F1E9] rounded-3xl flex items-center justify-center border border-[#E8E2D5]">
+                         <MessageCircle className="text-gray-400" size={32} />
+                       </div>
+                       <div>
+                         <p className="text-lg font-black text-gray-800 uppercase tracking-tight">Quiet in here!</p>
+                         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Send a message to start the fun.</p>
+                       </div>
+                    </div>
+                  ) : (
+                    <>
+                      {messages.map((message, idx) => {
+                        const isMine = message.senderUser === user?.id;
+                        const isSystem = message.senderRole === 'system';
+
+                        if (isSystem) {
+                          return (
+                            <div key={message.id || idx} className="flex justify-center">
+                              <span className="bg-gray-100 text-gray-500 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-gray-200 shadow-sm text-center">
+                                {message.content}
+                              </span>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={message.id || idx} className={`flex ${isMine ? 'justify-end' : 'justify-start'} group animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                            <div className={`max-w-[80%] space-y-1 ${isMine ? 'items-end' : 'items-start'}`}>
+                              {!isMine && (
+                                <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest ml-1">{message.senderName}</p>
+                              )}
+                              <div className={`px-6 py-4 rounded-[2rem] border-2 shadow-sm relative ${
+                                isMine 
+                                  ? 'bg-rose-500 border-rose-600 text-white rounded-tr-none' 
+                                  : 'bg-white border-[#E8E2D5] text-gray-800 rounded-tl-none'
+                              }`}>
+                                <p className="text-sm font-bold leading-relaxed">{message.content}</p>
+                                <div className={`absolute bottom-1 right-3 text-[8px] font-black uppercase opacity-60 ${isMine ? 'text-white' : 'text-gray-400'}`}>
+                                  {formatTime(message.createdAt)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div ref={endRef} />
+                    </>
+                  )}
+               </div>
+
+               {/* Typing Indicator */}
+               {typingUsers.length > 0 && (
+                 <div className="absolute bottom-24 left-8 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full border border-[#E8E2D5] shadow-sm animate-bounce">
+                    <div className="flex gap-0.5">
+                      <div className="w-1 h-1 bg-rose-500 rounded-full animate-pulse"></div>
+                      <div className="w-1 h-1 bg-rose-500 rounded-full animate-pulse delay-75"></div>
+                      <div className="w-1 h-1 bg-rose-500 rounded-full animate-pulse delay-150"></div>
+                    </div>
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{typingUsers[0]} is thinking...</span>
+                 </div>
+               )}
+
+               {/* Input Area */}
+               <div className="p-6 bg-[#F5F1E9]/30 border-t border-[#E8E2D5]">
+                  <div className="flex gap-3 relative">
+                    <input
+                      value={newMessage}
+                      onChange={(e) => {
+                        setNewMessage(e.target.value);
+                        notifyTyping();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSend();
+                        }
+                      }}
+                      placeholder="Type a playful message..."
+                      className="flex-1 bg-white border-2 border-[#E8E2D5] rounded-3xl px-6 py-4 text-sm font-bold focus:outline-none focus:border-rose-500 transition-colors shadow-inner"
+                    />
+                    <button
+                      onClick={handleSend}
+                      disabled={sending || !newMessage.trim()}
+                      className="bg-rose-500 p-4 rounded-3xl text-white border-b-4 border-rose-700 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-50 disabled:active:translate-y-0 disabled:border-b-4"
+                    >
+                      <Send size={20} />
+                    </button>
+                    <div className="absolute -top-12 right-0 flex gap-2">
+                       <button onClick={() => setNewMessage(p => p + ' ??')} className="px-3 py-1.5 bg-white border-2 border-[#E8E2D5] rounded-xl text-lg hover:scale-110 transition-transform shadow-sm font-bold">??</button>
+                       <button onClick={() => setNewMessage(p => p + ' ??')} className="px-3 py-1.5 bg-white border-2 border-[#E8E2D5] rounded-xl text-lg hover:scale-110 transition-transform shadow-sm font-bold">??</button>
+                       <button onClick={() => setNewMessage(p => p + ' ??')} className="px-3 py-1.5 bg-white border-2 border-[#E8E2D5] rounded-xl text-lg hover:scale-110 transition-transform shadow-sm font-bold">??</button>
+                    </div>
+                  </div>
+               </div>
             </div>
           </div>
         </div>
