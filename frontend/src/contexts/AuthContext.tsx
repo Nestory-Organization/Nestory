@@ -50,7 +50,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize from localStorage
   useEffect(() => {
     const hydrateAuth = async () => {
-      const storedToken = localStorage.getItem('token');
+      let storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        storedToken = storedToken.replace(/^"(.*)"$/, '$1');
+      }
       const storedUser = localStorage.getItem('user');
       const parsedUser = parseStoredUser(storedUser);
 

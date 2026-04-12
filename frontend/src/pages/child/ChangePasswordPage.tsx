@@ -20,7 +20,10 @@ const ChildChangePasswordPage = () => {
     }
     try {
       setIsLoading(true);
-      await authService.changePassword(oldPassword, newPassword);
+      await authService.changePassword({
+        currentPassword: oldPassword,
+        newPassword: newPassword,
+      });
       toast.success("Security code updated!");
       navigate("/child/dashboard");
     } catch (err) {

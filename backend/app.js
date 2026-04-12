@@ -6,7 +6,23 @@ const errorHandler = require("./middleware/errorHandler");
 const app = express();
 
 app.use(cors());
+
+// Add custom error handler for body-parser before json() middleware
 app.use(express.json());
+app.use((error, req, res, next) => {
+  if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
+    console.error(`[MALFORMED JSON] ${req.method} ${req.url}`);
+    console.error(`  Headers:`, req.headers);
+    console.error(`  Raw body attempt:`, error.body);
+    return res.status(400).json({
+      success: false,
+      message: "Invalid JSON in request body",
+      error: error.message,
+    });
+  }
+  next(error);
+});
+
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 

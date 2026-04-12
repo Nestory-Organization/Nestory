@@ -21,10 +21,11 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
   onAddChild?: () => void;
+  onNewAssignment?: () => void;
   unreadMessages?: number;
 }
 
-const ParentSidebar: React.FC<SidebarProps> = ({ onAddChild, unreadMessages = 0 }) => {
+const ParentSidebar: React.FC<SidebarProps> = ({ onAddChild, onNewAssignment, unreadMessages = 0 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -55,7 +56,8 @@ const ParentSidebar: React.FC<SidebarProps> = ({ onAddChild, unreadMessages = 0 
       label: 'New Assignment', 
       icon: <Book size={18} />, 
       onClick: () => {
-        navigate('/stories');
+        if (onNewAssignment) onNewAssignment();
+        else navigate('/stories');
         setIsOpen(false);
       },
       color: 'bg-green-50 text-green-600 hover:bg-green-100'

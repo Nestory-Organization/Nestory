@@ -12,6 +12,7 @@ import ChildService from '../../services/childService';
 import DashboardService from '../../services/dashboardService';
 import ReadingService from '../../services/readingService';
 import chatService from '../../services/chatService';
+import CreateAssignmentModal from '../../components/assignments/CreateAssignmentModal';
 import toast from 'react-hot-toast';
 import {
   Book,
@@ -81,6 +82,7 @@ const ParentDashboard: React.FC = () => {
   const [newFamilyName, setNewFamilyName] = useState('');
   const [familyNameError, setFamilyNameError] = useState('');
   const [showAddChildModal, setShowAddChildModal] = useState(false);
+  const [showNewAssignmentModal, setShowNewAssignmentModal] = useState(false);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -656,6 +658,11 @@ const ParentDashboard: React.FC = () => {
 
   return (
     <div className="flex-1 overflow-auto">
+      <ParentSidebar 
+        onAddChild={() => setShowAddChildModal(true)} 
+        onNewAssignment={() => setShowNewAssignmentModal(true)}
+        unreadMessages={unreadMessages} 
+      />
       <Navbar title="Dashboard" />
 
       <div className="container-responsive py-8 px-4 lg:px-8 max-w-7xl mx-auto" aria-label="Parent Dashboard Content">
@@ -1240,6 +1247,12 @@ const ParentDashboard: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      <CreateAssignmentModal
+        isOpen={showNewAssignmentModal}
+        onClose={() => setShowNewAssignmentModal(false)}
+        onSuccess={() => loadData()}
+      />
     </div>
   );
 };

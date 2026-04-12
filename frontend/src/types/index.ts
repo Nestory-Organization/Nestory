@@ -101,6 +101,7 @@ export interface ChildAccountCredentials {
   email: string;
   temporaryPassword: string;
   mustChangePassword: boolean;
+  token?: string;
 }
 
 export interface AddChildResponse {

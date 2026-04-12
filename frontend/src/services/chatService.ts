@@ -78,7 +78,7 @@ class ChatService {
 
     console.log("[ChatService] Creating new Socket.io connection to:", SOCKET_BASE_URL);
     this.socket = io(SOCKET_BASE_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,

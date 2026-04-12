@@ -123,8 +123,9 @@ class ApiClient {
   }
 
   setToken(token: string): void {
-    this.client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    localStorage.setItem('token', token);
+    const cleanToken = token.replace(/^"(.*)"$/, '$1');
+    this.client.defaults.headers.common['Authorization'] = `Bearer ${cleanToken}`;
+    localStorage.setItem('token', cleanToken);
   }
 
   clearToken(): void {
