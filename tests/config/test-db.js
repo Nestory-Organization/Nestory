@@ -18,7 +18,7 @@ try {
 }
 
 // Test database URI - uses separate test database
-const TEST_DB_URI = process.env.TEST_DB_URI || "mongodb://localhost:27017/nestory-test";
+const TEST_DB_URI = process.env.TEST_DB_URI || "mongodb+srv://nestory_admin:DxeZ2Bv38KV1Isof@cluster0.jzjmmvn.mongodb.net/test";
 
 /**
  * Connect to test database

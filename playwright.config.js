@@ -17,9 +17,9 @@ try {
 // CRITICAL: Set test environment variables BEFORE backend starts
 // These MUST match what tests expect
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
-process.env.MONGO_URI = 'mongodb://127.0.0.1:27017/nestory';
-process.env.JWT_SECRET = 'playwright-test-secret-key-for-testing-only';
-process.env.TEST_DB_URI = 'mongodb://127.0.0.1:27017/nestory-test';
+process.env.MONGO_URI = 'mongodb+srv://nestory_admin:DxeZ2Bv38KV1Isof@cluster0.jzjmmvn.mongodb.net/test';
+process.env.JWT_SECRET = 'd60919bc1940501f3a2374da78bcf4a3ccc3d942b5ca40ec78eacac784709793';
+process.env.TEST_DB_URI = 'mongodb+srv://nestory_admin:DxeZ2Bv38KV1Isof@cluster0.jzjmmvn.mongodb.net/test';
 
 const backendEnv = {
   ...process.env,
