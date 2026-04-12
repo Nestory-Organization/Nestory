@@ -13,6 +13,23 @@ const { test } = require('@playwright/test');
 const mockReadingAnalyticsSystem = {
   readingSessions: [],
   children: [],
+  _idCounter: 0,
+
+  /**
+   * Reset system state (useful for test isolation)
+   */
+  reset() {
+    this.readingSessions = [];
+    this.children = [];
+    this._idCounter = 0;
+  },
+
+  /**
+   * Generate unique ID (combines timestamp and counter to prevent collisions)
+   */
+  _generateId(prefix) {
+    return `${prefix}_${Date.now()}_${++this._idCounter}`;
+  },
 
   /**
    * Workflow 1: Child starts reading a story
@@ -23,7 +40,7 @@ const mockReadingAnalyticsSystem = {
     }
 
     const session = {
-      _id: `session_${Date.now()}`,
+      _id: this._generateId("session"),
       childId,
       storyId,
       totalPages,
@@ -61,7 +78,7 @@ const mockReadingAnalyticsSystem = {
 
     session.currentPage = targetPage;
     session.activities.push({
-      _id: `activity_${Date.now()}`,
+      _id: this._generateId("activity"),
       type: "page_read",
       pages: pagesRead,
       timeSpent: timeOnPages,
@@ -92,15 +109,22 @@ const mockReadingAnalyticsSystem = {
 
     session.endTime = new Date();
     session.status = "completed";
-    session.totalTimeSpent = Math.round(
-      (session.endTime - new Date(session.startTime)) / 1000 / 60
-    );
+    
+    // Calculate total time spent from activities (more reliable than clock time in tests)
+    session.totalTimeSpent = session.activities.reduce((total, activity) => total + activity.timeSpent, 0);
+    
+    // Fallback to clock time if no activities recorded
+    if (session.totalTimeSpent === 0) {
+      session.totalTimeSpent = Math.round(
+        (session.endTime - session.startTime) / 1000 / 60
+      );
+    }
 
     return {
       completedAt: new Date(),
       totalTimeSpent: session.totalTimeSpent,
       pagesRead: session.totalPages,
-      averagePacePerPage: Math.round(session.totalTimeSpent / session.totalPages),
+      averagePacePerPage: session.totalTimeSpent > 0 ? Math.round(session.totalTimeSpent / session.totalPages) : 0,
     };
   },
 
@@ -113,9 +137,16 @@ const mockReadingAnalyticsSystem = {
 
     session.pausedAt = new Date();
     session.status = "paused";
-    session.sessionDuration = Math.round(
-      (session.pausedAt - new Date(session.startTime)) / 1000 / 60
-    );
+    
+    // Calculate session duration from activities (more reliable than clock time in tests)
+    session.sessionDuration = session.activities.reduce((total, activity) => total + activity.timeSpent, 0);
+    
+    // Fallback to clock time if no activities recorded
+    if (session.sessionDuration === 0) {
+      session.sessionDuration = Math.round(
+        (session.pausedAt - session.startTime) / 1000 / 60
+      );
+    }
 
     return {
       pausedAt: new Date(),
@@ -166,11 +197,13 @@ const mockReadingAnalyticsSystem = {
     }
 
     const completedSessions = childSessions.filter((s) => s.status === "completed");
+    
+    // Calculate total time spent from activities (more reliable than clock time in tests)
     const totalTimeSpent = childSessions.reduce((total, s) => {
-      const duration = Math.round(
+      const activitiesTime = s.activities.reduce((sum, a) => sum + a.timeSpent, 0);
+      return total + (activitiesTime > 0 ? activitiesTime : Math.round(
         (new Date(s.endTime || new Date()) - new Date(s.startTime)) / 1000 / 60
-      );
-      return total + duration;
+      ));
     }, 0);
 
     return {
@@ -182,7 +215,8 @@ const mockReadingAnalyticsSystem = {
       averageSessionDuration: Math.round(totalTimeSpent / childSessions.length),
       averageReadingSpeed: Math.round(
         childSessions.reduce((total, s) => {
-          const speed = (s.currentPage / (Math.round((new Date(s.endTime || new Date()) - new Date(s.startTime)) / 1000 / 60) || 1)) * 60;
+          const sessionTime = s.activities.reduce((sum, a) => sum + a.timeSpent, 0) || Math.round((new Date(s.endTime || new Date()) - new Date(s.startTime)) / 1000 / 60) || 1;
+          const speed = (s.currentPage / sessionTime) * 60;
           return total + speed;
         }, 0) / childSessions.length
       ),
@@ -391,6 +425,9 @@ const mockReadingAnalyticsSystem = {
 
 async function runReadingAnalyticsSystemTests() {
   const report = new TestReport("Reading Analytics System Tests");
+
+  // Reset mock system state for test isolation
+  mockReadingAnalyticsSystem.reset();
 
   try {
     // Test 1: Child starts reading

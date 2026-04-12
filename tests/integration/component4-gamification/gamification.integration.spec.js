@@ -400,7 +400,7 @@ async function runGamificationIntegrationTests() {
       report.logAssertion(
         "Award badge",
         response.success &&
-          response.data.badge._id === dummyBadges[0]._id &&
+          response.data.badge._id.toString() === dummyBadges[0]._id.toString() &&
           response.data.pointsAwarded > 0
       );
     } catch (error) {

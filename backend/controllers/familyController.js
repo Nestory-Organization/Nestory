@@ -223,3 +223,48 @@ exports.deleteFamily = async (req, res) => {
     });
   }
 };
+
+// @desc    Get chat group for a family
+// @route   GET /api/family/:id/chat
+// @access  Private
+exports.getFamilyChat = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid family ID format",
+      });
+    }
+
+    const family = await Family.findById(req.params.id);
+
+    if (!family) {
+      return res.status(404).json({
+        success: false,
+        message: "Family not found",
+      });
+    }
+
+    // Get or create chat group for this family
+    let chatGroup = await ChatGroup.findOne({ family: family._id });
+    if (!chatGroup) {
+      chatGroup = await ensureChatGroupForFamily(family);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Chat group retrieved successfully",
+      data: {
+        chatGroupId: chatGroup._id,
+        chatGroup: chatGroup,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};

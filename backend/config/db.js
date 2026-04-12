@@ -6,9 +6,14 @@ const connectDB = async () => {
     process.exit(1);
   }
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      dbName: 'nestory',
-    });
+    // Only override dbName for development to use 'nestory' database
+    // For testing, let the MONGO_URI specify the database (e.g., /test)
+    const options = {};
+    if (process.env.NODE_ENV === 'development') {
+      options.dbName = 'nestory';
+    }
+
+    const conn = await mongoose.connect(process.env.MONGO_URI, options);
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {

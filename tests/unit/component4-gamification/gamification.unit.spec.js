@@ -302,13 +302,32 @@ async function runGamificationUnitTests() {
 
   // Test 1: Award points for action
   try {
-    const userProgress = JSON.parse(JSON.stringify(dummyUserProgress[0]));
+    // Use fresh user progress to avoid fixture mutations
+    const userProgress = {
+      childId: "60d5ec49f1c1b0001f5a0201",
+      totalPoints: 150,
+      level: 2,
+      currentStreak: 5,
+      longestStreak: 10,
+      storiesRead: 3,
+      assignmentsCompleted: 2,
+      badgesEarned: [],
+      achievementsEarned: [],
+    };
     const result = mockGamificationService.awardPoints(userProgress, "story_read", 20);
+    console.log("DEBUG Award points:", {
+      before: 150,
+      awarded: 20,
+      after: userProgress.totalPoints,
+      expected: 170,
+      pass: result.pointsAwarded === 20 && userProgress.totalPoints === 170
+    });
     report.logAssertion(
       "Award points for action",
       result.pointsAwarded === 20 && userProgress.totalPoints === 170
     );
   } catch (error) {
+    console.log("ERROR in Award points:", error.message);
     report.logAssertion("Award points for action", false);
   }
 
@@ -446,11 +465,12 @@ async function runGamificationUnitTests() {
 
   // Test 11: Streak 7-day bonus
   try {
-    const sixDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+    // To test 7-day bonus, set lastReadDate to yesterday (so the streak continues)
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const userProgress = {
       currentStreak: 6,
       longestStreak: 6,
-      lastReadDate: sixDaysAgo,
+      lastReadDate: yesterday,
       totalPoints: 100,
     };
     mockGamificationService.updateStreak(userProgress, true);
