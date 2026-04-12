@@ -16,6 +16,8 @@ const {
   generateTodayChallenge,
   getTodayChallenge,
   updateTodayChallengeProgress,
+  generateQuiz,
+  completeQuiz,
   test
 } = require('../../controllers/gamification/gamificationController');
 const { protect } = require('../../middleware/authMiddleware');
@@ -48,5 +50,9 @@ router.get('/user-achievements/:userId', protect, getUserAchievements);
 router.post('/challenges/generate', protect, generateTodayChallenge);
 router.get('/challenges/today/:userId', protect, getTodayChallenge);
 router.post('/challenges/progress', protect, updateTodayChallengeProgress);
+
+// AI Quiz routes
+router.post('/quizzes/generate', protect, generateQuiz);
+router.post('/quizzes/complete', protect, completeQuiz);
 
 module.exports = router;

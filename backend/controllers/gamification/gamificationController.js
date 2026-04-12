@@ -7,6 +7,7 @@ const User = require('../../models/User');
 const Child = require('../../models/Child');
 const GamificationService = require('../../services/gamification/gamificationService');
 const { generateDailyChallenge } = require('../../services/gamification/aiChallengeService');
+const aiQuizService = require('../../services/gamification/aiQuizService');
 
 // Helper function to check if achievement is available to user
 const checkAchievementAvailability = (progress, achievement) => {
@@ -148,9 +149,15 @@ exports.awardPoints = async (req, res) => {
     }
 
     const balanceBefore = progress.totalPoints;
-    progress.totalPoints += points;
-    progress.calculateLevel();
-    progress.updateStreak();
+    progress.totalPoints += Number(points);
+    
+    // Ensure methods exist before calling them
+    if (typeof progress.calculateLevel === 'function') {
+      progress.calculateLevel();
+    }
+    if (typeof progress.updateStreak === 'function') {
+      progress.updateStreak();
+    }
 
     // Update stats based on source
     if (source === 'story_read') {
@@ -208,8 +215,8 @@ exports.getLeaderboard = async (req, res) => {
     const leaderboard = await UserProgress.find(query)
       .sort({ totalPoints: -1 })
       .limit(parseInt(limit))
-      .populate('user', 'name email profilePicture')
-      .populate('child', 'name age avatar')
+      .populate('user', 'name email profilePicture displayName')
+      .populate('child', 'name age avatar displayName')
       .select('user child totalPoints level currentStreak longestStreak badges stats');
 
     res.status(200).json({
@@ -828,6 +835,73 @@ exports.getTransactionHistory = async (req, res) => {
 // @desc    Generate today's AI challenge
 // @route   POST /api/gamification/challenges/generate
 // @access  Private
+// @desc    Generate AI quiz for story
+// @route   POST /api/gamification/quizzes/generate
+// @access  Private
+exports.generateQuiz = async (req, res) => {
+  try {
+    const { storyId, userId, childId } = req.body;
+    
+    if (!storyId || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide storyId and userId'
+      });
+    }
+
+    const { actualUserId, actualChildId } = await resolveUserAndChild(userId, childId);
+
+    // Check if an uncompleted quiz already exists
+    let quiz = await aiQuizService.getStoredQuiz(storyId, actualUserId, actualChildId);
+    
+    if (!quiz) {
+      quiz = await aiQuizService.generateQuizForStory(storyId, actualUserId, actualChildId);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: quiz
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error generating quiz',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Submit quiz answers
+// @route   POST /api/gamification/quizzes/complete
+// @access  Private
+exports.completeQuiz = async (req, res) => {
+  try {
+    const { quizId, answers, userId, childId } = req.body;
+
+    if (!quizId || !answers || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide quizId, answers, and userId'
+      });
+    }
+
+    const { actualUserId, actualChildId } = await resolveUserAndChild(userId, childId);
+
+    const result = await aiQuizService.completeQuiz(quizId, answers, actualUserId, actualChildId);
+
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error completing quiz',
+      error: error.message
+    });
+  }
+};
+
 exports.generateTodayChallenge = async (req, res) => {
   try {
     const { userId, childId, forceNew = false } = req.body;

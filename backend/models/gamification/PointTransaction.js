@@ -23,7 +23,7 @@ const pointTransactionSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['story_read', 'assignment_completed', 'badge_earned', 'streak_bonus', 'achievement', 'manual', 'daily_login'],
+      enum: ['story_read', 'assignment_completed', 'badge_earned', 'streak_bonus', 'achievement', 'manual', 'daily_login', 'quiz_completed'],
       required: true
     },
     description: {
@@ -33,7 +33,7 @@ const pointTransactionSchema = new mongoose.Schema(
     reference: {
       model: {
         type: String,
-        enum: ['Story', 'Assignment', 'Badge', 'Achievement', 'None'],
+        enum: ['Story', 'Assignment', 'Badge', 'Achievement', 'Quiz', 'None'],
         default: 'None'
       },
       id: {
