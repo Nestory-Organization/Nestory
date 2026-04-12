@@ -442,7 +442,13 @@ exports.getMyAssignments = async (req, res) => {
       success: true,
       message: "Child assignments retrieved successfully",
       count: allItems.length,
-      data: allItems.map((assignment) => withDueMetadata(assignment)),
+      data: allItems.map((assignment) => {
+        const normalized = withDueMetadata(assignment);
+        return {
+          ...normalized,
+          storyTitle: assignment.story?.title || "Untitled",
+        };
+      }),
     });
   } catch (error) {
     console.error("[assignmentController] getMyAssignments error:", error);

@@ -8,7 +8,7 @@ import SearchRequestService from "../../services/searchRequestService";
 import chatService from "../../services/chatService";
 import { Story, Assignment, MyReadingSessionRow } from "../../types";
 import toast from "react-hot-toast";
-import { MessageCircle, Sparkles, TrendingUp, Trophy } from "lucide-react";
+import { MessageCircle, Sparkles, TrendingUp, Trophy, BookOpen, Clock, ChevronRight } from "lucide-react";
 
 import ChildSidebar from "../../components/common/ChildSidebar";
 import BookTopBar from "../../components/child/BookTopBar";
@@ -40,9 +40,9 @@ const ChildDashboard = () => {
   const loadDashboardData = async (showLoader = true) => {
     try {
       if (showLoader) setIsLoading(true);
-      const [response, childAssignments, sessions] = await Promise.all([
+      const [response, progressOverview, sessions] = await Promise.all([
         StoryService.getStories(1, 48),
-        AssignmentService.getMyAssignments(),
+        AssignmentService.getMyProgressOverview().catch(() => ({ assignments: [] })),
         ReadingService.getMySessions("active").catch(() => []),
       ]);
       const normalizedStories = (response.stories || []).map((s) => ({
@@ -50,7 +50,7 @@ const ChildDashboard = () => {
         coverImage: normalizeCoverImage(s.coverImage),
       }));
       setStories(normalizedStories);
-      setAssignments(childAssignments || []);
+      setAssignments(progressOverview.assignments || []);
       setActiveSessions(sessions);
     } catch (e) {
       toast.error("Dashboard error");
@@ -92,6 +92,19 @@ const ChildDashboard = () => {
     completed: assignments.filter(a => a.status === "completed").length,
     total: assignments.length
   }), [assignments]);
+
+  const assignedStories = useMemo(() => {
+    return assignments
+      .filter(a => a.status !== "completed" && !a.isVirtual)
+      .sort((a, b) => {
+        // Prioritize by due date if present
+        if (a.dueDate && b.dueDate) {
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        }
+        return 0;
+      })
+      .slice(0, 6);
+  }, [assignments]);
 
   const handleSearch = async () => {
     const query = searchQuery.trim();
@@ -139,6 +152,126 @@ const ChildDashboard = () => {
               </section>
             )}
           </div>
+        )}
+
+        {/* Assigned Stories Section */}
+        {assignedStories.length > 0 && (
+          <section className="mb-12">
+            <div className="flex items-end gap-3 mb-6 px-2">
+              <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase">📚 Your Mission Books</h2>
+              <span className="text-xs font-bold text-rose-500 bg-rose-50 px-3 py-1 rounded-full uppercase tracking-widest">{assignedStories.length} to read</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-2">
+              {assignedStories.map((assignment, idx) => {
+                const progress = assignment.reading?.progressPercent || 0;
+                const daysLeft = assignment.deadlinePace?.daysUntilDue;
+                const isOverdue = assignment.deadlinePace?.isOverdue;
+                const dueDateStr = assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : null;
+                
+                return (
+                  <div 
+                    key={assignment.assignmentId || idx}
+                    className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-[2rem] border-2 border-rose-200 p-6 shadow-md hover:shadow-lg transition-all group overflow-hidden relative"
+                  >
+                    {/* Accent Bar */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-400 to-orange-400"></div>
+
+                    {/* Due Date Badge */}
+                    {dueDateStr && (
+                      <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                        isOverdue 
+                          ? 'bg-red-100 text-red-700' 
+                          : daysLeft !== null && daysLeft <= 3 
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {isOverdue ? '⚠️ Overdue' : daysLeft !== null && daysLeft <= 3 ? '⏰ Due soon' : `Due ${dueDateStr}`}
+                      </div>
+                    )}
+
+                    {/* Title and Author */}
+                    <div className="mb-4 pr-24">
+                      <h3 className="text-lg font-black text-gray-800 mb-1 group-hover:text-rose-600 transition-colors uppercase tracking-tight line-clamp-2">
+                        {assignment.storyTitle || "Untitled"}
+                      </h3>
+                    </div>
+
+                    {/* Progress Stats */}
+                    <div className="flex flex-col gap-3 mb-4">
+                      {/* Pages Read */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <BookOpen size={14} className="text-rose-500" />
+                          <span className="text-xs font-bold text-gray-600">Pages</span>
+                        </div>
+                        <span className="text-sm font-black text-gray-800">
+                          {assignment.reading?.pagesRead || 0} / {assignment.reading?.totalPages || 0}
+                        </span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full h-2.5 bg-white rounded-full overflow-hidden border border-rose-200">
+                        <div 
+                          className="h-full bg-gradient-to-r from-rose-400 to-orange-400 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(progress, 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-gray-500">{progress}% complete</span>
+                      </div>
+
+                      {/* Time Spent */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Clock size={14} className="text-orange-500" />
+                          <span className="text-xs font-bold text-gray-600">Reading</span>
+                        </div>
+                        <span className="text-sm font-bold text-gray-700">
+                          {assignment.reading?.timeSpentMinutes || 0} mins
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Daily Target */}
+                    {assignment.deadlinePace?.pagesPerDayNeeded && (
+                      <div className="mb-4 p-3 bg-white/50 rounded-xl border border-orange-200">
+                        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1">Daily Goal</p>
+                        <p className="text-lg font-black text-orange-600">{Math.ceil(assignment.deadlinePace.pagesPerDayNeeded)} pages/day</p>
+                      </div>
+                    )}
+
+                    {/* Continue Reading Button */}
+                    {assignment.storyId && (
+                      <button
+                        onClick={() => beginReadByStoryId(assignment.storyId, `a-${assignment.assignmentId}`)}
+                        disabled={startingReadKey === `a-${assignment.assignmentId}`}
+                        className="w-full mt-4 py-3 bg-gradient-to-r from-rose-500 to-orange-500 text-white font-black uppercase text-xs tracking-widest rounded-xl hover:shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2 group/btn"
+                      >
+                        {startingReadKey === `a-${assignment.assignmentId}` ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <>
+                            {progress > 0 ? '📖 Continue Reading' : '🚀 Start Reading'}
+                            <ChevronRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {assignments.length > assignedStories.length && (
+              <div className="mt-4 text-center px-2">
+                <button 
+                  onClick={() => navigate("/child/progress")}
+                  className="text-xs font-bold text-rose-500 hover:text-rose-600 uppercase tracking-widest underline underline-offset-4"
+                >
+                  View all {assignments.length} Readings →
+                </button>
+              </div>
+            )}
+          </section>
         )}
 
         <section className="mb-12">
