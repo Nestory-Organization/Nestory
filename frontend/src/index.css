@@ -75,7 +75,25 @@
 
   /* Input styles */
   .input-base {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-nestory-500 focus:border-transparent transition-all duration-200;
+    @apply w-full px-5 py-3 border border-orange-100/50 bg-orange-50/10 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-nestory-500/10 focus:border-nestory-500 focus:bg-white transition-all duration-300;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-orange-100 rounded-full hover:bg-orange-200 transition-colors;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .animate-shimmer {
+    animation: shimmer 1.5s infinite;
   }
 
   /* Badges */

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { protect, admin } = require('../../middleware/authMiddleware');
+const upload = require('../../middleware/uploadMiddleware');
 const storyController = require('../../controllers/storyLibrary/storyController');
 const storySyncController = require('../../controllers/storyLibrary/storySyncController');
 const storyQueryController = require("../../controllers/storyLibrary/storyQueryController");
@@ -26,8 +27,8 @@ router.get('/:id', storyController.getStoryById);
 router.get('/:storyId/access/:childId', protect, checkStoryAccess);
 
 //Admin
-router.post('/', protect, admin, storyController.createStory);
-router.put('/:id', protect, admin, storyController.updateStory);
+router.post('/', protect, admin, upload.single('pdf'), storyController.createStory);
+router.put('/:id', protect, admin, upload.single('pdf'), storyController.updateStory);
 router.delete('/:id', protect, admin, storyController.deleteStory);
 
 module.exports = router;

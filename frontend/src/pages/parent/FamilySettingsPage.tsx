@@ -120,11 +120,11 @@ const FamilySettingsPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar title="Family Settings" />
+      <div className="flex-1 overflow-auto">
+        <Navbar title="Settings" />
         <div className="container-responsive py-10 text-center">
           <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading family settings...</p>
+          <p className="text-gray-600 font-bold uppercase tracking-widest mt-4">Loading Settings...</p>
         </div>
       </div>
     );
@@ -132,14 +132,14 @@ const FamilySettingsPage: React.FC = () => {
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar title="Family Settings" />
+      <div className="flex-1 overflow-auto">
+        <Navbar title="Settings" />
         <div className="container-responsive py-10">
-          <div className="card max-w-2xl mx-auto text-center py-12">
-            <AlertCircle className="mx-auto mb-4 text-red-600" size={36} />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Unable to load family settings</h1>
-            <p className="text-gray-600 mb-6">{loadError}</p>
-            <button className="btn-primary" onClick={loadFamily}>Try Again</button>
+          <div className="card max-w-2xl mx-auto text-center py-12 border-0 shadow-2xl">
+            <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
+            <h1 className="text-3xl font-black text-gray-900 mb-2">Something Went Wrong</h1>
+            <p className="text-gray-500 mb-8 font-medium">{loadError}</p>
+            <button className="btn-primary px-8 py-3 rounded-2xl font-bold shadow-lg shadow-nestory-100" onClick={loadFamily}>Try Again</button>
           </div>
         </div>
       </div>
@@ -147,12 +147,12 @@ const FamilySettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex-1 overflow-auto lg:p-4">
       <Navbar title="Family Settings" />
-      <div className="container-responsive py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">Family Settings</h1>
-          <p className="text-gray-600">Create, update, or delete your family group.</p>
+      <div className="container-responsive px-4 py-8 lg:px-8 max-w-5xl mx-auto">
+        <div className="mb-10 animate-fade-in">
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight lg:text-5xl mb-2">Family Settings</h1>
+          <p className="text-gray-600 text-lg">Manage your family profile and configuration</p>
         </div>
 
         <div className="card max-w-2xl">

@@ -101,6 +101,7 @@ export interface ChildAccountCredentials {
   email: string;
   temporaryPassword: string;
   mustChangePassword: boolean;
+  token?: string;
 }
 
 export interface AddChildResponse {
@@ -123,6 +124,7 @@ export interface Story {
   source: 'internal' | 'google';
   googleBookId?: string;
   previewLink?: string;
+  pdfUrl?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -530,4 +532,29 @@ export interface ModalState {
   title?: string;
   message?: string;
   type?: 'info' | 'warning' | 'error' | 'success';
+}
+
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+export interface Quiz {
+  _id: string;
+  story: string;
+  user: string;
+  child?: string;
+  questions: QuizQuestion[];
+  completed: boolean;
+  xpAwarded: number;
+  expiresAt: string;
+}
+
+export interface QuizSubmitResult {
+  success: boolean;
+  correctCount: number;
+  totalQuestions: number;
+  xpAwarded: number;
+  quiz: Quiz;
 }

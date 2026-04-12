@@ -8,6 +8,7 @@ const UserProgress = require("../models/gamification/UserProgress");
 const PointTransaction = require("../models/gamification/PointTransaction");
 const mongoose = require("mongoose");
 const { normalizeChild } = require("../utils/contractTransformers");
+const generateToken = require("../utils/generateToken");
 
 const toSafeSlug = (value = "") =>
   value

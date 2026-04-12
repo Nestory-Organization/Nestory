@@ -22,7 +22,7 @@ const initSocketServer = (httpServer) => {
       origin: process.env.FRONTEND_URL || "*",
       credentials: true,
     },
-    transports: ["websocket", "polling"],
+    transports: ["websocket"],
   });
 
   ioInstance.use(async (socket, next) => {

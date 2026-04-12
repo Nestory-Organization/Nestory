@@ -1,296 +1,172 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { ArrowLeft, BookOpen, CalendarDays, CheckCircle2, Clock3 } from 'lucide-react';
-import Navbar from '../../components/common/Navbar';
-import AssignmentService from '../../services/assignmentService';
-import ReadingService from '../../services/readingService';
-import { Assignment, BookReadingProgress } from '../../types';
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import toast from "react-hot-toast";
+import { ArrowLeft, BookOpen, CalendarDays, CheckCircle2, Clock3, PlayCircle, Star } from "lucide-react";
+import AssignmentService from "../../services/assignmentService";
+import ReadingService from "../../services/readingService";
+import ChildSidebar from "../../components/common/ChildSidebar";
+import BookTopBar from "../../components/child/BookTopBar";
 
-const ChildAssignmentDetailPage: React.FC = () => {
+const ChildAssignmentDetailPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { assignmentId } = useParams<{ assignmentId: string }>();
+  const { assignmentId } = useParams();
 
-  const [assignment, setAssignment] = useState<Assignment | null>(null);
-  const [bookReading, setBookReading] = useState<BookReadingProgress | null>(null);
-  const [bookReadingLoading, setBookReadingLoading] = useState(false);
+  const [assignment, setAssignment] = useState(null);
+  const [bookReading, setBookReading] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [isOpeningReader, setIsOpeningReader] = useState(false);
 
   useEffect(() => {
-    const loadAssignment = async () => {
-      if (!assignmentId) {
-        toast.error('Invalid assignment');
-        navigate('/child');
-        return;
-      }
-
+    const load = async () => {
+      if (!assignmentId) return navigate("/child/dashboard");
       try {
         setIsLoading(true);
-        const fetched = await AssignmentService.getMyAssignmentById(assignmentId);
-
-        const nextAssignment =
-          fetched.status === 'assigned'
-            ? await AssignmentService.updateMyAssignmentStatus(assignmentId, 'in_progress')
-            : fetched;
-        setAssignment(nextAssignment);
-      } catch (error: unknown) {
-        const message =
-          typeof error === 'object' &&
-          error !== null &&
-          'response' in error &&
-          typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
-            ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-            : 'Failed to load assignment';
-        toast.error(message || 'Failed to load assignment');
-        navigate('/child');
+        const res = await AssignmentService.getMyAssignmentById(assignmentId);
+        setAssignment(res);
+      } catch (e) {
+        toast.error("Failed to load");
+        navigate("/child/dashboard");
       } finally {
         setIsLoading(false);
       }
     };
+    load();
+  }, [assignmentId]);
 
-    loadAssignment();
-  }, [assignmentId, navigate]);
-
-  const storyOid = useMemo(
-    () =>
-      assignment
-        ? String(assignment.storyId || assignment.story?._id || assignment.story?.id || '')
-        : '',
-    [assignment]
-  );
+  const storyOid = useMemo(() => assignment ? (assignment.storyId || assignment.story?._id || assignment.story?.id) : null, [assignment]);
 
   useEffect(() => {
-    if (!storyOid) {
-      setBookReading(null);
-      return;
-    }
-
-    let cancelled = false;
-    const loadProgress = () => {
-      if (cancelled) return;
-      setBookReadingLoading(true);
-      ReadingService.getProgressByBook(storyOid)
-        .then((data) => {
-          if (!cancelled) setBookReading(data);
-        })
-        .catch(() => {
-          if (!cancelled) setBookReading(null);
-        })
-        .finally(() => {
-          if (!cancelled) setBookReadingLoading(false);
-        });
-    };
-
-    loadProgress();
-
-    const onVis = () => {
-      if (document.visibilityState === 'visible') loadProgress();
-    };
-    document.addEventListener('visibilitychange', onVis);
-    return () => {
-      cancelled = true;
-      document.removeEventListener('visibilitychange', onVis);
-    };
+    if (!storyOid) return;
+    ReadingService.getProgressByBook(storyOid).then(setBookReading).catch(() => setBookReading(null));
   }, [location.key, storyOid]);
 
-  const handleReadBook = async () => {
-    const storyId =
-      assignment?.storyId || assignment?.story?._id || assignment?.story?.id;
-    if (!storyId) {
-      toast.error('This book is not available to open yet.');
-      return;
-    }
-    try {
-      setIsOpeningReader(true);
-      const { _id } = await ReadingService.startMySession({ storyId: String(storyId) });
-      navigate(`/child/read/${_id}`);
-    } catch (error: unknown) {
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : 'Could not open this book';
-      toast.error(message || 'Could not open this book');
-    } finally {
-      setIsOpeningReader(false);
-    }
-  };
+  if (isLoading || !assignment) return (
+    <div className="min-h-screen bg-[#F5F1E9] pl-20 flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
 
-  const handleMarkCompleted = async () => {
-    if (!assignment?.id) return;
-
-    try {
-      setIsUpdatingStatus(true);
-      const updated = await AssignmentService.updateMyAssignmentStatus(assignment.id, 'completed');
-      setAssignment(updated);
-      toast.success('Assignment marked as completed');
-    } catch (error: unknown) {
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : 'Failed to update assignment status';
-      toast.error(message || 'Failed to update assignment status');
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar title="Assignment" />
-        <div className="container-responsive py-10 text-center">
-          <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading assignment...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!assignment) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar title="Assignment" />
-        <div className="container-responsive py-10">
-          <div className="card text-center py-12">
-            <p className="text-gray-600 mb-4">Assignment not found.</p>
-            <button onClick={() => navigate('/child')} className="btn-primary">Back to Dashboard</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const story = assignment.story || {};
+  const isFinished = assignment.status === "completed";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar title="Assignment" />
+    <div className="min-h-screen bg-[#F5F1E9] pl-20 pb-12 transition-colors duration-500 font-sans">
+      <ChildSidebar />
+      <div className="max-w-[1400px] mx-auto px-10 pt-4">
+        <BookTopBar searchQuery="" setSearchQuery={() => {}} onSearch={() => {}} />
 
-      <div className="container-responsive py-8">
-        <button onClick={() => navigate('/child')} className="btn-secondary mb-6 inline-flex items-center gap-2">
-          <ArrowLeft size={18} />
-          Back
-        </button>
-
-        <div className="card mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <BookOpen className="text-nestory-600" size={20} />
-            <h1 className="text-2xl font-bold text-gray-900">{assignment.story?.title || 'Untitled story'}</h1>
-          </div>
-          <p className="text-gray-700">By {assignment.story?.author || 'Unknown author'}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="badge bg-blue-100 text-blue-800 capitalize">{assignment.status.replace('_', ' ')}</span>
-            {assignment.story?.readingLevel && (
-              <span className="badge bg-nestory-100 text-nestory-800 capitalize">{assignment.story.readingLevel}</span>
-            )}
-            {assignment.dueDate && (
-              <span className="badge bg-gray-100 text-gray-700 inline-flex items-center gap-1">
-                <CalendarDays size={14} />
-                Due {new Date(assignment.dueDate).toLocaleDateString()}
-              </span>
-            )}
-          </div>
+        <div className="flex items-center gap-4 mb-10">
+           <button onClick={() => navigate(-1)} className="p-3 bg-white rounded-2xl border border-[#E8E2D5] hover:bg-rose-50 transition-colors text-gray-600 shadow-sm active:scale-95">
+              <ArrowLeft size={20} />
+           </button>
+           <h1 className="text-3xl font-black text-gray-800 tracking-tight uppercase">Adventure Brief</h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 card">
-            <h2 className="text-xl font-bold text-gray-900 mb-3">Story Details</h2>
-            <p className="text-gray-700 mb-4">
-              Read the book here and log your pages when you are done for this session.
-            </p>
-            <button
-              type="button"
-              onClick={handleReadBook}
-              disabled={isOpeningReader}
-              className="btn-primary inline-flex items-center justify-center gap-2 mb-4"
-            >
-              <BookOpen size={18} />
-              {isOpeningReader ? 'Opening…' : 'Read this book'}
-            </button>
-            <p className="text-sm text-gray-600">
-              Tip: opening this assignment for the first time automatically moved it to In Progress.
-            </p>
-          </div>
-
-          <div className="card">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Progress</h2>
-            <div className="space-y-3">
-              <div className="rounded-lg border border-nestory-100 bg-nestory-50/40 p-3">
-                <p className="text-xs text-gray-600 mb-2">Reading progress</p>
-                {bookReadingLoading ? (
-                  <p className="text-sm text-gray-500">Loading…</p>
-                ) : !bookReading || bookReading.session === null ? (
-                  <p className="text-sm text-gray-600">
-                    No pages logged yet. Open the reader and tap Save progress as you read — works with any book,
-                    including ones without a Google preview.
-                  </p>
-                ) : (
-                  <>
-                    <p className="font-semibold text-gray-900">
-                      {bookReading.pagesRead ?? 0} / {bookReading.totalPages ?? '—'} pages
-                    </p>
-                    <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all ${
-                          bookReading.completed ? 'bg-green-500' : 'bg-nestory-500'
-                        }`}
-                        style={{ width: `${Math.min(bookReading.progress ?? 0, 100)}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {Math.round(bookReading.progress ?? 0)}% of the book
-                      {bookReading.completed ? ' — reading session complete' : ''}
-                    </p>
-                    {bookReading.lastUpdatedAt && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        Last update {new Date(bookReading.lastUpdatedAt).toLocaleString()}
-                      </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+           {/* Left: Book Cover and Status Plate */}
+           <div className="space-y-8 animate-in fade-in slide-in-from-left-8 duration-700">
+              <div className="relative group perspective-1000">
+                 <div className="relative aspect-[3/4.2] rounded-[3rem] overflow-hidden bg-white shadow-2xl shadow-gray-200/50 border-[6px] border-white group-hover:rotate-y-12 transition-transform duration-700">
+                    <img 
+                       src={story.coverImage || "https://images.unsplash.com/photo-1543004471-24598d8392cf?auto=format&fit=crop&w=800&q=80"} 
+                       alt={story.title}
+                       className="w-full h-full object-cover"
+                    />
+                    {isFinished && (
+                       <div className="absolute top-10 right-10 bg-emerald-500/90 backdrop-blur-md p-4 rounded-3xl text-white transform rotate-12 shadow-xl border border-white/20">
+                          <CheckCircle2 size={40} />
+                       </div>
                     )}
-                    <button
-                      type="button"
-                      onClick={handleReadBook}
-                      disabled={isOpeningReader}
-                      className="mt-3 text-sm font-semibold text-nestory-700 hover:text-nestory-900 underline-offset-2 hover:underline"
-                    >
-                      {isOpeningReader ? 'Opening…' : 'Continue in reader'}
-                    </button>
-                  </>
-                )}
+                 </div>
               </div>
-              <div className="rounded-lg border border-gray-200 p-3">
-                <p className="text-xs text-gray-600 mb-1">Current Status</p>
-                <p className="font-semibold capitalize text-gray-900">{assignment.status.replace('_', ' ')}</p>
-              </div>
-              {assignment.completedAt && (
-                <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-                  <p className="text-xs text-green-700 mb-1">Completed At</p>
-                  <p className="font-semibold text-green-900 inline-flex items-center gap-1">
-                    <Clock3 size={14} />
-                    {new Date(assignment.completedAt).toLocaleString()}
-                  </p>
-                </div>
-              )}
 
-              {assignment.status !== 'completed' && (
-                <button
-                  type="button"
-                  className="btn-primary w-full inline-flex items-center justify-center gap-2"
-                  onClick={handleMarkCompleted}
-                  disabled={isUpdatingStatus}
-                >
-                  <CheckCircle2 size={18} />
-                  {isUpdatingStatus ? 'Updating...' : 'Mark as Completed'}
-                </button>
+              <div className="bg-white/60 backdrop-blur-md p-8 rounded-[3rem] border border-white shadow-lg space-y-6">
+                 <div className="flex items-center gap-6 justify-around">
+                    <div className="text-center">
+                       <div className="text-2xl font-black text-orange-500">{(bookReading?.progressPercent || 0)}%</div>
+                       <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Adventure %</div>
+                    </div>
+                    <div className="w-[1px] h-10 bg-gray-200"></div>
+                    <div className="text-center">
+                       <div className="text-2xl font-black text-rose-500">{(bookReading?.pagesRead || 0)}</div>
+                       <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Pages Read</div>
+                    </div>
+                    <div className="w-[1px] h-10 bg-gray-200"></div>
+                    <div className="text-center">
+                       <div className="text-2xl font-black text-emerald-500">{story.pageCount || "..."}</div>
+                       <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Total Goal</div>
+                    </div>
+                 </div>
+                 
+                 <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden border border-[#E8E2D5]">
+                    <div 
+                       className="h-full bg-gradient-to-r from-orange-400 to-rose-600 rounded-full transition-all duration-1000"
+                       style={{ width: `${bookReading?.progressPercent || 0}%` }}
+                    />
+                 </div>
+              </div>
+           </div>
+
+           {/* Right: Book Details and Controls */}
+           <div className="space-y-8 animate-in fade-in slide-in-from-right-8 duration-700 delay-200">
+              <div className="bg-white/40 p-10 rounded-[4rem] border border-white shadow-xl shadow-gray-200/30">
+                 <div className="flex items-center gap-2 mb-4">
+                    <Star className="text-rose-500 fill-rose-500" size={16} />
+                    <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.3em] font-sans">Daily Mission</span>
+                 </div>
+                 <h2 className="text-5xl font-black text-gray-800 leading-tight tracking-tighter uppercase mb-2">{story.title}</h2>
+                 <p className="text-xl font-bold text-gray-400 uppercase tracking-widest mb-10">Story by {story.author}</p>
+                 
+                 <div className="space-y-8 mb-12">
+                    <div className="flex items-start gap-4 p-6 bg-white rounded-3xl border border-[#E8E2D5] shadow-sm">
+                       <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 shrink-0">
+                          <CalendarDays size={24} />
+                       </div>
+                       <div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Due Date</p>
+                          <p className="text-lg font-black text-gray-800">{assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString(undefined, { dateStyle: "long" }) : "No Limit"}</p>
+                       </div>
+                    </div>
+
+                    <div className="flex items-start gap-4 p-6 bg-white rounded-3xl border border-[#E8E2D5] shadow-sm">
+                       <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 shrink-0">
+                          <BookOpen size={24} />
+                       </div>
+                       <div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pace Goal</p>
+                          <p className="text-lg font-black text-gray-800">10-15 pages per day</p>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="flex flex-col gap-4">
+                    {!isFinished && (
+                       <button 
+                          onClick={() => navigate(`/child/read/new?storyId=${storyOid}`)}
+                          className="w-full py-6 bg-rose-500 text-white text-lg font-black uppercase tracking-[0.2em] rounded-[2rem] shadow-xl shadow-rose-200 hover:bg-rose-600 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-4 group"
+                       >
+                          <PlayCircle size={28} className="group-hover:rotate-12 transition-transform" />
+                          Start Adventure
+                       </button>
+                    )}
+                    <button 
+                       onClick={() => navigate("/child/dashboard")}
+                       className="w-full py-6 bg-white text-gray-800 text-lg font-black uppercase tracking-[0.2em] rounded-[2rem] border-2 border-[#E8E2D5] hover:bg-rose-50 transition-all flex items-center justify-center gap-4"
+                    >
+                       Library Table
+                    </button>
+                 </div>
+              </div>
+
+              {story.description && (
+                 <section className="bg-white/60 p-10 rounded-[4rem] border border-white shadow-lg">
+                    <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight mb-6">Briefing Story</h3>
+                    <p className="text-gray-600 font-bold leading-relaxed text-sm uppercase tracking-tight opacity-70">
+                       {story.description}
+                    </p>
+                 </section>
               )}
-            </div>
-          </div>
+           </div>
         </div>
       </div>
     </div>

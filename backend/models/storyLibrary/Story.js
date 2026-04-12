@@ -60,6 +60,11 @@ const storySchema = new mongoose.Schema(
             default: '',
         },
 
+        pdfUrl: {
+            type: String,
+            default: '',
+        },
+
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',

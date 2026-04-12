@@ -76,7 +76,8 @@ const postReadingStartedChatNotification = async ({
 // @access  Private (Child only)
 exports.startMySession = async (req, res) => {
   try {
-    const childId = resolveReadingChildId(req.user);
+    const userRole = req.user.normalizedRole || req.user.role;
+    const childId = userRole === "child" ? req.user.childProfile : null;
     if (!childId) {
       return res.status(400).json({
         success: false,
@@ -196,8 +197,9 @@ exports.startSession = async (req, res) => {
     }
 
     let effectiveChildId;
+    const userRole = req.user.normalizedRole || req.user.role;
 
-    if (req.user.role === "child") {
+    if (userRole === "child") {
       if (!req.user.childProfile) {
         return res.status(400).json({
           success: false,
@@ -443,7 +445,8 @@ exports.updateSession = async (req, res) => {
       });
     }
 
-    if (req.user.role === "child") {
+    const userRole = req.user.normalizedRole || req.user.role;
+    if (userRole === "child") {
       if (
         !req.user.childProfile ||
         session.childId.toString() !== req.user.childProfile.toString()
@@ -475,8 +478,8 @@ exports.updateSession = async (req, res) => {
     if (pagesToAdd > 0) {
       try {
         await updateReadingProgressMidSession(
-          req.user.role === "child" ? req.user.parentAccount : req.user._id,
-          req.user.role === "child" ? session.childId : null,
+          userRole === "child" ? req.user.parentAccount : req.user._id,
+          userRole === "child" ? session.childId : null,
           progress
         );
       } catch (progressError) {
@@ -493,12 +496,12 @@ exports.updateSession = async (req, res) => {
       try {
         const story = await Story.findById(session.bookId).select('genres category');
         const storyCategory = story?.category || story?.genres?.[0] || 'General';
-        const readingTime = Math.ceil(session.timeSpent / 60); // Convert to minutes
+        const readingTime = Math.ceil(session.timeSpent / 60);
 
         const gamificationResult = await awardPointsForStoryRead(
-          req.user.role === "child" ? req.user.parentAccount : req.user._id,
+          userRole === "child" ? req.user.parentAccount : req.user._id,
           session.bookId,
-          req.user.role === "child" ? session.childId : null,
+          userRole === "child" ? session.childId : null,
           storyCategory,
           readingTime
         );
@@ -703,7 +706,8 @@ exports.getFamilyActivitySummary = async (req, res) => {
 // @access  Private
 exports.getMySessions = async (req, res) => {
   try {
-    if (req.user.role !== "child" || !req.user.childProfile) {
+    const userRole = req.user.normalizedRole || req.user.role;
+    if (userRole !== "child" || !req.user.childProfile) {
       return res.status(200).json({
         success: true,
         message: "My sessions fetched",
@@ -757,7 +761,8 @@ exports.getMySessions = async (req, res) => {
 // @access  Private
 exports.getProgressByBook = async (req, res) => {
   try {
-    if (req.user.role !== "child" || !req.user.childProfile) {
+    const userRole = req.user.normalizedRole || req.user.role;
+    if (userRole !== "child" || !req.user.childProfile) {
       return res.status(200).json({
         success: true,
         message: "No session found for this book",
@@ -826,7 +831,8 @@ exports.deleteSession = async (req, res) => {
       });
     }
 
-    if (req.user.role === "child") {
+    const userRole = req.user.normalizedRole || req.user.role;
+    if (userRole === "child") {
       if (
         !req.user.childProfile ||
         session.childId.toString() !== req.user.childProfile.toString()

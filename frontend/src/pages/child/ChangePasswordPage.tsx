@@ -1,152 +1,130 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { Lock, KeyRound } from 'lucide-react';
-import Navbar from '../../components/common/Navbar';
-import InputField from '../../components/common/InputField';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { ArrowLeft, Lock, ShieldCheck, Sparkle } from "lucide-react";
+import ChildSidebar from "../../components/common/ChildSidebar";
+import BookTopBar from "../../components/child/BookTopBar";
+import authService from "../../services/authService";
 
-const ChangePasswordPage: React.FC = () => {
+const ChildChangePasswordPage = () => {
   const navigate = useNavigate();
-  const { user, changePassword } = useAuth();
-  const [formData, setFormData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const validate = () => {
-    const nextErrors: Record<string, string> = {};
-
-    if (!formData.currentPassword) {
-      nextErrors.currentPassword = 'Current password is required';
-    }
-
-    if (!formData.newPassword) {
-      nextErrors.newPassword = 'New password is required';
-    } else if (formData.newPassword.length < 6) {
-      nextErrors.newPassword = 'New password must be at least 6 characters';
-    }
-
-    if (!formData.confirmPassword) {
-      nextErrors.confirmPassword = 'Please confirm your new password';
-    } else if (formData.newPassword !== formData.confirmPassword) {
-      nextErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    if (
-      formData.currentPassword &&
-      formData.newPassword &&
-      formData.currentPassword === formData.newPassword
-    ) {
-      nextErrors.newPassword = 'New password must be different from current password';
-    }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validate()) return;
-
+    if (newPassword !== confirmPassword) {
+      return toast.error("New passwords do not match!");
+    }
     try {
-      setIsSubmitting(true);
-      await changePassword(formData.currentPassword, formData.newPassword);
-      toast.success('Password updated successfully');
-      navigate('/child');
-    } catch (error: unknown) {
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : 'Failed to update password';
-      toast.error(message || 'Failed to update password');
+      setIsLoading(true);
+      await authService.changePassword({
+        currentPassword: oldPassword,
+        newPassword: newPassword,
+      });
+      toast.success("Security code updated!");
+      navigate("/child/dashboard");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Oops! Failed to update.");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar title="Change Password" />
+    <div className="min-h-screen bg-[#F5F1E9] pl-20 pb-12 transition-all duration-500">
+      <ChildSidebar />
+      <div className="max-w-[1400px] mx-auto px-10 pt-4">
+        <BookTopBar searchQuery="" setSearchQuery={() => {}} onSearch={() => {}} />
 
-      <div className="container-responsive py-8">
-        <div className="max-w-xl mx-auto card">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Secure Your Account</h1>
-            <p className="text-gray-600">
-              {user?.mustChangePassword
-                ? 'You must change your temporary password before continuing.'
-                : 'You can update your password any time.'}
-            </p>
-          </div>
+        <div className="flex items-center gap-4 mb-10">
+           <button onClick={() => navigate(-1)} className="p-3 bg-white rounded-2xl border border-[#E8E2D5] hover:bg-rose-50 transition-colors text-gray-600 shadow-sm active:scale-95">
+              <ArrowLeft size={20} />
+           </button>
+           <h1 className="text-3xl font-black text-gray-800 tracking-tight uppercase">Security Zone</h1>
+        </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <InputField
-              label="Current Password"
-              name="currentPassword"
-              type="password"
-              value={formData.currentPassword}
-              onChange={(e) => setFormData((prev) => ({ ...prev, currentPassword: e.target.value }))}
-              placeholder="Enter current password"
-              error={errors.currentPassword}
-              required
-            />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+           {/* Left: Illustrations/Theme */}
+           <div className="space-y-8 animate-in fade-in slide-in-from-left-8 duration-700">
+              <div className="bg-rose-500 rounded-[4rem] p-12 text-white shadow-2xl shadow-rose-200/50 aspect-square flex flex-col items-center justify-center text-center">
+                 <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center mb-8 animate-bounce">
+                    <ShieldCheck size={48} />
+                 </div>
+                 <h2 className="text-4xl font-black uppercase tracking-tight mb-4 leading-tight">Secret Portal Protection</h2>
+                 <p className="text-sm font-bold opacity-80 uppercase tracking-widest px-10">Choose a strong secret code that only you and your parents know! ??</p>
+              </div>
+           </div>
 
-            <InputField
-              label="New Password"
-              name="newPassword"
-              type="password"
-              value={formData.newPassword}
-              onChange={(e) => setFormData((prev) => ({ ...prev, newPassword: e.target.value }))}
-              placeholder="At least 6 characters"
-              error={errors.newPassword}
-              required
-            />
+           {/* Right: The Form */}
+           <div className="bg-white/60 backdrop-blur-xl p-10 sm:p-14 rounded-[4rem] border border-white shadow-xl shadow-gray-200/40 animate-in fade-in slide-in-from-right-8 duration-700 delay-200 relative overflow-hidden">
+              <div className="absolute top-10 right-10 text-rose-500 opacity-20">
+                 <Sparkle size={100} />
+              </div>
 
-            <InputField
-              label="Confirm New Password"
-              name="confirmPassword"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-              placeholder="Retype new password"
-              error={errors.confirmPassword}
-              required
-            />
+              <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
+                 <div className="space-y-6">
+                    <div className="group">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Current Secret Code</label>
+                       <div className="relative">
+                          <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-rose-500 transition-colors" size={20} />
+                          <input 
+                             type="password"
+                             value={oldPassword}
+                             onChange={(e) => setOldPassword(e.target.value)}
+                             required
+                             placeholder="Old password..."
+                             className="w-full h-16 bg-white border border-[#E8E2D5] rounded-3xl pl-16 pr-6 text-sm font-black focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-400 transition-all"
+                          />
+                       </div>
+                    </div>
 
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn-primary inline-flex items-center gap-2"
-              >
-                <KeyRound size={18} />
-                {isSubmitting ? 'Updating...' : 'Update Password'}
-              </button>
+                    <div className="group">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">New Secret Code</label>
+                       <div className="relative">
+                          <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-rose-500 transition-colors" size={20} />
+                          <input 
+                             type="password"
+                             value={newPassword}
+                             onChange={(e) => setNewPassword(e.target.value)}
+                             required
+                             placeholder="New password..."
+                             className="w-full h-16 bg-white border border-[#E8E2D5] rounded-3xl pl-16 pr-6 text-sm font-black focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-400 transition-all"
+                          />
+                       </div>
+                    </div>
 
-              {!user?.mustChangePassword && (
-                <button
-                  type="button"
-                  className="btn-secondary inline-flex items-center gap-2"
-                  onClick={() => navigate('/child')}
-                >
-                  <Lock size={18} />
-                  Back to Dashboard
-                </button>
-              )}
-            </div>
-          </form>
+                    <div className="group">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Confirm New Code</label>
+                       <div className="relative">
+                          <ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-rose-500 transition-colors" size={20} />
+                          <input 
+                             type="password"
+                             value={confirmPassword}
+                             onChange={(e) => setConfirmPassword(e.target.value)}
+                             required
+                             placeholder="Confirm password..."
+                             className="w-full h-16 bg-white border border-[#E8E2D5] rounded-3xl pl-16 pr-6 text-sm font-black focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-400 transition-all"
+                          />
+                       </div>
+                    </div>
+                 </div>
+
+                 <button 
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-6 bg-rose-500 text-white text-lg font-black uppercase tracking-[0.2em] rounded-[2rem] shadow-xl shadow-rose-200 hover:bg-rose-600 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-4"
+                 >
+                    {isLoading ? "UPDATING SECRET CODE..." : "UPDATE SECURITY"}
+                 </button>
+              </form>
+           </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default ChangePasswordPage;
+export default ChildChangePasswordPage;

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock, LogIn, Sparkles, BookOpen, Heart } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -50,7 +50,7 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(formData);
-      toast.success('Login successful!');
+      toast.success('Welcome back to Nestory!');
       navigate('/');
     } catch (error: any) {
       const backendErrors = error?.response?.data?.errors;
@@ -68,8 +68,7 @@ const LoginPage: React.FC = () => {
 
       let errorMessage = error?.response?.data?.message || 'Login failed. Please try again.';
       if (errorMessage === 'Invalid credentials') {
-        errorMessage =
-          "Invalid email or password. Parent and reader accounts each have their own password; changing or resetting a reader's login does not change the parent's.";
+        errorMessage = "Invalid email or password. Please check your credentials and try again.";
       }
       setFormError(errorMessage);
       toast.error(errorMessage);
@@ -77,113 +76,157 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-nestory-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md animate-fade-in">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-4xl font-bold text-gradient mb-2">Nestory</div>
-          <p className="text-gray-600">Family Reading Platform</p>
-        </div>
-
-        {/* Login Card */}
-        <div className="card shadow-lg">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 text-center">Welcome Back</h2>
-            <p className="text-center text-sm text-gray-500 -mt-2">
-              Use the parent email and parent password. Reader logins are separate (often a @nestory.app address).
+    <div className="min-h-screen bg-[#F5F1E9] flex items-center justify-center p-4 font-sans selection:bg-rose-200 selection:text-rose-900">
+      <div className="w-full max-w-[1000px] flex flex-col md:flex-row bg-white rounded-[3rem] border-2 border-[#E8E2D5] shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden animate-fade-in">
+        
+        {/* Left Side: Brand & Info */}
+        <div className="w-full md:w-1/2 bg-rose-500 p-12 flex flex-col justify-between relative overflow-hidden">
+          {/* Decorative shapes */}
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-rose-700/20 rounded-full blur-3xl"></div>
+          
+          <div className="relative z-10">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-[2rem] shadow-xl mb-8 animate-bounce-gentle">
+              <BookOpen className="text-rose-500" size={32} />
+            </div>
+            <h1 className="text-6xl font-black text-white tracking-tighter uppercase mb-2">
+              Nes<span className="text-rose-200">tory</span>
+            </h1>
+            <p className="text-xs font-black text-rose-100 uppercase tracking-[0.3em] mb-12">
+              Family Reading Adventure
             </p>
 
+            <div className="space-y-8">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 border border-white/30">
+                  <Sparkles className="text-white" size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-tight">Gamified Progress</h3>
+                  <p className="text-xs font-bold text-rose-100 leading-relaxed mt-1">Earn badges and points while exploring thousands of magical stories together.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 border border-white/30">
+                  <Heart className="text-white" size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-tight">Family Driven</h3>
+                  <h3 className="text-sm font-black text-white uppercase tracking-tight">Safe Space</h3>
+                  <p className="text-xs font-bold text-rose-100 leading-relaxed mt-1">A curated environment where children can read safely and parents can monitor growth.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-10 pt-12 mt-auto">
+            <p className="text-[10px] font-black text-rose-200 uppercase tracking-widest italic opacity-80">
+              "Reading is a passport to countless adventures."
+            </p>
+          </div>
+        </div>
+
+        {/* Right Side: Form */}
+        <div className="w-full md:w-1/2 p-12 flex flex-col justify-center bg-white relative">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-[360px] mx-auto w-full">
+            <div className="space-y-1">
+              <h2 className="text-3xl font-black text-gray-800 uppercase tracking-tight">Welcome Back</h2>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Continue your family's journey
+              </p>
+            </div>
+
             {/* Email Field */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <Mail size={12} className="text-rose-500" />
                 Email Address
               </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`input-base pl-10 ${
-                    errors.email ? 'border-red-500 focus:ring-red-500' : ''
-                  }`}
-                  placeholder="your@email.com"
-                  disabled={isLoading}
-                />
-              </div>
-              {errors.email && <p className="text-red-600 text-sm mt-1">{errors.email}</p>}
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className={`w-full bg-[#F5F1E9]/30 border-2 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 placeholder:text-gray-300 focus:outline-none focus:border-rose-500 transition-all shadow-inner ${
+                  errors.email ? 'border-red-400 focus:border-red-500' : 'border-[#E8E2D5]'
+                }`}
+                placeholder="hello@family.com"
+                disabled={isLoading}
+              />
+              {errors.email && (
+                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest ml-1">
+                  {errors.email}
+                </p>
+              )}
             </div>
 
             {/* Password Field */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                <Lock size={12} className="text-rose-500" />
                 Password
               </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`input-base pl-10 ${
-                    errors.password ? 'border-red-500 focus:ring-red-500' : ''
-                  }`}
-                  placeholder="••••••••"
-                  disabled={isLoading}
-                />
-              </div>
-              {errors.password && <p className="text-red-600 text-sm mt-1">{errors.password}</p>}
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className={`w-full bg-[#F5F1E9]/30 border-2 rounded-2xl px-5 py-4 text-sm font-bold text-gray-700 placeholder:text-gray-300 focus:outline-none focus:border-rose-500 transition-all shadow-inner ${
+                  errors.password ? 'border-red-400 focus:border-red-500' : 'border-[#E8E2D5]'
+                }`}
+                placeholder="••••••••"
+                disabled={isLoading}
+              />
+              {errors.password && (
+                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest ml-1">
+                  {errors.password}
+                </p>
+              )}
             </div>
 
             {formError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {formError}
+              <div className="p-4 bg-red-50 border-2 border-red-100 rounded-2xl">
+                <p className="text-[10px] font-black text-red-600 uppercase tracking-wide leading-relaxed">
+                  {formError}
+                </p>
               </div>
             )}
 
-            {/* Forgot Password Link */}
-            <div className="text-right">
+            <div className="flex items-center justify-end px-1">
               <Link
                 to="/forgot-password"
-                className="text-sm text-nestory-600 font-semibold hover:text-nestory-700"
+                className="text-[10px] font-black text-rose-500 uppercase tracking-widest hover:text-rose-600 transition-colors"
               >
                 Forgot password?
               </Link>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-rose-500 text-white rounded-[1.5rem] py-4 font-black uppercase text-xs tracking-[0.2em] border-b-4 border-rose-700 active:border-b-0 active:translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_4px_0_rgb(190,18,60)]"
             >
-              <LogIn size={20} />
-              {isLoading ? 'Logging in...' : 'Log In'}
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <LogIn size={18} />
+                  Continue Adventure
+                </>
+              )}
             </button>
+
+            {/* Footer Link */}
+            <div className="pt-6 border-t border-[#F5F1E9] text-center">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                New to our story?{' '}
+                <Link to="/register" className="text-rose-500 hover:text-rose-600 transition-colors ml-1">
+                  Start here
+                </Link>
+              </p>
+            </div>
           </form>
-
-          {/* Sign Up Link */}
-          <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-            <p className="text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-nestory-600 font-semibold hover:text-nestory-700">
-                Sign up here
-              </Link>
-            </p>
-          </div>
-        </div>
-
-        {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
-          <p className="text-xs text-gray-600 font-semibold mb-2">Demo credentials (if seeded):</p>
-          <p className="text-xs text-gray-600">Email: parent@example.com</p>
-          <p className="text-xs text-gray-600">Password: password123</p>
-          <p className="text-xs text-gray-500 mt-2">
-            If you forgot your parent password, run from the backend folder:{' '}
-            <code className="text-gray-700">npm run reset-password -- your@email.com NewPass123</code>
-          </p>
         </div>
       </div>
     </div>

@@ -1,107 +1,223 @@
 const Assignment = require("../models/Assignment");
+const ReadingSession = require("../models/ReadingSession");
+const Family = require("../models/Family");
 const Child = require("../models/Child");
-const {
-  enrichAssignmentsWithSessions,
-  summarize,
-} = require("../services/assignmentProgressService");
-const {
-  deleteOrphanAssignmentsForParent,
-} = require("../utils/orphanAssignmentCleanup");
+const ErrorResponse = require("../utils/errorResponse");
+const { enrichAssignmentsWithSessions, summarize, computeAnalyticsForAssignment } = require("../services/assignmentProgressService");
 
 /**
- * @desc Progress analytics for parent's family (optional ?childId=)
- * @route GET /api/assignments/progress
- * @access Private (parent)
+ * @desc    Get reading progress overview for the logged-in child
+ * @route   GET /api/assignments/my-progress
+ * @access  Private (Child)
  */
-exports.getParentProgressOverview = async (req, res) => {
+exports.getMyProgressOverview = async (req, res, next) => {
   try {
-    await deleteOrphanAssignmentsForParent(req.user._id);
+    const childId = req.user.childProfile || req.user.id;
 
-    const { childId } = req.query;
+    // 1. Get all formal assignments
+    const assignments = await Assignment.find({ child: childId })
+      .populate("child", "name")
+      .populate("story", "title pageCount totalPages coverImage")
+      .lean();
 
-    if (childId) {
-      const child = await Child.findById(childId);
-      if (!child) {
-        return res.status(404).json({ success: false, message: "Child not found" });
-      }
-      if (child.parent.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ success: false, message: "Not authorized" });
+    // 2. Get all reading sessions to find stories started but not formally assigned
+    const sessions = await ReadingSession.find({ childId: childId })
+      .populate("bookId", "title pageCount totalPages coverImage")
+      .lean();
+
+    // 3. Create a map of story IDs from formal assignments
+    const assignedStoryIds = new Set(assignments.map(a => a.story?._id?.toString()));
+
+    // 4. Identify stories from sessions that are NOT in assignments
+    const unassignedItems = [];
+    const processedUnassignedStoryIds = new Set();
+
+    for (const session of sessions) {
+      if (!session.bookId) continue;
+      const storyId = session.bookId._id.toString();
+      
+      if (!assignedStoryIds.has(storyId) && !processedUnassignedStoryIds.has(storyId)) {
+        unassignedItems.push({
+          _id: `virtual-${storyId}`,
+          child: childId,
+          story: session.bookId,
+          status: session.completed ? "completed" : "in_progress",
+          isVirtual: true,
+          createdAt: session.createdAt,
+          dueDate: null
+        });
+        processedUnassignedStoryIds.add(storyId);
       }
     }
 
-    const filter = { assignedBy: req.user._id };
-    if (childId) filter.child = childId;
+    // Combine formal and virtual assignments
+    const allTrackedItems = [...assignments, ...unassignedItems];
 
-    const assignments = await Assignment.find(filter)
-      .populate("child", "name age")
-      .populate("story", "title author pageCount coverImage")
-      .sort({ updatedAt: -1 });
+    if (allTrackedItems.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          summary: { totalBooks: 0, completedBooks: 0, totalPagesRead: 0 },
+          assignments: []
+        }
+      });
+    }
 
-    const rows = await enrichAssignmentsWithSessions(assignments);
-    const summary = summarize(rows);
+    // 5. Calculate detailed stats for each item using the service
+    const detailedProgress = await enrichAssignmentsWithSessions(allTrackedItems);
 
-    return res.status(200).json({
+    // 6. Generate overall summary
+    const summary = {
+      totalBooks: detailedProgress.length,
+      completedBooks: detailedProgress.filter(p => p.status === "completed").length,
+      totalPagesRead: detailedProgress.reduce((sum, p) => sum + p.reading.pagesRead, 0),
+      totalTimeSpent: detailedProgress.reduce((sum, p) => sum + p.reading.timeSpentMinutes, 0),
+      ...summarize(detailedProgress)
+    };
+
+    res.status(200).json({
       success: true,
-      message: "Progress overview",
       data: {
-        generatedAt: new Date().toISOString(),
         summary,
-        assignments: rows,
-      },
+        assignments: detailedProgress
+      }
     });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    next(error);
   }
 };
 
 /**
- * @desc Progress analytics for logged-in child
- * @route GET /api/assignments/me/progress
- * @access Private (child)
+ * @desc    Get reading progress overview for all children in a family (Parent view)
+ * @route   GET /api/assignments/progress
+ * @access  Private (Parent)
  */
-exports.getMyProgressOverview = async (req, res) => {
+exports.getParentProgressOverview = async (req, res, next) => {
   try {
-    if (req.user.normalizedRole !== "child") {
-      return res.status(403).json({
+    const parentId = req.user.id;
+
+    // 1. Get family and its children
+    const family = await Family.findOne({ parent: parentId });
+    if (!family) {
+      return res.status(404).json({
         success: false,
-        message: "Not authorized",
+        message: "Family not found",
       });
     }
-    if (!req.user.childProfile) {
-      return res.status(400).json({
-        success: false,
-        message: "Child profile is not linked to this account",
-      });
-    }
 
-    const assignments = await Assignment.find({ child: req.user.childProfile })
-      .populate("child", "name age")
-      .populate("story", "title author pageCount coverImage")
-      .sort({ updatedAt: -1 });
+    const children = await Child.find({ family: family._id });
 
-    const rows = await enrichAssignmentsWithSessions(assignments);
-    const summary = summarize(rows);
+    // Filter by childId if provided
+    const requestedChildId = req.query.childId;
+    const filteredChildren = requestedChildId 
+      ? children.filter(c => c._id.toString() === requestedChildId)
+      : children;
 
-    return res.status(200).json({
+    // 2. Map through each child to get their progress
+    const childrenProgress = await Promise.all(
+      filteredChildren.map(async (child) => {
+        // Get formal assignments
+        const assignments = await Assignment.find({ child: child._id })
+          .populate("child", "name")
+          .populate("story", "title pageCount totalPages coverImage")
+          .lean();
+
+        // Get reading sessions to find stories started but not formally assigned
+        const sessions = await ReadingSession.find({ childId: child._id })
+          .populate("bookId", "title pageCount totalPages coverImage")
+          .lean();
+
+        // Create a map of story IDs from formal assignments
+        const assignedStoryIds = new Set(
+          assignments.map((a) => a.story?._id?.toString()),
+        );
+
+        // Identify stories from sessions that are NOT in assignments
+        const unassignedItems = [];
+        const processedUnassignedStoryIds = new Set();
+
+        for (const session of sessions) {
+          if (!session.bookId) continue;
+          const storyId = session.bookId._id.toString();
+
+          if (
+            !assignedStoryIds.has(storyId) &&
+            !processedUnassignedStoryIds.has(storyId)
+          ) {
+            unassignedItems.push({
+              _id: `virtual-${storyId}`,
+              child: child._id,
+              story: session.bookId,
+              status: session.completed ? "completed" : "in_progress",
+              isVirtual: true,
+              createdAt: session.createdAt,
+              dueDate: null,
+            });
+            processedUnassignedStoryIds.add(storyId);
+          }
+        }
+
+        // Combine formal and virtual assignments
+        const allTrackedItems = [...assignments, ...unassignedItems];
+
+        if (allTrackedItems.length === 0) {
+          return {
+            childId: child._id,
+            childName: child.name,
+            summary: { totalBooks: 0, completedBooks: 0, totalPagesRead: 0 },
+            assignments: [],
+          };
+        }
+
+        // Calculate detailed stats for each item using the service
+        const detailedProgress = await enrichAssignmentsWithSessions(
+          allTrackedItems,
+        );
+
+        // Generate summary for child
+        const summary = {
+          totalBooks: detailedProgress.length,
+          completedBooks: detailedProgress.filter((p) => p.status === "completed")
+            .length,
+          totalPagesRead: detailedProgress.reduce(
+            (sum, p) => sum + p.reading.pagesRead,
+            0,
+          ),
+          totalTimeSpent: detailedProgress.reduce(
+            (sum, p) => sum + p.reading.timeSpentMinutes,
+            0,
+          ),
+          ...summarize(detailedProgress),
+        };
+
+        return {
+          childId: child._id,
+          childName: child.name,
+          summary,
+          assignments: detailedProgress.map(p => ({
+            ...p,
+            childId: child._id,
+            childName: child.name
+          })),
+        };
+      }),
+    );
+
+    res.status(200).json({
       success: true,
-      message: "Your reading progress",
       data: {
         generatedAt: new Date().toISOString(),
-        summary,
-        assignments: rows,
+        summary: {
+          activeWithDeadline: childrenProgress.reduce((sum, cp) => sum + (cp.summary.activeWithDeadline || 0), 0),
+          overdueCount: childrenProgress.reduce((sum, cp) => sum + (cp.summary.overdueCount || 0), 0),
+          completedOnTime: childrenProgress.reduce((sum, cp) => sum + (cp.summary.completedOnTime || 0), 0),
+          completedEarly: childrenProgress.reduce((sum, cp) => sum + (cp.summary.completedEarly || 0), 0),
+          completedLate: childrenProgress.reduce((sum, cp) => sum + (cp.summary.completedLate || 0), 0),
+        },
+        assignments: childrenProgress.flatMap(cp => cp.assignments)
       },
     });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    next(error);
   }
 };

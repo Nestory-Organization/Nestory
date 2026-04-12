@@ -490,7 +490,7 @@ const AssignmentsPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="flex-1 overflow-auto">
         <Navbar title="Assignments" />
         <div className="container-responsive py-10 text-center">
           <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
@@ -501,13 +501,13 @@ const AssignmentsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex-1 overflow-auto">
       <Navbar title="Assignments" />
-      <div className="container-responsive py-8">
+      <div className="container-responsive py-8 px-4 lg:px-8 max-w-7xl mx-auto">
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Manage Assignments</h1>
-            <p className="text-gray-600">Create, search, filter, and manage child assignments with live updates.</p>
+            <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight lg:text-5xl mb-2">Manage Assignments</h1>
+            <p className="text-gray-600 text-lg">Create, search, filter, and manage child assignments with live updates.</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 shrink-0">
             <button
@@ -516,11 +516,11 @@ const AssignmentsPage: React.FC = () => {
               onClick={() => navigate('/stories')}
             >
               <Library size={16} />
-              View Story Library
+              View Library
             </button>
             <button
               type="button"
-              className="btn-primary flex items-center justify-center gap-2"
+              className="btn-primary flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all"
               onClick={() =>
                 navigate(
                   selectedChildId
@@ -530,7 +530,7 @@ const AssignmentsPage: React.FC = () => {
               }
             >
               <BarChart3 size={16} />
-              Reading progress
+              Reading Progress
             </button>
           </div>
         </div>

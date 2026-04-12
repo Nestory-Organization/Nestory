@@ -8,9 +8,27 @@ import {
   GamificationProgress,
   GamificationTransaction,
   LeaderboardEntry,
+  Quiz,
+  QuizSubmitResult,
 } from '../types';
 
 class GamificationService {
+  async generateQuiz(storyId: string, userId: string, childId?: string): Promise<Quiz> {
+    const response = await apiClient.getInstance().post<ApiResponse<Quiz>>(
+      '/gamification/quizzes/generate',
+      { storyId, userId, childId }
+    );
+    return response.data.data;
+  }
+
+  async completeQuiz(quizId: string, answers: string[], userId: string, childId?: string): Promise<QuizSubmitResult> {
+    const response = await apiClient.getInstance().post<ApiResponse<QuizSubmitResult>>(
+      '/gamification/quizzes/complete',
+      { quizId, answers, userId, childId }
+    );
+    return response.data.data;
+  }
+
   async getUserProgress(userId: string, childId?: string): Promise<GamificationProgress> {
     const response = await apiClient.getInstance().get<ApiResponse<any>>(
       `/gamification/progress/${userId}`,

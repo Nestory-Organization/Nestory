@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../../components/common/Navbar';
 import StatCard from '../../components/common/StatCard';
 import ChildCard from '../../components/common/ChildCard';
 import Modal from '../../components/common/Modal';
 import InputField from '../../components/common/InputField';
 import SelectField from '../../components/common/SelectField';
+import ParentSidebar from '../../components/common/ParentSidebar';
 import FamilyService from '../../services/familyService';
 import ChildService from '../../services/childService';
 import DashboardService from '../../services/dashboardService';
 import ReadingService from '../../services/readingService';
 import chatService from '../../services/chatService';
+import CreateAssignmentModal from '../../components/assignments/CreateAssignmentModal';
 import toast from 'react-hot-toast';
 import {
   Book,
@@ -71,6 +73,7 @@ const formatRelativeTime = (value?: string) => {
 
 const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [family, setFamily] = useState<Family | null>(null);
   const [children, setChildren] = useState<Child[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,6 +82,14 @@ const ParentDashboard: React.FC = () => {
   const [newFamilyName, setNewFamilyName] = useState('');
   const [familyNameError, setFamilyNameError] = useState('');
   const [showAddChildModal, setShowAddChildModal] = useState(false);
+  const [showNewAssignmentModal, setShowNewAssignmentModal] = useState(false);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('action') === 'add-child') {
+      setShowAddChildModal(true);
+    }
+  }, [location]);
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [isSavingChild, setIsSavingChild] = useState(false);
   const [deletingChildId, setDeletingChildId] = useState('');
@@ -136,9 +147,8 @@ const ParentDashboard: React.FC = () => {
     name: string;
     age: number;
     avatar: string;
-    readingLevel: 'beginner' | 'intermediate' | 'advanced';
+    readingLevel: ChildReadingLevel | 'beginner' | 'intermediate' | 'advanced';
     email?: string;
-    readingLevel: ChildReadingLevel;
   }>({
     name: '',
     age: 5,
@@ -647,493 +657,439 @@ const ParentDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="flex-1 overflow-auto">
+      <ParentSidebar 
+        onAddChild={() => setShowAddChildModal(true)} 
+        onNewAssignment={() => setShowNewAssignmentModal(true)}
+        unreadMessages={unreadMessages} 
+      />
       <Navbar title="Dashboard" />
 
-      <div className="container-responsive py-8">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-10 animate-fade-in">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Parent Dashboard</h1>
-            <p className="text-gray-600 text-lg">{family?.familyName || 'Your Family'}  <span className="text-gray-400">•</span>  {children.length} {children.length === 1 ? 'child' : 'children'}</p>
-            {lastUpdatedAt && (
-              <p className="text-xs text-gray-500 mt-2">
-                Last updated {new Date(lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-3 animate-slide-down">
-            <button
-              onClick={() => loadData()}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <RefreshCw size={18} />
-              Refresh Metrics
-            </button>
-            <button
-              onClick={() => navigate('/stories')}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Book size={20} />
-              Browse Stories
-            </button>
-            <button
-              onClick={() => navigate('/gamification')}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Sparkles size={18} />
-              View Gamification
-            </button>
-            <button
-              onClick={() => navigate('/chat')}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 relative"
-            >
-              <MessageCircle size={18} />
-              Family Chat
-              {unreadMessages > 0 && (
-                <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
-                  {unreadMessages > 99 ? '99+' : unreadMessages}
-                </div>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-10">
-          <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
-            <StatCard
-              title="Assigned"
-              value={summaryStats.assigned}
-              icon={Book}
-              color="blue"
-              subtext="Pending to start"
-            />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '50ms' }}>
-            <StatCard
-              title="In Progress"
-              value={summaryStats.inProgress}
-              icon={TrendingUp}
-              color="orange"
-              subtext="Currently being read"
-            />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
-            <StatCard
-              title="Completed"
-              value={summaryStats.completed}
-              icon={CheckCircle2}
-              color="green"
-              subtext={`${summaryStats.totalAssignments} total assignments`}
-            />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '150ms' }}>
-            <StatCard
-              title="Completion Rate"
-              value={`${summaryStats.completionRate}%`}
-              icon={Users}
-              color="purple"
-              subtext="Across all children"
-            />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
-            <StatCard
-              title="Family Reading"
-              value={(readingStats.weeklyMinutes / 60).toFixed(1)}
-              icon={Clock}
-              color="pink"
-              subtext={`${readingStats.topStreak} day top streak`}
-            />
-          </div>
-        </div>
-
-        {weekActivity && children.length > 0 && (
-          <div className="card mb-8 border-nestory-200 bg-gradient-to-br from-white to-nestory-50/40">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <BarChart3 className="text-nestory-600" size={20} />
-                  Week in review
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Pages and minutes from children tapping Save progress (last {weekActivity.days} days).
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {new Date(weekActivity.periodStart).toLocaleDateString()} –{' '}
-                  {new Date(weekActivity.periodEnd).toLocaleDateString()}
-                </p>
+      <div className="container-responsive py-8 px-4 lg:px-8 max-w-7xl mx-auto" aria-label="Parent Dashboard Content">
+          {/* Header */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-10 animate-fade-in">
+            <div>
+              <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight lg:text-5xl mb-2">Parent Dashboard</h1>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-nestory-100 text-nestory-700">
+                   {family?.familyName || 'Your Family'}
+                </span>
+                <span className="text-gray-400">•</span>
+                <span className="text-gray-600 font-medium">{children.length} {children.length === 1 ? 'child' : 'children'}</span>
               </div>
+              {lastUpdatedAt && (
+                <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                  <Clock size={12} />
+                  Last updated {new Date(lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3 animate-slide-down">
               <button
-                type="button"
-                className="btn-secondary text-sm shrink-0 self-start"
-                onClick={() => navigate('/progress')}
+                onClick={() => loadData()}
+                className="btn-secondary flex items-center gap-2"
               >
-                Full progress report
+                <RefreshCw size={18} />
+                Refresh
               </button>
             </div>
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Pages logged</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalPagesLogged}</p>
-              </div>
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Minutes logged</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.totalMinutesLogged}</p>
-              </div>
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Progress saves</p>
-                <p className="text-2xl font-bold text-gray-900">{weekActivity.progressSaveCount}</p>
-              </div>
-              <div className="rounded-lg bg-white/80 border border-gray-100 p-3 text-center">
-                <p className="text-xs text-gray-500">Children with activity</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {weekActivity.byChild?.filter((c) => c.progressSaveCount > 0).length ?? 0}
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-10">
+            <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+              <StatCard
+                title="Assigned"
+                value={summaryStats.assigned}
+                icon={Book}
+                color="blue"
+                subtext="Pending to start"
+              />
+            </div>
+            <div className="animate-slide-up" style={{ animationDelay: '50ms' }}>
+              <StatCard
+                title="In Progress"
+                value={summaryStats.inProgress}
+                icon={TrendingUp}
+                color="orange"
+                subtext="Currently reading"
+              />
+            </div>
+            <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+              <StatCard
+                title="Completed"
+                value={summaryStats.completed}
+                icon={CheckCircle2}
+                color="green"
+                subtext={`${summaryStats.totalAssignments} total`}
+              />
+            </div>
+            <div className="animate-slide-up" style={{ animationDelay: '150ms' }}>
+              <StatCard
+                title="Success Rate"
+                value={`${summaryStats.completionRate}%`}
+                icon={Users}
+                color="purple"
+                subtext="Completion rate"
+              />
+            </div>
+            <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
+              <StatCard
+                title="Reading Time"
+                value={(readingStats.weeklyMinutes / 60).toFixed(1)}
+                icon={Clock}
+                color="pink"
+                subtext="Hours this week"
+              />
+            </div>
+          </div>
+
+          {/* Momentum Banner */}
+          <div className="card mb-8 p-6 md:p-8 bg-gradient-to-br from-nestory-600 to-nestory-800 text-white border-0 shadow-lg relative overflow-hidden group">
+            <div className="absolute top-0 right-0 -m-4 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all duration-700" />
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+              <div className="flex-1">
+                <p className="text-nestory-200 font-bold uppercase tracking-wider text-xs mb-2">FAMILY MOMENTUM</p>
+                <h2 className="text-3xl font-extrabold mb-2">Keep the reading flame alive! 🔥</h2>
+                <p className="text-nestory-100 max-w-xl">
+                  Your family has completed <span className="text-white font-bold">{summaryStats.completed}</span> stories. 
+                  There are <span className="text-white font-bold">{outstandingAssignments}</span> adventures currently in progress. 
+                  Great job keeping it consistent!
                 </p>
               </div>
-            </div>
-            {weekActivity.byDay && weekActivity.byDay.length > 0 ? (
-              <div className="mt-6 rounded-xl bg-white/80 border border-gray-100 p-4">
-                <ReadingWeeklyBarChart
-                  byDay={weekActivity.byDay}
-                  title={`Family minutes & pages per day (last ${weekActivity.days} days)`}
-                />
-              </div>
-            ) : null}
-            {weekActivity.byChild && weekActivity.byChild.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-sm font-semibold text-gray-800 mb-2">By child</p>
-                <ul className="grid sm:grid-cols-2 gap-2 text-sm text-gray-700">
-                  {weekActivity.byChild.map((c) => (
-                    <li key={c.childId} className="flex flex-col sm:flex-row sm:justify-between gap-1 rounded-lg bg-gray-50 px-3 py-2">
-                      <span className="font-medium">{c.childName}</span>
-                      <span className="text-gray-600">
-                        {c.pages} pg · {c.minutes} min · {c.progressSaveCount} saves
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="card mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-nestory-700 flex items-center gap-2">
-                <Sparkles size={16} /> At a Glance
-              </p>
-              <h2 className="text-xl font-bold text-gray-900 mt-1">Family Assignment Momentum</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {summaryStats.completed} completed, {outstandingAssignments} still active across your family.
-              </p>
-            </div>
-            <div className="min-w-[220px]">
-              <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-gray-600">Completion Progress</span>
-                <span className="font-semibold text-gray-900">{completionProgress}%</span>
-              </div>
-              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-3 bg-gradient-to-r from-green-400 to-green-600 rounded-full" style={{ width: `${completionProgress}%` }} />
+              <div className="min-w-[280px] bg-white/10 p-4 rounded-2xl backdrop-blur-md">
+                <div className="flex items-center justify-between text-sm mb-3">
+                  <span className="font-bold">Overall Progress</span>
+                  <span className="font-black text-xl">{completionProgress}%</span>
+                </div>
+                <div className="h-4 bg-white/20 rounded-full overflow-hidden p-1">
+                  <div 
+                    className="h-full bg-white rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(255,255,255,0.5)]" 
+                    style={{ width: `${completionProgress}%` }} 
+                  />
+                </div>
+                <p className="text-[10px] mt-2 text-nestory-200 text-center font-bold">REACH 100% FOR A FAMILY BADGE</p>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Child Performance Cards */}
-        <div className="card mb-10 animate-slide-up">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Child Performance</h2>
-              <p className="text-sm text-gray-600 mt-1">Track progress and completion rates</p>
-            </div>
-            <button onClick={() => navigate('/assignments')} className="btn-secondary">View All</button>
-          </div>
-
-          {childPerformance.length === 0 ? (
-            <p className="text-gray-600 text-center py-8">Add a child and assign a story to see live performance analytics.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              {childPerformance.map((item, idx) => (
+          {weekActivity && children.length > 0 && (
+            <div className="card mb-8 p-0 overflow-hidden border-nestory-100 bg-white">
+              <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <BarChart3 className="text-nestory-600" size={24} />
+                    Weekly Achievement Report
+                  </h2>
+                  <p className="text-sm text-gray-500 font-medium">
+                    Tracking progress from {new Date(weekActivity.periodStart).toLocaleDateString()} to {new Date(weekActivity.periodEnd).toLocaleDateString()}
+                  </p>
+                </div>
                 <button
-                  key={item.id}
-                  onClick={() => navigate(`/child/${item.childId}`)}
-                  className="text-left rounded-xl border border-gray-200 bg-white hover:bg-gradient-to-br hover:from-blue-50 hover:to-nestory-50 p-5 hover:border-nestory-400 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] animate-scale-in"
-                  style={{ animationDelay: `${idx * 75}ms` }}
+                  type="button"
+                  className="btn-primary-outline text-sm font-bold bg-white"
+                  onClick={() => navigate('/progress')}
                 >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center text-2xl shadow-sm">
-                      {item.avatar || '🧒'}
+                  Detail View
+                </button>
+              </div>
+              
+              <div className="p-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                       <Book size={20} />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 text-lg">{item.name}</p>
-                      <p className="text-xs text-gray-600">{item.assignments.total} total assignments</p>
+                      <p className="text-2xl font-black text-gray-900 leading-none">{weekActivity.totalPagesLogged}</p>
+                      <p className="text-[10px] font-bold text-blue-700 uppercase mt-1">Pages Logged</p>
                     </div>
                   </div>
+                  <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                       <Clock size={20} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black text-gray-900 leading-none">{weekActivity.totalMinutesLogged}</p>
+                      <p className="text-[10px] font-bold text-emerald-700 uppercase mt-1">Minutes Read</p>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-100 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                       <RefreshCw size={20} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black text-gray-900 leading-none">{weekActivity.progressSaveCount}</p>
+                      <p className="text-[10px] font-bold text-amber-700 uppercase mt-1">Active Sessions</p>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-100 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                       <Users size={20} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black text-gray-900 leading-none">
+                        {weekActivity.byChild?.filter((c) => c.progressSaveCount > 0).length ?? 0}
+                      </p>
+                      <p className="text-[10px] font-bold text-purple-700 uppercase mt-1">Active Kids</p>
+                    </div>
+                  </div>
+                </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-center mb-4">
-                    <div className="rounded-lg bg-blue-50 py-3 border border-blue-100 hover:border-blue-300 transition-colors">
-                      <p className="text-xs font-medium text-blue-700">Assigned</p>
-                      <p className="font-bold text-lg text-blue-900">{item.assignments.assigned}</p>
-                    </div>
-                    <div className="rounded-lg bg-amber-50 py-3 border border-amber-100 hover:border-amber-300 transition-colors">
-                      <p className="text-xs font-medium text-amber-700">In Progress</p>
-                      <p className="font-bold text-lg text-amber-900">{item.assignments.inProgress}</p>
-                    </div>
-                    <div className="rounded-lg bg-green-50 py-3 border border-green-100 hover:border-green-300 transition-colors">
-                      <p className="text-xs font-medium text-green-700">Completed</p>
-                      <p className="font-bold text-lg text-green-900">{item.assignments.completed}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-gray-700">Completion Rate</p>
-                    <span className="font-bold text-gray-900">{item.assignments.completionRate}%</span>
-                  </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-3 bg-gradient-to-r from-nestory-400 to-nestory-600 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(item.assignments.completionRate, 100)}%` }}
+                {weekActivity.byDay && weekActivity.byDay.length > 0 ? (
+                  <div className="rounded-2xl border border-gray-100 p-6 bg-gray-50/30">
+                    <ReadingWeeklyBarChart
+                      byDay={weekActivity.byDay}
+                      title="Daily Engagement Momentum"
                     />
                   </div>
-                </button>
-              ))}
+                ) : null}
+
+                {weekActivity.byChild && weekActivity.byChild.length > 0 && (
+                  <div className="mt-8">
+                    <p className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-4 px-2">Performance by Child</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {weekActivity.byChild.map((c) => (
+                        <div key={c.childId} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 group hover:border-nestory-300 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-nestory-50 flex items-center justify-center text-lg font-bold border border-nestory-100 group-hover:scale-110 transition-transform">
+                               {c.childName.charAt(0)}
+                            </div>
+                            <div>
+                               <p className="font-bold text-gray-900">{c.childName}</p>
+                               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{c.progressSaveCount} total saves</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                             <p className="text-sm font-black text-gray-900">{c.minutes} <span className="text-[10px] text-gray-400 font-bold">MIN</span></p>
+                             <p className="text-xs text-nestory-600 font-bold">{c.pages} pages</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
-        </div>
 
-        {/* Children Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10 animate-slide-up">
-          <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
+          {/* Child Performance Insights */}
+          <div className="mb-10 animate-slide-up">
+            <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Family Members</h2>
-                <p className="text-sm text-gray-600 mt-1">{children.length} {children.length === 1 ? 'child' : 'children'} in your family</p>
+                <h2 className="text-2xl font-black text-gray-900">Child Success Center</h2>
+                <p className="text-sm text-gray-500 font-medium">Deeper engagement analytics</p>
               </div>
-              <button
-                onClick={() => setShowAddChildModal(true)}
-                className="btn-primary flex items-center gap-2"
-                disabled={!family}
+              <button 
+                onClick={() => navigate('/assignments')} 
+                className="text-sm font-bold text-nestory-600 hover:text-nestory-700 flex items-center gap-1 group"
               >
-                <Plus size={18} />
-                Add Child
+                Detailed Tracking <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
 
-            {children.length === 0 ? (
-              <div className="card text-center py-12">
-                <p className="text-gray-600 mb-4">No children added yet</p>
+            {childPerformance.length === 0 ? (
+              <div className="card text-center py-16 bg-white flex flex-col items-center">
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                   <Users className="text-gray-300" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No Performance Data Yet</h3>
+                <p className="text-gray-500 max-w-sm mb-6">Start by adding a child and assigning their first story to unlock these insights.</p>
+                <button onClick={() => setShowAddChildModal(true)} className="btn-primary font-bold">Get Started Now</button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {childPerformance.map((item, idx) => (
+                  <button
+                    key={item.id}
+                    onClick={() => navigate(`/child/${item.childId}`)}
+                    className="group text-left rounded-3xl border-2 border-transparent bg-white shadow-md hover:shadow-2xl p-6 hover:border-nestory-400 transition-all duration-300 transform hover:scale-[1.03] animate-scale-in flex flex-col h-full"
+                    style={{ animationDelay: `${idx * 75}ms` }}
+                  >
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-nestory-400 to-nestory-600 flex items-center justify-center text-3xl shadow-lg ring-4 ring-nestory-50 group-hover:scale-110 transition-transform">
+                        {item.avatar || '🧒'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-gray-900 text-xl truncate tracking-tight">{item.name}</p>
+                        <p className="text-xs text-nestory-600 font-bold uppercase tracking-widest">{item.assignments.total} Stories</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 mb-8">
+                      <div className="rounded-2xl bg-blue-50/50 p-4 border border-blue-100 flex flex-col items-center">
+                        <p className="text-[10px] font-bold text-blue-800 uppercase mb-1">Assigned</p>
+                        <p className="font-black text-xl text-blue-900">{item.assignments.assigned}</p>
+                      </div>
+                      <div className="rounded-2xl bg-amber-50/50 p-4 border border-amber-100 flex flex-col items-center">
+                        <p className="text-[10px] font-bold text-amber-800 uppercase mb-1">Active</p>
+                        <p className="font-black text-xl text-amber-900">{item.assignments.inProgress}</p>
+                      </div>
+                      <div className="rounded-2xl bg-emerald-50/50 p-4 border border-emerald-100 flex flex-col items-center">
+                        <p className="text-[10px] font-bold text-emerald-800 uppercase mb-1">Done</p>
+                        <p className="font-black text-xl text-emerald-900">{item.assignments.completed}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto">
+                      <div className="flex items-center justify-between mb-2 px-1">
+                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Mastery Rate</p>
+                        <span className="font-black text-gray-900">{item.assignments.completionRate}%</span>
+                      </div>
+                      <div className="h-4 bg-gray-100 rounded-full overflow-hidden p-1 shadow-inner">
+                        <div
+                          className="h-full bg-gradient-to-r from-nestory-400 to-nestory-600 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(255,160,122,0.4)]"
+                          style={{ width: `${Math.min(item.assignments.completionRate, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Members & Activity Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10 animate-slide-up">
+            {/* Family Members */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900">Family Members</h2>
+                  <p className="text-sm font-medium text-gray-500 uppercase tracking-tight">{children.length} ACTIVE PROFILES</p>
+                </div>
                 <button
                   onClick={() => setShowAddChildModal(true)}
-                  className="btn-primary mx-auto"
+                  className="w-12 h-12 rounded-2xl bg-nestory-600 text-white flex items-center justify-center hover:bg-nestory-700 shadow-xl shadow-nestory-100 transition-all hover:scale-110"
+                  disabled={!family}
+                  title="Add New Child"
                 >
-                  Add Your First Child
+                  <Plus size={24} strokeWidth={3} />
                 </button>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {children.map((child) => {
-                  const cid = String(child.id || child._id || '');
-                  const perf = childPerformance.find(
-                    (p) => String(p.childId) === cid || String(p.id) === cid,
-                  );
-                  const assignedStoryCount = perf?.assignments.total ?? 0;
-                  return (
-                  <ChildCard
-                    key={child.id}
-                    child={child}
-                    assignedStoryCount={assignedStoryCount}
-                    onEdit={handleEditChild}
-                    onResetPassword={handleResetChildPassword}
-                    onDelete={handleDeleteChild}
-                    isDeleting={deletingChildId === child.id}
-                    isResettingPassword={resettingChildId === child.id}
-                    onClick={() => navigate(`/child/${child.id}`)}
-                  />
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
-          {/* Quick Actions */}
-          <div className="card h-fit animate-slide-down">
-            <h3 className="text-lg font-bold mb-5 flex items-center gap-2">
-              <Sparkles size={20} className="text-nestory-600" />
-              Quick Actions
-            </h3>
-            <div className="space-y-2">
-              <button
-                onClick={() => setShowAddChildModal(true)}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-blue-50 transition-colors duration-200"
-              >
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Plus size={18} className="text-blue-600" />
+              {children.length === 0 ? (
+                <div className="card p-10 bg-white border-dashed border-2 border-gray-200 text-center flex flex-col items-center">
+                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                     <Plus className="text-gray-300" size={32} />
+                  </div>
+                  <p className="text-gray-500 font-bold mb-4">You haven't added any children yet</p>
+                  <button
+                    onClick={() => setShowAddChildModal(true)}
+                    className="btn-primary px-8 font-black"
+                  >
+                    ADD YOUR FIRST CHILD
+                  </button>
                 </div>
-                <div>
-                  <p className="font-medium text-gray-900">Add Child</p>
-                  <p className="text-xs text-gray-500">Create new member</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {children.map((child) => {
+                    const cid = String(child.id || child._id || '');
+                    const perf = childPerformance.find(
+                      (p) => String(p.childId) === cid || String(p.id) === cid,
+                    );
+                    const assignedStoryCount = perf?.assignments.total ?? 0;
+                    return (
+                    <ChildCard
+                      key={child.id}
+                      child={child}
+                      assignedStoryCount={assignedStoryCount}
+                      onEdit={handleEditChild}
+                      onResetPassword={handleResetChildPassword}
+                      onDelete={handleDeleteChild}
+                      isDeleting={deletingChildId === child.id}
+                      isResettingPassword={resettingChildId === child.id}
+                      onClick={() => navigate(`/child/${child.id}`)}
+                    />
+                    );
+                  })}
                 </div>
-              </button>
-              <button
-                onClick={() => navigate('/stories')}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-green-50 transition-colors duration-200"
-              >
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <Book size={18} className="text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Browse Stories</p>
-                  <p className="text-xs text-gray-500">Find & assign books</p>
-                </div>
-              </button>
-              <button
-                onClick={() => navigate('/assignments')}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-purple-50 transition-colors duration-200"
-              >
-                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                  <TrendingUp size={18} className="text-purple-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Manage Assignments</p>
-                  <p className="text-xs text-gray-500">Track & manage</p>
-                </div>
-              </button>
-              <button
-                onClick={() => navigate('/progress')}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-orange-50 transition-colors duration-200"
-              >
-                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-                  <BarChart3 size={18} className="text-orange-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Reading Progress</p>
-                  <p className="text-xs text-gray-500">View analytics</p>
-                </div>
-              </button>
-              <button
-                onClick={() => navigate('/family-settings')}
-                className="btn-outline w-full text-left flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-              >
-                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                  <Users size={18} className="text-gray-700" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Family Settings</p>
-                  <p className="text-xs text-gray-500">Manage profile</p>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-slide-up">
-          <div className="card">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Recent Assignments</h3>
-                <p className="text-sm text-gray-600 mt-1">Latest activity</p>
-              </div>
-              {recentAssignments.length > 0 && (
-                <button
-                  onClick={() => navigate('/assignments')}
-                  className="text-sm text-nestory-600 hover:text-nestory-700 font-medium"
-                >
-                  View All →
-                </button>
               )}
             </div>
-            {recentAssignments.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-                <Book size={32} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-600">No recent assignments yet.</p>
-                <p className="text-sm text-gray-500 mt-1">Assign stories to get started</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentAssignments.slice(0, 5).map((activity, idx) => (
-                  <button
-                    key={activity.id}
-                    className="w-full text-left rounded-lg border border-gray-200 p-4 flex items-center justify-between hover:border-nestory-400 hover:bg-nestory-50 hover:shadow-md transition-all duration-200 transform hover:translate-x-1 animate-slide-up"
-                    onClick={() => navigate(`/child/${activity.childId}`)}
-                    style={{ animationDelay: `${idx * 50}ms` }}
-                  >
-                    <div className="flex items-center gap-3 flex-grow min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-lg flex-shrink-0">
-                        {activity.childAvatar || '🧒'}
-                      </div>
-                      <div className="min-w-0 flex-grow">
-                        <p className="font-semibold text-gray-900 truncate">{activity.childName}</p>
-                        <p className="text-sm text-gray-600 truncate">{activity.storyTitle}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{formatRelativeTime(activity.createdAt)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                      <span className="badge bg-blue-100 text-blue-800 capitalize text-xs">
-                        {activity.status.replace('_', ' ')}
-                      </span>
-                      <ChevronRight size={16} className="text-gray-400" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
-          <div className="card">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Recent Completions</h3>
-                <p className="text-sm text-gray-600 mt-1">Achievements unlocked</p>
-              </div>
-              {recentCompletions.length > 0 && (
-                <button
-                  onClick={() => navigate('/progress')}
-                  className="text-sm text-green-600 hover:text-green-700 font-medium"
-                >
-                  View All →
-                </button>
-              )}
+            {/* Recent Activity Split View */}
+            <div className="space-y-6">
+               <div className="card border-0 shadow-lg bg-white overflow-hidden">
+                 <div className="bg-blue-600/5 px-6 py-4 border-b border-blue-100 flex items-center justify-between">
+                    <h3 className="font-black text-gray-900 flex items-center gap-2">
+                       <Book className="text-blue-600" size={18} />
+                       RECENT ASSIGNMENTS
+                    </h3>
+                    <button onClick={() => navigate('/assignments')} className="text-xs font-bold text-blue-600 hover:underline">VIEW ALL</button>
+                 </div>
+                 <div className="p-4">
+                   {recentAssignments.length === 0 ? (
+                     <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                        <p className="text-xs font-bold text-gray-400">NO ACTIVITY YET</p>
+                     </div>
+                   ) : (
+                     <div className="space-y-2">
+                       {recentAssignments.slice(0, 3).map((activity, idx) => (
+                         <div
+                           key={activity.id}
+                           className="flex items-center justify-between p-3 rounded-xl bg-white border border-gray-50 hover:border-blue-200 transition-colors group cursor-pointer"
+                           onClick={() => navigate(`/child/${activity.childId}`)}
+                         >
+                           <div className="flex items-center gap-3">
+                              <span className="text-2xl group-hover:scale-125 transition-transform">{activity.childAvatar || '🧒'}</span>
+                              <div>
+                                <p className="text-sm font-bold text-gray-900 leading-tight">{activity.childName}</p>
+                                <p className="text-[10px] text-gray-500 font-bold truncate max-w-[150px]">{activity.storyTitle}</p>
+                              </div>
+                           </div>
+                           <div className="text-right">
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-100 text-blue-700 uppercase tracking-tighter">
+                                {activity.status}
+                              </span>
+                              <p className="text-[9px] text-gray-400 font-medium mt-1 uppercase">{formatRelativeTime(activity.createdAt)}</p>
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                 </div>
+               </div>
+
+               <div className="card border-0 shadow-lg bg-white overflow-hidden">
+                 <div className="bg-emerald-600/5 px-6 py-4 border-b border-emerald-100 flex items-center justify-between">
+                    <h3 className="font-black text-gray-900 flex items-center gap-2">
+                       <CheckCircle2 className="text-emerald-600" size={18} />
+                       RECENT COMPLETIONS
+                    </h3>
+                    <button onClick={() => navigate('/progress')} className="text-xs font-bold text-emerald-600 hover:underline">SUCCESS LOG</button>
+                 </div>
+                 <div className="p-4">
+                   {recentCompletions.length === 0 ? (
+                     <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                        <p className="text-xs font-bold text-gray-400">NO COMPLETIONS YET</p>
+                     </div>
+                   ) : (
+                     <div className="space-y-2">
+                       {recentCompletions.slice(0, 3).map((activity, idx) => (
+                         <div
+                           key={activity.id}
+                           className="flex items-center justify-between p-3 rounded-xl bg-white border border-gray-50 hover:border-emerald-200 transition-colors group cursor-pointer"
+                           onClick={() => navigate(`/child/${activity.childId}`)}
+                         >
+                           <div className="flex items-center gap-3">
+                              <span className="text-2xl group-hover:scale-125 transition-transform">{activity.childAvatar || '🧒'}</span>
+                              <div>
+                                <p className="text-sm font-bold text-gray-900 leading-tight">{activity.childName}</p>
+                                <p className="text-[10px] text-gray-500 font-bold truncate max-w-[150px]">{activity.storyTitle}</p>
+                              </div>
+                           </div>
+                           <div className="text-right flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                                 <CheckCircle2 size={16} strokeWidth={3} />
+                              </div>
+                              <ChevronRight size={14} className="text-gray-300" />
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                 </div>
             </div>
-            {recentCompletions.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-                <CheckCircle2 size={32} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-600">No completed assignments yet.</p>
-                <p className="text-sm text-gray-500 mt-1">Celebrate milestones here</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentCompletions.slice(0, 5).map((activity, idx) => (
-                  <button
-                    key={activity.id}
-                    className="w-full text-left rounded-lg border border-gray-200 bg-gradient-to-r from-green-50/50 to-emerald-50/50 p-4 flex items-center justify-between hover:border-green-400 hover:shadow-md transition-all duration-200 transform hover:translate-x-1 animate-slide-up"
-                    onClick={() => navigate(`/child/${activity.childId}`)}
-                    style={{ animationDelay: `${idx * 50}ms` }}
-                  >
-                    <div className="flex items-center gap-3 flex-grow min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-lg flex-shrink-0">
-                        {activity.childAvatar || '🧒'}
-                      </div>
-                      <div className="min-w-0 flex-grow">
-                        <p className="font-semibold text-gray-900 truncate">{activity.childName}</p>
-                        <p className="text-sm text-gray-600 truncate">{activity.storyTitle}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {activity.completedAt
-                            ? `Completed ${formatRelativeTime(activity.completedAt)}`
-                            : 'Recently completed'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                      <span className="badge bg-green-100 text-green-800 text-xs">✓ Done</span>
-                      <ChevronRight size={16} className="text-gray-400" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -1291,6 +1247,12 @@ const ParentDashboard: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      <CreateAssignmentModal
+        isOpen={showNewAssignmentModal}
+        onClose={() => setShowNewAssignmentModal(false)}
+        onSuccess={() => loadData()}
+      />
     </div>
   );
 };

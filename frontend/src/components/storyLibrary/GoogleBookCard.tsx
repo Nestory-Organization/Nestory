@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { ExternalLink, BookOpen } from 'lucide-react';
+import { ExternalLink, BookOpen, CheckCircle2, User, FileText, ArrowRightCircle, PlusCircle, Loader2 } from 'lucide-react';
+import SelectField from '../common/SelectField';
+import InputField from '../common/InputField';
 
 interface GoogleBook {
   googleBookId: string;
@@ -62,89 +64,120 @@ const GoogleBookCard: React.FC<Props> = ({
   };
 
   return (
-    <div className="card p-4 flex flex-col h-full">
-      <img
-        src={book.coverImage || 'https://via.placeholder.com/150'}
-        alt={book.title}
-        className="w-full h-44 object-cover rounded mb-3"
-      />
+    <div className={`group bg-white rounded-[2rem] border overflow-hidden flex flex-col h-full shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-amber-500/10 hover:-translate-y-2 ${isImported ? 'border-amber-200 ring-2 ring-amber-500/10' : 'border-slate-100'}`}>
+      {/* Cover Image Section */}
+      <div className="relative h-64 overflow-hidden">
+        <img
+          src={book.coverImage || 'https://via.placeholder.com/150'}
+          alt={book.title}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+        
+        {isImported && (
+          <div className="absolute top-4 right-4 bg-amber-500 text-white px-4 py-2 rounded-full font-black text-xs flex items-center gap-2 shadow-xl shadow-amber-500/40 animate-in fade-in zoom-in">
+            <CheckCircle2 size={14} />
+            SYNCED
+          </div>
+        )}
 
-      <h3 className="font-bold text-gray-900 line-clamp-2">{book.title}</h3>
-      <p className="text-sm text-gray-600 mb-2">{book.author}</p>
-
-      <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
-        <BookOpen size={14} />
-        <span>
-          {book.pageCount && book.pageCount > 0
-            ? `${book.pageCount} pages`
-            : 'Pages not available'}
-        </span>
+        <div className="absolute bottom-4 left-4 right-4 text-white">
+          <p className="text-[10px] font-black uppercase tracking-widest text-amber-400 mb-1">Book Identity</p>
+          <h3 className="font-black text-lg line-clamp-1 group-hover:text-amber-300 transition-colors uppercase leading-tight tracking-tight">{book.title}</h3>
+          <p className="text-sm font-medium opacity-80 flex items-center gap-1">
+            <User size={12} className="text-amber-500" />
+            {book.author}
+          </p>
+        </div>
       </div>
 
-      <p className="text-xs text-gray-500 line-clamp-3 mb-4">
-        {book.description || 'No description available'}
-      </p>
+      <div className="p-6 flex flex-col flex-1 space-y-5 bg-[#FDFCFB]/50 backdrop-blur-sm">
+        {/* Stats Row */}
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2 text-slate-500">
+            <div className="p-1.5 bg-slate-100 rounded-lg">
+              <FileText size={14} className="text-slate-500" />
+            </div>
+            <span className="text-xs font-black uppercase tracking-wide">
+              {book.pageCount && book.pageCount > 0
+                ? `${book.pageCount} Pages`
+                : 'P/N'}
+            </span>
+          </div>
+          <button 
+            onClick={() => window.open(book.previewLink, '_blank')}
+            className="text-xs font-black text-nestory-500 hover:text-nestory-600 flex items-center gap-1 uppercase transition-colors"
+          >
+            Preview <ExternalLink size={12} />
+          </button>
+        </div>
 
-      <div className="space-y-3 mt-auto">
-        <select
-          value={ageGroup}
-          onChange={(e) => setAgeGroup(e.target.value)}
-          className="input-base"
-          disabled={isImported}
-        >
-          <option value="toddler">Toddler</option>
-          <option value="early-reader">Early Reader</option>
-          <option value="middle-grade">Middle Grade</option>
-          <option value="young-adult">Young Adult</option>
-        </select>
+        <p className="text-sm text-slate-500 font-medium line-clamp-2 italic leading-relaxed">
+          "{book.description || 'No digital abstract available for this publication.'}"
+        </p>
 
-        <select
-          value={readingLevel}
-          onChange={(e) => setReadingLevel(e.target.value)}
-          className="input-base"
-          disabled={isImported}
-        >
-          <option value="beginner">Beginner</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
-        </select>
+        {/* Configuration Forms */}
+        <div className="space-y-4 bg-white/40 p-1 rounded-2xl border border-slate-50">
+          <SelectField
+            label="Age Group"
+            value={ageGroup}
+            onChange={(e) => setAgeGroup(e.target.value)}
+            disabled={isImported}
+            options={[
+              { label: '👶 Toddler (0-3)', value: 'toddler' },
+              { label: '🚀 Early Reader (4-7)', value: 'early-reader' },
+              { label: '📖 Middle Grade (8-12)', value: 'middle-grade' },
+              { label: '🎭 Young Adult (13+)', value: 'young-adult' },
+            ]}
+          />
 
-        <input
-          type="text"
-          value={genres}
-          onChange={(e) => setGenres(e.target.value)}
-          placeholder="Genres, comma separated"
-          className="input-base"
-          disabled={isImported}
-        />
+          <SelectField
+            label="Reading Level"
+            value={readingLevel}
+            onChange={(e) => setReadingLevel(e.target.value)}
+            disabled={isImported}
+            options={[
+              { label: '🟢 Beginner', value: 'beginner' },
+              { label: '🟡 Intermediate', value: 'intermediate' },
+              { label: '🔴 Advanced', value: 'advanced' },
+            ]}
+          />
 
-        <div className="flex items-center justify-between gap-2 pt-2">
-          {book.previewLink ? (
-            <a
-              href={book.previewLink}
-              target="_blank"
-              rel="noreferrer"
-              className="text-blue-600 flex items-center gap-1 text-sm"
-            >
-              <ExternalLink size={14} />
-              Preview
-            </a>
-          ) : (
-            <span className="text-xs text-gray-400">No preview</span>
-          )}
+          <InputField
+            label="Categorization (Genres)"
+            type="text"
+            value={genres}
+            onChange={(e) => setGenres(e.target.value)}
+            placeholder="Fiction, Mystery, etc."
+            disabled={isImported}
+          />
+        </div>
 
+        {/* Action Button */}
+        <div className="pt-2">
           <button
             onClick={handleImport}
-            className={
+            disabled={isImporting || isImported}
+            className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95 group/btn ${
               isImported
-                ? 'px-4 py-2 rounded-lg text-sm font-medium bg-gray-300 text-gray-600 cursor-not-allowed'
-                : 'btn-primary text-sm'
-            }
-            disabled={isImporting}
-            type="button"
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-2 border-slate-100 shadow-none'
+                : 'bg-black text-white hover:bg-slate-900 shadow-slate-900/10'
+            }`}
           >
-            {isImported ? 'Imported' : isImporting ? 'Importing...' : 'Import'}
+            {isImporting ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : isImported ? (
+              <CheckCircle2 size={18} className="text-amber-500" />
+            ) : (
+              <PlusCircle size={18} className="text-white group-hover/btn:rotate-90 transition-transform duration-300" />
+            )}
+            {isImporting ? 'Syncing...' : isImported ? 'Already Synced' : 'Sync to Library'}
           </button>
+          {!isImported && (
+            <p className="text-[10px] text-center font-black text-slate-300 uppercase mt-3 flex items-center justify-center gap-2">
+              <ArrowRightCircle size={12} /> Click to finalize import
+            </p>
+          )}
         </div>
       </div>
     </div>

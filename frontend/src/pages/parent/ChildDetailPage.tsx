@@ -70,160 +70,207 @@ const ChildDetailPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar title="Child Details" />
-        <div className="container-responsive py-10 text-center">
-          <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading child dashboard...</p>
-        </div>
+      <div className="container-responsive py-20 text-center">
+        <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600 font-medium tracking-tight">Loading child dashboard...</p>
       </div>
     );
   }
 
   if (!child) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar title="Child Details" />
-        <div className="container-responsive py-10">
-          <div className="card text-center py-12">
-            <p className="text-gray-600 mb-4">Child not found</p>
-            <button onClick={() => navigate('/dashboard')} className="btn-primary">
-              Back to Dashboard
-            </button>
-          </div>
+      <div className="container-responsive py-20">
+        <div className="card text-center py-12 rounded-[2rem] shadow-2xl">
+          <p className="text-gray-600 mb-6 font-bold text-lg">Child not found</p>
+          <button onClick={() => navigate('/dashboard')} className="btn-primary px-8">
+            Back to Dashboard
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar title="Child Details" />
-
-      <div className="container-responsive py-8">
+    <div className="min-h-screen">
+      <div className="container-responsive py-8 max-w-7xl mx-auto">
         <button
           onClick={() => navigate('/dashboard')}
-          className="btn-secondary mb-6 flex items-center gap-2"
+          className="group mb-8 flex items-center gap-2 text-gray-500 hover:text-nestory-600 font-bold transition-all text-sm uppercase tracking-widest"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
           Back to Dashboard
         </button>
 
-        <div className="card mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-nestory-100 flex items-center justify-center text-3xl">
+        {/* Header Profile Card */}
+        <div className="bg-white rounded-[2.5rem] p-8 mb-10 shadow-2xl shadow-nestory-100 border border-gray-100 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-nestory-50 rounded-full -mr-32 -mt-32 opacity-50" />
+          <div className="relative flex flex-col md:flex-row items-center gap-8">
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2rem] bg-gradient-to-br from-nestory-100 to-blue-100 flex items-center justify-center text-5xl md:text-6xl shadow-inner border-2 border-white">
               {child.avatar || '🧒'}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <UserCircle2 className="text-nestory-600" size={22} />
+            <div className="text-center md:text-left">
+              <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight leading-none mb-3">
                 {child.name}
               </h1>
-              <p className="text-gray-600">
-                Age {child.age} • <span className="capitalize">{child.readingLevel || 'beginner'}</span> reader
-              </p>
+              <div className="flex flex-wrap justify-center md:justify-start items-center gap-3">
+                <span className="px-4 py-1.5 bg-gray-900 text-white rounded-full text-sm font-black uppercase tracking-tighter">
+                  Age {child.age}
+                </span>
+                <span className="px-4 py-1.5 bg-nestory-100 text-nestory-700 rounded-full text-sm font-black uppercase tracking-tighter">
+                  {child.readingLevel || 'Beginner Reader'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="md:ml-auto flex gap-4">
+              <button 
+                onClick={() => navigate(`/assignments/new?childId=${childId}`)}
+                className="px-6 py-3 bg-nestory-600 text-white rounded-2xl font-black shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 text-sm"
+              >
+                + New Assignment
+              </button>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1">Assigned</p>
-            <p className="text-2xl font-bold text-blue-700">{assignmentStats.assigned}</p>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 mb-10">
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-3">
+              <Book size={24} className="text-blue-600" />
+            </div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Assigned</p>
+            <p className="text-3xl font-black text-gray-900">{assignmentStats.assigned}</p>
           </div>
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1">In Progress</p>
-            <p className="text-2xl font-bold text-blue-700">{assignmentStats.inProgress}</p>
+          
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mb-3">
+              <Hourglass size={24} className="text-amber-600" />
+            </div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Active</p>
+            <p className="text-3xl font-black text-gray-900">{assignmentStats.inProgress}</p>
           </div>
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1 flex items-center gap-2"><CheckCircle2 size={16} /> Completed</p>
-            <p className="text-2xl font-bold text-green-700">{assignmentStats.completed}</p>
+
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center mb-3">
+              <CheckCircle2 size={24} className="text-green-600" />
+            </div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Finished</p>
+            <p className="text-3xl font-black text-gray-900">{assignmentStats.completed}</p>
           </div>
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1 flex items-center gap-2"><Flame size={16} /> Streak</p>
-            <p className="text-2xl font-bold text-orange-600">{currentStreak} days</p>
+
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center mb-3">
+              <Flame size={24} className="text-orange-600" />
+            </div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Streak</p>
+            <p className="text-3xl font-black text-gray-900">{currentStreak || 0}d</p>
           </div>
-          <div className="card">
-            <p className="text-sm text-gray-600 mb-1 flex items-center gap-2"><Hourglass size={16} /> This Week</p>
-            <p className="text-2xl font-bold text-green-700">{weeklyMinutes} min</p>
+
+          <div className="bg-gradient-to-br from-nestory-600 to-indigo-700 p-6 rounded-3xl shadow-xl flex flex-col items-center text-center text-white">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-3">
+              <CalendarDays size={24} className="text-white" />
+            </div>
+            <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">This Week</p>
+            <p className="text-3xl font-black">{weeklyMinutes || 0}m</p>
           </div>
         </div>
 
-        <p className="text-sm text-gray-600 mb-6">Total assignments tracked: <span className="font-semibold text-gray-900">{assignmentStats.total}</span></p>
+        {/* Assignments List */}
+        <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl shadow-nestory-100 border border-gray-100">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-10">
+            <div>
+              <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-nestory-100 flex items-center justify-center">
+                  <Book size={22} className="text-nestory-600" />
+                </div>
+                Current Journey
+              </h2>
+              <p className="text-gray-500 font-medium mt-1">Tracks and upcoming milestones for {child.name}.</p>
+            </div>
 
-        <div className="card">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Book size={20} className="text-nestory-600" />
-              Assigned Stories
-            </h2>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
-                  statusFilter === 'all'
-                    ? 'bg-gray-900 text-white border-gray-900'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setStatusFilter('assigned')}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
-                  statusFilter === 'assigned'
-                    ? 'bg-blue-700 text-white border-blue-700'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                Assigned
-              </button>
-              <button
-                onClick={() => setStatusFilter('in_progress')}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
-                  statusFilter === 'in_progress'
-                    ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                In Progress
-              </button>
-              <button
-                onClick={() => setStatusFilter('completed')}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
-                  statusFilter === 'completed'
-                    ? 'bg-green-700 text-white border-green-700'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                Completed
-              </button>
+            <div className="flex flex-wrap gap-2 bg-gray-50 p-1.5 rounded-2xl border border-gray-100">
+              {(['all', 'assigned', 'in_progress', 'completed'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setStatusFilter(filter)}
+                  className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                    statusFilter === filter
+                      ? 'bg-white text-gray-900 shadow-md scale-105 border border-gray-100'
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  {filter.replace('_', ' ')}
+                </button>
+              ))}
             </div>
           </div>
 
           {filteredAssignments.length === 0 ? (
-            <p className="text-gray-600">No assignments yet.</p>
+            <div className="py-20 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-100">
+              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto mb-4 shadow-sm">
+                <Book className="text-gray-300" size={32} />
+              </div>
+              <p className="text-gray-400 font-bold text-lg italic">No stories found in this category.</p>
+              <button 
+                onClick={() => navigate('/stories')}
+                className="mt-4 text-nestory-600 font-black text-sm uppercase tracking-widest hover:underline"
+              >
+                Browse Story Library →
+              </button>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredAssignments.map((assignment) => (
-                <div key={assignment.id} className="border border-gray-200 rounded-lg p-4 flex items-start justify-between gap-4">
+                <div key={assignment.id} className="group bg-white border border-gray-100 rounded-[2rem] p-6 flex flex-col justify-between gap-6 hover:shadow-2xl transition-all hover:-translate-y-1 relative overflow-hidden">
+                  <div className={`absolute top-0 right-0 w-2 h-full ${
+                    assignment.status === 'completed' ? 'bg-green-500' : 
+                    assignment.status === 'in_progress' ? 'bg-amber-500' : 'bg-blue-500'
+                  }`} />
+                  
                   <div>
-                    <p className="font-semibold text-gray-900">{assignment.story?.title || 'Untitled story'}</p>
-                    <p className="text-sm text-gray-600">{assignment.story?.author || 'Unknown author'}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="badge bg-gray-100 text-gray-700 capitalize">{assignment.status.replace('_', ' ')}</span>
-                      {assignment.story?.readingLevel && (
-                        <span className="badge bg-nestory-100 text-nestory-800 capitalize">{assignment.story.readingLevel}</span>
+                    <div className="flex justify-between items-start mb-4">
+                      <p className="text-2xl font-black text-gray-900 leading-tight group-hover:text-nestory-700 transition-colors">
+                        {assignment.story?.title || 'Untitled story'}
+                      </p>
+                      <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${
+                        assignment.status === 'completed' ? 'bg-green-100 text-green-700' : 
+                        assignment.status === 'in_progress' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {assignment.status.replace('_', ' ')}
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm font-bold text-gray-500 flex items-center gap-2 mb-6">
+                      <UserCircle2 size={14} />
+                      {assignment.story?.author || 'Unknown author'}
+                    </p>
+
+                    <div className="flex items-center gap-3">
+                      {assignment.story?.readingLevel ? (
+                        <span className="px-3 py-1 bg-nestory-50 text-nestory-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-nestory-100">
+                          {assignment.story.readingLevel}
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                          Not set
+                        </span>
                       )}
                     </div>
                   </div>
-                  {assignment.dueDate && (
-                    <p className="text-sm text-gray-500 whitespace-nowrap flex items-center gap-1">
-                      <CalendarDays size={14} />
-                      Due {new Date(assignment.dueDate).toLocaleDateString()}
-                    </p>
-                  )}
+
+                  <div className="flex items-center justify-between pt-6 border-t border-gray-50">
+                    <div className="flex items-center gap-2 text-gray-400 font-bold text-xs uppercase tracking-tighter">
+                      <CalendarDays size={14} className="text-nestory-400" />
+                      {assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'No date'}
+                    </div>
+                    <button 
+                      onClick={() => navigate(`/assignments/progress/${assignment.id}`)}
+                      className="text-nestory-600 font-black text-xs uppercase tracking-widest group-hover:translate-x-1 transition-transform"
+                    >
+                      View Stats →
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
