@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import Modal from '../common/Modal';
 import InputField from '../common/InputField';
 import SelectField from '../common/SelectField';
+import { FileText, Upload, X } from 'lucide-react';
 
 export interface StoryFormValues {
   title: string;
@@ -12,6 +13,8 @@ export interface StoryFormValues {
   genres: string;
   pageCount: number;
   coverImage: string;
+  pdf?: File | null;
+  existingPdfUrl?: string;
 }
 
 interface StoryFormModalProps {
@@ -21,7 +24,7 @@ interface StoryFormModalProps {
   formData: StoryFormValues;
   onClose: () => void;
   onSave: () => void;
-  onChange: (field: keyof StoryFormValues, value: string | number) => void;
+  onChange: (field: keyof StoryFormValues, value: any) => void;
 }
 
 const ageGroupOptions = [
@@ -46,6 +49,22 @@ const StoryFormModal: React.FC<StoryFormModalProps> = ({
   onSave,
   onChange,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      onChange('pdf', file);
+    } else if (file) {
+      alert('Please upload a PDF file');
+    }
+  };
+
+  const removeFile = () => {
+    onChange('pdf', null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -57,6 +76,66 @@ const StoryFormModal: React.FC<StoryFormModalProps> = ({
       size="lg"
     >
       <div className="space-y-4">
+        {/* PDF Upload Section */}
+        <div className="bg-orange-50/50 border-2 border-dashed border-orange-200 rounded-2xl p-6 transition-all hover:bg-orange-50/80 group">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-black text-orange-500 uppercase tracking-widest flex items-center gap-2">
+              <FileText size={16} />
+              Book Content (PDF)
+            </h4>
+            {formData.pdf && (
+              <button 
+                onClick={removeFile}
+                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors"
+                title="Remove file"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          <input
+            type="file"
+            accept=".pdf"
+            onChange={handleFileChange}
+            ref={fileInputRef}
+            className="hidden"
+          />
+
+          {!formData.pdf ? (
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center justify-center py-4 cursor-pointer"
+            >
+              <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-orange-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Upload size={24} className="text-orange-400" />
+              </div>
+              <p className="text-sm font-bold text-gray-600">
+                {formData.existingPdfUrl ? 'Replace existing PDF' : 'Upload story PDF'}
+              </p>
+              <p className="text-[10px] text-gray-400 font-medium uppercase mt-1">Maximum 10MB • PDF Format</p>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 bg-white p-3 rounded-xl border border-orange-100 shadow-sm animate-in fade-in zoom-in">
+              <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-red-500">
+                <FileText size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-700 truncate">{formData.pdf.name}</p>
+                <p className="text-[10px] font-medium text-gray-400">{(formData.pdf.size / (1024 * 1024)).toFixed(2)} MB</p>
+              </div>
+              <div className="bg-emerald-100 text-emerald-600 px-2 py-1 rounded text-[10px] font-black uppercase">Ready</div>
+            </div>
+          )}
+          
+          {formData.existingPdfUrl && !formData.pdf && (
+            <div className="mt-3 flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase">
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+              Currently has attached PDF
+            </div>
+          )}
+        </div>
+
         <InputField
           label="Title"
           name="title"

@@ -179,18 +179,18 @@ const StoriesPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex-1 overflow-auto">
       <Navbar title="Story Library" />
 
-      <div className="container-responsive py-8">
+      <div className="container-responsive py-8 px-4 lg:px-8 max-w-7xl mx-auto">
         <div className="mb-8 animate-fade-in flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Story Library</h1>
-            <p className="text-gray-600">
+            <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight lg:text-5xl mb-2">Story Library</h1>
+            <p className="text-gray-600 text-lg">
               Discover stories for your family by age and reading level
             </p>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm font-bold text-nestory-600 bg-nestory-50 px-3 py-1 rounded-full uppercase tracking-wider">
             {filteredStories.length} visible • {totalStories} total matches
           </p>
         </div>

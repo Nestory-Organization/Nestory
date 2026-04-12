@@ -125,18 +125,42 @@ class StoryService {
     return normalizeStory(response.data.data);
   }
 
-  async createStory(data: Partial<Story>): Promise<Story> {
+  async createStory(data: any): Promise<Story> {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    });
+
     const response = await apiClient.getInstance().post<ApiResponse<any>>(
       '/stories',
-      data
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
     );
     return normalizeStory(response.data.data);
   }
 
-  async updateStory(id: string, data: Partial<Story>): Promise<Story> {
+  async updateStory(id: string, data: any): Promise<Story> {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    });
+
     const response = await apiClient.getInstance().put<ApiResponse<any>>(
       `/stories/${id}`,
-      data
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
     );
     return normalizeStory(response.data.data);
   }

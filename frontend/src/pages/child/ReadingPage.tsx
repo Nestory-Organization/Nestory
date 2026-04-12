@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   BookOpen,
@@ -13,29 +13,34 @@ import {
   Minimize2,
   Plus,
   X,
-} from 'lucide-react';
-import toast from 'react-hot-toast';
-import Navbar from '../../components/common/Navbar';
-import ReadingService, { SessionListItem } from '../../services/readingService';
-import StoryService from '../../services/storyService';
-import AssignmentService from '../../services/assignmentService';
-import { Story } from '../../types';
+  Sparkles,
+  Trophy,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import ChildSidebar from "../../components/common/ChildSidebar";
+import BookTopBar from "../../components/child/BookTopBar";
+import ReadingService, { SessionListItem } from "../../services/readingService";
+import StoryService from "../../services/storyService";
+import AssignmentService from "../../services/assignmentService";
+import GamificationService from "../../services/gamificationService";
+import { Story, Quiz } from "../../types";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   computePagesToAddFromViewer,
   createEmptySegment,
   resetSegmentFromViewer,
   type ViewerSegmentState,
-} from '../../utils/googleBooksViewerProgress';
+} from "../../utils/googleBooksViewerProgress";
 import {
   ensureGoogleBooksViewerApi,
   googleBooksEmbedIframeSrc,
   googleBooksLoadIdentifiers,
   googleBooksPreviewUrlIdentifier,
-} from '../../utils/loadGoogleBooksViewer';
+} from "../../utils/loadGoogleBooksViewer";
 import {
   extractGoogleBooksEmbedPageHint,
   isLikelyGoogleBooksOrigin,
-} from '../../utils/googleBooksIframeMessages';
+} from "../../utils/googleBooksIframeMessages";
 
 declare global {
   interface Window {
@@ -44,73 +49,70 @@ declare global {
 }
 
 const VIEWER_POLL_MS = 120;
-
-/** Skip JS DefaultViewer entirely (set in frontend `.env`: VITE_GOOGLE_BOOKS_IFRAME_ONLY=true). */
-const GOOGLE_BOOKS_IFRAME_ONLY = import.meta.env.VITE_GOOGLE_BOOKS_IFRAME_ONLY === 'true';
-
-/** No Google iframe or JS viewer — only Nestory + link to open Google Books in a new tab. */
-const GOOGLE_BOOKS_DISABLE_EMBED = import.meta.env.VITE_GOOGLE_BOOKS_DISABLE_EMBED === 'true';
+const GOOGLE_BOOKS_IFRAME_ONLY = import.meta.env.VITE_GOOGLE_BOOKS_IFRAME_ONLY === "true";
+const GOOGLE_BOOKS_DISABLE_EMBED = import.meta.env.VITE_GOOGLE_BOOKS_DISABLE_EMBED === "true";
 
 const rawAutoIframeMs = import.meta.env.VITE_GOOGLE_BOOKS_AUTO_IFRAME_FALLBACK_MS;
 let AUTO_IFRAME_FALLBACK_MS = 8000;
-if (rawAutoIframeMs !== undefined && rawAutoIframeMs !== null && String(rawAutoIframeMs).trim() !== '') {
+if (rawAutoIframeMs !== undefined && rawAutoIframeMs !== null && String(rawAutoIframeMs).trim() !== "") {
   const p = Number.parseInt(String(rawAutoIframeMs), 10);
   if (Number.isFinite(p)) AUTO_IFRAME_FALLBACK_MS = p <= 0 ? 0 : p;
 }
 
-/** Show “Use embed preview” while JS viewer is still loading. */
 const IFRAME_FALLBACK_OFFER_MS = 5000;
 
-type GoogleBookEmbedMode = 'js' | 'iframe' | 'none';
+type GoogleBookEmbedMode = "js" | "iframe" | "none";
 
 function initialGoogleBookEmbedMode(): GoogleBookEmbedMode {
-  if (GOOGLE_BOOKS_DISABLE_EMBED) return 'none';
-  if (GOOGLE_BOOKS_IFRAME_ONLY) return 'iframe';
-  return 'js';
+  if (GOOGLE_BOOKS_DISABLE_EMBED) return "none";
+  if (GOOGLE_BOOKS_IFRAME_ONLY) return "iframe";
+  return "js";
 }
 
 const ReadingPage: React.FC = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId: string }>();
+  const { user } = useAuth();
 
   const [session, setSession] = useState<SessionListItem | null>(null);
   const [story, setStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [pagesToAdd, setPagesToAdd] = useState(0);
+
+  // Quiz State
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<string[]>([]);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+  const [quizResult, setQuizResult] = useState<{ correct: number; total: number; points: number } | null>(null);
   const [manualPageOverride, setManualPageOverride] = useState(false);
 
   const [viewerReady, setViewerReady] = useState(false);
   const [embedMode, setEmbedMode] = useState<GoogleBookEmbedMode>(() => initialGoogleBookEmbedMode());
   const [isFullscreen, setIsFullscreen] = useState(false);
-  /** User can switch to iframe after waiting on JS viewer (keeps auto page count as default). */
   const [iframeFallbackOfferVisible, setIframeFallbackOfferVisible] = useState(false);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<any>(null);
-  const [viewerPageLabel, setViewerPageLabel] = useState('');
+  const [viewerPageLabel, setViewerPageLabel] = useState("");
 
   const viewerSegmentRef = useRef<ViewerSegmentState>(createEmptySegment());
   const maxPagesRef = useRef(0);
   const timerAutoStartedRef = useRef(false);
   const viewerReadyRef = useRef(false);
   const embedModeRef = useRef<GoogleBookEmbedMode>(embedMode);
-  /** Set synchronously when falling back to iframe so late JS callbacks do not flip state. */
   const abandonJsViewerRef = useRef(false);
-  /** Bumped on story change / retry so stale viewer.load callbacks cannot flip embed mode. */
   const viewerInitGenRef = useRef(0);
-  /** Last page index seen from embed postMessage (iframe mode); used to add forward deltas only. */
   const iframePageHintRef = useRef<number | null>(null);
-  /** Nestory toolbar next/prev — Google often nests iframes so our container never sees clicks; chevrons still count. */
   const chevronNetRef = useRef(0);
 
   const switchToIframeEmbed = useCallback(() => {
     abandonJsViewerRef.current = true;
     chevronNetRef.current = 0;
     setIframeFallbackOfferVisible(false);
-    setEmbedMode('iframe');
+    setEmbedMode("iframe");
   }, []);
 
-  /** Leave simple iframe embed and attempt Google JS viewer again (auto page count). */
   const retryInteractiveViewer = useCallback(() => {
     viewerInitGenRef.current += 1;
     abandonJsViewerRef.current = false;
@@ -118,11 +120,11 @@ const ReadingPage: React.FC = () => {
     viewerRef.current = null;
     viewerSegmentRef.current = createEmptySegment();
     setViewerReady(false);
-    setViewerPageLabel('');
+    setViewerPageLabel("");
     setPagesToAdd(0);
     setManualPageOverride(false);
     setIframeFallbackOfferVisible(false);
-    setEmbedMode('js');
+    setEmbedMode("js");
   }, []);
 
   const bumpPagesToAdd = useCallback((delta: number) => {
@@ -174,8 +176,8 @@ const ReadingPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       if (!sessionId) {
-        toast.error('Invalid session');
-        navigate('/child');
+        toast.error("Invalid session");
+        navigate("/child");
         return;
       }
       try {
@@ -183,19 +185,19 @@ const ReadingPage: React.FC = () => {
         const sessions = await ReadingService.getMySessions();
         const found = sessions.find((s) => s._id === sessionId);
         if (!found) {
-          toast.error('Session not found');
-          navigate('/child');
+          toast.error("Session not found");
+          navigate("/child");
           return;
         }
         setSession(found);
 
         const bookRef = found.bookId;
         const bookStoryId =
-          typeof bookRef === 'object' && bookRef !== null
-            ? String((bookRef as { _id?: string })._id || '')
+          typeof bookRef === "object" && bookRef !== null
+            ? String((bookRef as { _id?: string })._id || "")
             : bookRef
               ? String(bookRef)
-              : '';
+              : "";
         if (bookStoryId) {
           const storyData = await StoryService.getStoryById(bookStoryId).catch(() => null);
           setStory(storyData);
@@ -203,8 +205,8 @@ const ReadingPage: React.FC = () => {
           setStory(null);
         }
       } catch (error: any) {
-        toast.error('Failed to load reading session');
-        navigate('/child');
+        toast.error("Failed to load reading session");
+        navigate("/child");
       } finally {
         setIsLoading(false);
       }
@@ -230,56 +232,19 @@ const ReadingPage: React.FC = () => {
     maxPagesRef.current = Math.max(0, session.totalPages - session.pagesRead);
   }, [session]);
 
-  useEffect(() => {
-    setAssignmentCompleteHint(null);
-    setHintDismissed(false);
-  }, [sessionId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const syncAssignmentHint = async () => {
-      if (!session?.completed) {
-        setAssignmentCompleteHint(null);
-        return;
-      }
-      if (hintDismissed) return;
-
-      const ref = session.bookId;
-      const storyBookId =
-        typeof ref === 'object' && ref !== null ? String((ref as { _id?: string })._id || '') : '';
-      if (!storyBookId) return;
-
-      try {
-        const list = await AssignmentService.getMyAssignments();
-        if (cancelled) return;
-        const match = list.find((a) => String(a.storyId) === storyBookId && a.status !== 'completed');
-        setAssignmentCompleteHint(
-          match ? { id: match.id, title: match.story?.title || 'this assignment' } : null
-        );
-      } catch {
-        if (!cancelled) setAssignmentCompleteHint(null);
-      }
-    };
-
-    syncAssignmentHint();
-    return () => {
-      cancelled = true;
-    };
-  }, [session, hintDismissed]);
-
   const initViewer = useCallback((): Promise<void> => {
     const volumeId = story?.googleBookId?.trim();
     if (!volumeId) return Promise.resolve();
 
     const doLoad = () => {
-      if (abandonJsViewerRef.current || embedModeRef.current !== 'js') return;
+      if (abandonJsViewerRef.current || embedModeRef.current !== "js") return;
       const gen = ++viewerInitGenRef.current;
 
       const onReady = (viewer: any) => {
-        if (abandonJsViewerRef.current || embedModeRef.current !== 'js' || gen !== viewerInitGenRef.current) return;
+        if (abandonJsViewerRef.current || embedModeRef.current !== "js" || gen !== viewerInitGenRef.current) return;
         viewerRef.current = viewer;
         viewerSegmentRef.current = createEmptySegment();
-        setViewerPageLabel('');
+        setViewerPageLabel("");
         setPagesToAdd(0);
         setManualPageOverride(false);
         setViewerReady(true);
@@ -301,8 +266,8 @@ const ReadingPage: React.FC = () => {
         }, 350);
       };
 
-      const runStage = (stage: 'primary' | 'urlOnly') => {
-        if (abandonJsViewerRef.current || embedModeRef.current !== 'js' || gen !== viewerInitGenRef.current) return;
+      const runStage = (stage: "primary" | "urlOnly") => {
+        if (abandonJsViewerRef.current || embedModeRef.current !== "js" || gen !== viewerInitGenRef.current) return;
         const container = viewerContainerRef.current;
         if (!container) {
           switchToIframeEmbed();
@@ -315,15 +280,15 @@ const ReadingPage: React.FC = () => {
 
         const viewer = new window.google.books.DefaultViewer(container);
         const ids =
-          stage === 'primary' ? googleBooksLoadIdentifiers(volumeId) : googleBooksPreviewUrlIdentifier(volumeId);
+          stage === "primary" ? googleBooksLoadIdentifiers(volumeId) : googleBooksPreviewUrlIdentifier(volumeId);
 
         viewer.load(
           ids,
           () => {
-            if (abandonJsViewerRef.current || embedModeRef.current !== 'js' || gen !== viewerInitGenRef.current) return;
-            if (stage === 'primary') {
+            if (abandonJsViewerRef.current || embedModeRef.current !== "js" || gen !== viewerInitGenRef.current) return;
+            if (stage === "primary") {
               container.replaceChildren();
-              runStage('urlOnly');
+              runStage("urlOnly");
               return;
             }
             switchToIframeEmbed();
@@ -332,11 +297,11 @@ const ReadingPage: React.FC = () => {
         );
       };
 
-      runStage('primary');
+      runStage("primary");
     };
 
     const waitForContainer = (attempt: number): Promise<void> => {
-      if (abandonJsViewerRef.current || embedModeRef.current !== 'js') {
+      if (abandonJsViewerRef.current || embedModeRef.current !== "js") {
         return Promise.resolve();
       }
       if (viewerContainerRef.current) {
@@ -366,13 +331,13 @@ const ReadingPage: React.FC = () => {
     setEmbedMode(initialGoogleBookEmbedMode());
     viewerRef.current = null;
     viewerSegmentRef.current = createEmptySegment();
-    setViewerPageLabel('');
+    setViewerPageLabel("");
     setPagesToAdd(0);
     setManualPageOverride(false);
   }, [story?.id]);
 
   useEffect(() => {
-    if (GOOGLE_BOOKS_IFRAME_ONLY || embedMode !== 'js' || !story?.googleBookId?.trim()) return undefined;
+    if (GOOGLE_BOOKS_IFRAME_ONLY || embedMode !== "js" || !story?.googleBookId?.trim()) return undefined;
     if (viewerReady) return undefined;
 
     let cancelled = false;
@@ -391,43 +356,18 @@ const ReadingPage: React.FC = () => {
   }, [story?.googleBookId, story?.id, initViewer, embedMode, viewerReady]);
 
   useEffect(() => {
-    if (viewerReady) setIframeFallbackOfferVisible(false);
-  }, [viewerReady]);
-
-  useEffect(() => {
-    if (GOOGLE_BOOKS_DISABLE_EMBED || GOOGLE_BOOKS_IFRAME_ONLY || !story?.googleBookId?.trim()) {
-      setIframeFallbackOfferVisible(false);
-      return undefined;
-    }
-
     if (AUTO_IFRAME_FALLBACK_MS > 0) {
       const t = window.setTimeout(() => {
-        if (embedModeRef.current === 'js' && !viewerReadyRef.current) {
+        if (embedModeRef.current === "js" && !viewerReadyRef.current) {
           switchToIframeEmbed();
         }
       }, AUTO_IFRAME_FALLBACK_MS);
       return () => window.clearTimeout(t);
     }
-
-    if (embedMode !== 'js') {
-      setIframeFallbackOfferVisible(false);
-      return undefined;
-    }
-
-    const t = window.setTimeout(() => {
-      if (embedModeRef.current === 'js' && !viewerReadyRef.current) {
-        setIframeFallbackOfferVisible(true);
-      }
-    }, IFRAME_FALLBACK_OFFER_MS);
-
-    return () => {
-      window.clearTimeout(t);
-      setIframeFallbackOfferVisible(false);
-    };
-  }, [story?.googleBookId, story?.id, embedMode, switchToIframeEmbed]);
+  }, [switchToIframeEmbed]);
 
   useEffect(() => {
-    if (embedMode !== 'iframe' || !story?.googleBookId?.trim()) return;
+    if (embedMode !== "iframe" || !story?.googleBookId?.trim()) return;
 
     const onMessage = (ev: MessageEvent) => {
       if (!isLikelyGoogleBooksOrigin(ev.origin)) return;
@@ -446,96 +386,16 @@ const ReadingPage: React.FC = () => {
       }
     };
 
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
   }, [embedMode, story?.googleBookId]);
 
   useEffect(() => {
-    if (embedMode !== 'js' || !viewerReady || manualPageOverride) return;
-    const hasGoogle = !!story?.googleBookId?.trim();
-    if (!hasGoogle) return;
-
+    if (embedMode !== "js" || !viewerReady || manualPageOverride) return;
     const id = window.setInterval(applyViewerScan, VIEWER_POLL_MS);
     applyViewerScan();
     return () => window.clearInterval(id);
-  }, [
-    embedMode,
-    viewerReady,
-    manualPageOverride,
-    story?.googleBookId,
-    session?.totalPages,
-    session?.pagesRead,
-    applyViewerScan,
-  ]);
-
-  useEffect(() => {
-    if (embedMode !== 'js' || !viewerReady || manualPageOverride) return;
-    const el = viewerContainerRef.current;
-    if (!el) return;
-
-    const timeouts: number[] = [];
-    const bump = () => {
-      applyViewerScan();
-      timeouts.push(window.setTimeout(applyViewerScan, 90));
-      timeouts.push(window.setTimeout(applyViewerScan, 280));
-    };
-
-    el.addEventListener('pointerup', bump, true);
-    el.addEventListener('touchend', bump, true);
-    return () => {
-      el.removeEventListener('pointerup', bump, true);
-      el.removeEventListener('touchend', bump, true);
-      timeouts.forEach((t) => window.clearTimeout(t));
-    };
   }, [embedMode, viewerReady, manualPageOverride, applyViewerScan]);
-
-  useEffect(() => {
-    if (embedMode !== 'js' || !viewerReady || manualPageOverride) return;
-    const onVis = () => {
-      if (document.visibilityState !== 'visible') return;
-      applyViewerScan();
-      window.setTimeout(applyViewerScan, 50);
-      window.setTimeout(applyViewerScan, 220);
-    };
-    document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
-  }, [embedMode, viewerReady, manualPageOverride, applyViewerScan]);
-
-  useEffect(() => {
-    if (embedMode !== 'js' || !viewerReady || !viewerRef.current?.resize) return;
-    const t = window.setTimeout(() => viewerRef.current?.resize?.(), 200);
-    return () => window.clearTimeout(t);
-  }, [isFullscreen, viewerReady, embedMode]);
-
-  useEffect(() => {
-    if (!story?.googleBookId?.trim()) return;
-    if (timerAutoStartedRef.current) return;
-    if (GOOGLE_BOOKS_IFRAME_ONLY || embedMode === 'iframe' || embedMode === 'none') {
-      timerAutoStartedRef.current = true;
-      setIsTimerRunning(true);
-      return;
-    }
-    if (!viewerReady) return;
-    timerAutoStartedRef.current = true;
-    setIsTimerRunning(true);
-  }, [story?.googleBookId, embedMode, viewerReady, GOOGLE_BOOKS_IFRAME_ONLY]);
-
-  useEffect(() => {
-    if (session?.completed) return;
-    const g = story?.googleBookId?.trim();
-    if (g && (embedMode === 'iframe' || embedMode === 'none')) return;
-    const waitingForEmbed = Boolean(g && embedMode === 'js' && !viewerReady);
-    if (waitingForEmbed) return;
-    const auto = Boolean(g && embedMode === 'js' && viewerReady && !manualPageOverride);
-    if (auto) return;
-    setPagesToAdd((n) => (n < 1 ? 1 : n));
-  }, [
-    story?.googleBookId,
-    embedMode,
-    viewerReady,
-    manualPageOverride,
-    session?.completed,
-  ]);
 
   useEffect(() => {
     if (isTimerRunning) {
@@ -547,36 +407,6 @@ const ReadingPage: React.FC = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isTimerRunning]);
-
-  const bumpAfterViewerNav = () => {
-    applyViewerScan();
-    window.setTimeout(applyViewerScan, 60);
-    window.setTimeout(applyViewerScan, 180);
-    window.setTimeout(applyViewerScan, 450);
-  };
-
-  const handleNextPage = () => {
-    if (embedMode !== 'js') return;
-    if (viewerRef.current) {
-      chevronNetRef.current = Math.min(
-        maxPagesRef.current,
-        chevronNetRef.current + 1
-      );
-      viewerRef.current.nextPage();
-      window.setTimeout(() => viewerRef.current?.resize?.(), 50);
-      bumpAfterViewerNav();
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (embedMode !== 'js') return;
-    if (viewerRef.current) {
-      chevronNetRef.current = Math.max(0, chevronNetRef.current - 1);
-      viewerRef.current.previousPage();
-      window.setTimeout(() => viewerRef.current?.resize?.(), 50);
-      bumpAfterViewerNav();
-    }
-  };
 
   const handleUpdateProgress = async () => {
     if (!session || !sessionId) return;
@@ -604,11 +434,11 @@ const ReadingPage: React.FC = () => {
       chevronNetRef.current = 0;
       toast.success(
         updated?.completed
-          ? 'Book completed! Great job! Your dashboard and assignments will show this when you open them.'
-          : `Saved — ${savedPages} page${savedPages === 1 ? '' : 's'} logged. Open My Reading or your assignment again to see the update.`
+          ? "Adventure Complete! Great reading! ??"
+          : `Great work! ${savedPages} pages logged. Keep going!`
       );
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to update progress');
+      toast.error(error?.response?.data?.message || "Failed to update progress");
     } finally {
       setIsUpdating(false);
     }
@@ -616,39 +446,58 @@ const ReadingPage: React.FC = () => {
 
   const toggleFullscreen = () => setIsFullscreen((f) => !f);
 
-  const handleDismissAssignmentHint = () => {
-    setHintDismissed(true);
-    setAssignmentCompleteHint(null);
-  };
-
-  const handleMarkAssignmentFromReader = async () => {
-    if (!assignmentCompleteHint) return;
-    try {
-      setMarkingAssignment(true);
-      await AssignmentService.updateMyAssignmentStatus(assignmentCompleteHint.id, 'completed');
-      setAssignmentCompleteHint(null);
-      setHintDismissed(true);
-      toast.success('Assignment marked as completed');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Could not update assignment');
-    } finally {
-      setMarkingAssignment(false);
-    }
-  };
-
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const handleGenerateQuiz = async () => {
+    if (!story || !user) return;
+    try {
+      setIsGeneratingQuiz(true);
+      const data = await GamificationService.generateQuiz(story.id, user.id, user.role === 'child' ? user.id : undefined);
+      setQuiz(data);
+      setQuizAnswers(new Array(data.questions.length).fill(""));
+      setQuizResult(null);
+      toast.success("Magic Quiz Generated! ✨");
+    } catch (error) {
+      toast.error("Failed to generate quiz");
+    } finally {
+      setIsGeneratingQuiz(false);
+    }
+  };
+
+  const handleSubmitQuiz = async () => {
+    if (!quiz || !user) return;
+    if (quizAnswers.some(a => !a)) {
+      toast.error("Answer all questions first!");
+      return;
+    }
+
+    try {
+      setIsSubmittingQuiz(true);
+      const result = await GamificationService.completeQuiz(quiz._id, quizAnswers, user.id, user.role === 'child' ? user.id : undefined);
+      setQuizResult({
+        correct: result.correctCount,
+        total: result.totalQuestions,
+        points: result.xpAwarded
+      });
+      setQuiz(null);
+      toast.success(`Quiz Complete! You earned ${result.xpAwarded} XP! 🎊`);
+    } catch (error) {
+      toast.error("Failed to submit quiz");
+    } finally {
+      setIsSubmittingQuiz(false);
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar title="Reading" />
-        <div className="container-responsive py-10 text-center">
-          <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Opening your book...</p>
+      <div className="min-h-screen bg-[#F5F1E9] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-8 border-rose-200 border-t-rose-500 rounded-full animate-spin mx-auto mb-6" />
+          <p className="text-2xl font-black text-rose-500 uppercase tracking-widest">Opening Book...</p>
         </div>
       </div>
     );
@@ -663,554 +512,293 @@ const ReadingPage: React.FC = () => {
   const fallbackGoogleBooksUrl =
     googleId && !previewUrl
       ? `https://books.google.com/books?id=${encodeURIComponent(googleId)}&printsec=frontcover`
-      : '';
+      : "";
   const effectivePreviewUrl = previewUrl || fallbackGoogleBooksUrl;
   const hasGoogleBook = !!googleId;
-  const useAutoPageTracking =
-    hasGoogleBook && embedMode === 'js' && viewerReady && !manualPageOverride;
-
+  const useAutoPageTracking = hasGoogleBook && embedMode === "js" && viewerReady && !manualPageOverride;
   const canSaveProgress = pagesToAdd >= 1;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {!isFullscreen && <Navbar title="Reading" />}
+    <div className="min-h-screen bg-[#F5F1E9]">
+      {!isFullscreen && <ChildSidebar />}
+      
+      <div className={`${isFullscreen ? "h-screen" : "pl-20"} transition-all duration-300`}>
+        {!isFullscreen && <BookTopBar onSearch={() => {}} />}
 
-      <div className={isFullscreen ? 'h-screen flex flex-col' : 'container-responsive py-8 max-w-4xl mx-auto'}>
-        {/* Top bar */}
-        {!isFullscreen && (
-          <div className="flex items-center justify-between mb-6">
-            <button
-              onClick={() => navigate('/child')}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <ArrowLeft size={18} />
-              Back to Dashboard
-            </button>
-            <div className="flex items-center gap-3 text-sm text-gray-600">
-              <span className="font-semibold">{session.pagesRead}/{session.totalPages} pages</span>
-              <span className="text-nestory-600 font-bold">{session.progress}%</span>
-            </div>
-          </div>
-        )}
+        <main className={`${isFullscreen ? "h-full flex flex-col" : "p-8 max-w-6xl mx-auto"}`}>
+          {/* Header Card */}
+          {!isFullscreen && (
+            <div className="bg-white border-4 border-black rounded-[2rem] p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-10 overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-4">
+                <div className="bg-orange-500 border-4 border-black rounded-full px-4 py-1 font-black text-white text-sm uppercase tracking-wider shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  {session.progress}% COMPLETED
+                </div>
+              </div>
 
-        {/* Book header — compact */}
-        {!isFullscreen && (
-          <div className="card mb-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-16 rounded bg-gradient-to-br from-nestory-100 to-blue-100 flex items-center justify-center shrink-0">
-                <BookOpen size={22} className="text-nestory-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl font-bold text-gray-900 truncate">
-                  {session.bookId?.title || 'Untitled'}
-                </h1>
-                <p className="text-sm text-gray-600">{session.bookId?.author || 'Unknown author'}</p>
-              </div>
-              {session.completed && (
-                <span className="flex items-center gap-1 text-green-700 font-semibold text-sm shrink-0">
-                  <CheckCircle2 size={16} />
-                  Completed
-                </span>
-              )}
-            </div>
-            <div className="mt-3">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all ${session.completed ? 'bg-green-500' : 'bg-nestory-500'}`}
-                  style={{ width: `${Math.min(session.progress, 100)}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {session.completed && assignmentCompleteHint && !hintDismissed && !isFullscreen && (
-          <div className="card mb-4 border-emerald-200 bg-emerald-50/90">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="text-emerald-600 shrink-0 mt-0.5" size={22} />
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">You finished every page</h2>
-                  <p className="text-sm text-gray-700 mt-1">
-                    Mark <span className="font-semibold">{assignmentCompleteHint.title}</span> as completed so
-                    your parent sees it on the assignment list.
+              <div className="flex flex-col md:flex-row gap-8 items-center">
+                <div className="w-32 h-44 bg-rose-500 border-4 border-black rounded-[1.5rem] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center shrink-0 rotate-[-3deg]">
+                   <BookOpen size={48} className="text-white" />
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <h1 className="text-4xl font-black text-black uppercase tracking-tight mb-2">
+                    {session.bookId?.title || "Untitled Adventure"}
+                  </h1>
+                  <p className="text-xl font-bold text-gray-600 mb-6 uppercase tracking-wider">
+                    Author: {session.bookId?.author || "Unknown Hero"}
                   </p>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <button
-                      type="button"
-                      onClick={handleMarkAssignmentFromReader}
-                      disabled={markingAssignment}
-                      className="btn-primary text-sm inline-flex items-center gap-2"
-                    >
-                      <CheckCircle2 size={16} />
-                      {markingAssignment ? 'Saving…' : 'Mark assignment completed'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDismissAssignmentHint}
-                      className="btn-secondary text-sm"
-                    >
-                      Not now
-                    </button>
+                  
+                  <div className="w-full bg-gray-200 border-4 border-black rounded-full h-8 relative overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${session.completed ? "bg-emerald-400" : "bg-rose-500"}`}
+                      style={{ width: `${Math.min(session.progress, 100)}%` }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center font-black text-sm uppercase tracking-widest mix-blend-difference text-white">
+                      {session.pagesRead} / {session.totalPages} PAGES
+                    </div>
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleDismissAssignmentHint}
-                className="p-1 rounded-lg text-gray-500 hover:bg-emerald-100/80 hover:text-gray-800"
-                aria-label="Dismiss"
-              >
-                <X size={18} />
-              </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Book viewer: JS / iframe / or Nestory-only (no Google embed) */}
-        {hasGoogleBook ? (
-          embedMode === 'none' ? (
-            <div className="card mb-4 border border-nestory-200 bg-nestory-50/50">
-              <div className="flex flex-col sm:flex-row sm:items-start gap-4 p-4">
-                <div className="w-12 h-12 rounded-lg bg-nestory-100 flex items-center justify-center shrink-0">
-                  <BookOpen size={22} className="text-nestory-600" />
+          {/* Core Content Area */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left: Book Reader (2 cols) */}
+            <div className={`${isFullscreen ? "fixed inset-0 z-50 bg-black flex flex-col" : "lg:col-span-2"}`}>
+              <div className={`bg-white border-4 border-black rounded-[2rem] shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden flex flex-col ${isFullscreen ? "h-full rounded-none border-0 shadow-none" : "h-[700px]"}`}>
+                <div className="bg-orange-400 border-b-4 border-black p-4 flex items-center justify-between">
+                   <div className="flex items-center gap-4">
+                    {isFullscreen && (
+                      <button onClick={toggleFullscreen} className="bg-white border-4 border-black p-1 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all">
+                        <ArrowLeft size={24} />
+                      </button>
+                    )}
+                    <span className="font-black text-white uppercase tracking-widest text-lg">
+                       {viewerPageLabel || "Reading Now"}
+                    </span>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <button
+                        onClick={toggleFullscreen}
+                        className="bg-white border-4 border-black p-1 rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all"
+                      >
+                        {isFullscreen ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
+                      </button>
+                   </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-bold text-gray-900 mb-1">Read without embedding Google here</h2>
-                  <p className="text-sm text-gray-700 leading-relaxed mb-3">
-                    This app is not loading Google&apos;s reader inside Nestory (no third-party embed). Use a paper copy
-                    or open the book in your browser, then come back and log pages below with <strong>+1 page</strong>.
-                  </p>
-                  {effectivePreviewUrl ? (
-                    <a
-                      href={effectivePreviewUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 transition-colors"
+
+                <div className="flex-1 bg-gray-100 relative overflow-hidden">
+                   {hasGoogleBook ? (
+                     embedMode === "iframe" ? (
+                      <iframe
+                        title="Book preview"
+                        src={googleBooksEmbedIframeSrc(googleId || "")}
+                        className="w-full h-full border-0 bg-white"
+                        loading="eager"
+                        referrerPolicy="origin-when-cross-origin"
+                        allowFullScreen
+                      />
+                     ) : (
+                       <>
+                        <div ref={viewerContainerRef} className="w-full h-full bg-white" />
+                        {!viewerReady && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+                             <div className="text-center p-8 bg-white border-4 border-black rounded-[2rem] shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                                <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                                <p className="font-black uppercase tracking-widest text-black">Opening Magic Mirror...</p>
+                                {iframeFallbackOfferVisible && (
+                                  <button onClick={switchToIframeEmbed} className="mt-4 px-4 py-2 bg-orange-500 border-4 border-black rounded-xl text-white font-black uppercase text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                                    Switch to Simple View
+                                  </button>
+                                )}
+                             </div>
+                          </div>
+                        )}
+                       </>
+                     )
+                   ) : (
+                     <div className="w-full h-full flex items-center justify-center p-12 text-center">
+                        <div>
+                          <BookOpen size={80} className="text-gray-300 mx-auto mb-6" />
+                          <h3 className="text-2xl font-black text-gray-400 uppercase tracking-widest mb-4">No Preview Available</h3>
+                          <p className="text-gray-500 font-bold max-w-sm mx-auto uppercase">Ask a parent to check if this book has a Google Preview or use your physical copy!</p>
+                        </div>
+                     </div>
+                   )}
+                </div>
+
+                {/* Reader Controls */}
+                <div className="bg-[#F5F1E9] border-t-4 border-black p-4 flex items-center justify-between">
+                   <div className="flex gap-4">
+                     <button onClick={() => { viewerRef.current?.previousPage(); chevronNetRef.current--; applyViewerScan(); }} className="bg-white border-4 border-black p-2 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all disabled:opacity-50">
+                        <ChevronLeft size={32} />
+                     </button>
+                     <button onClick={() => { viewerRef.current?.nextPage(); chevronNetRef.current++; applyViewerScan(); }} className="bg-white border-4 border-black p-2 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all disabled:opacity-50">
+                        <ChevronRight size={32} />
+                     </button>
+                   </div>
+                   
+                   {isFullscreen && (
+                      <div className="flex-1 flex justify-center gap-8 px-8 items-center">
+                        <div className="flex items-center gap-2">
+                          <Clock className="text-rose-500" size={24} />
+                          <span className="font-black text-2xl font-mono">{formatTime(elapsed)}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <button onClick={() => bumpPagesToAdd(-1)} className="bg-white border-4 border-black w-10 h-10 rounded-xl font-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1">-</button>
+                          <div className="bg-white border-4 border-black px-6 py-2 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-black text-xl">
+                            {pagesToAdd} <span className="text-xs text-gray-400">PAGES</span>
+                          </div>
+                          <button onClick={() => bumpPagesToAdd(1)} className="bg-white border-4 border-black w-10 h-10 rounded-xl font-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1">+</button>
+                        </div>
+                        <button 
+                          onClick={handleUpdateProgress}
+                          disabled={isUpdating || !canSaveProgress}
+                          className="bg-emerald-400 border-4 border-black px-8 py-3 rounded-2xl font-black text-white uppercase tracking-widest shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all"
+                        >
+                          {isUpdating ? "LOGGING..." : "SAVE PROGRESS"}
+                        </button>
+                      </div>
+                   )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Stats & Logging (1 col) */}
+            {!isFullscreen && (
+              <div className="space-y-8">
+                {/* Timer Box */}
+                <div className="bg-white border-4 border-black rounded-[2rem] p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                   <h3 className="font-black uppercase tracking-widest text-gray-400 text-sm mb-4">Adventure Timer</h3>
+                   <div className="flex items-center justify-between mb-4">
+                     <span className="text-4xl font-black font-mono text-black">{formatTime(elapsed)}</span>
+                     <button 
+                       onClick={() => setIsTimerRunning(!isTimerRunning)}
+                       className={`w-16 h-16 rounded-full border-4 border-black transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 flex items-center justify-center ${isTimerRunning ? "bg-rose-400" : "bg-emerald-400"}`}
+                     >
+                       {isTimerRunning ? <X size={32} className="text-white" /> : <Clock size={32} className="text-white" />}
+                     </button>
+                   </div>
+                </div>
+
+                {/* Progress Logger */}
+                <div className="bg-white border-4 border-black rounded-[2rem] p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                   <h3 className="font-black uppercase tracking-widest text-gray-400 text-sm mb-4">Pages To Log</h3>
+                   
+                   <div className="flex items-center justify-center gap-6 mb-8">
+                      <button onClick={() => bumpPagesToAdd(-1)} className="bg-white border-4 border-black w-14 h-14 rounded-2xl flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
+                        <Minus size={24} className="font-black" />
+                      </button>
+                      <div className="text-center">
+                        <span className="text-6xl font-black text-black leading-none">{pagesToAdd}</span>
+                        <div className="font-black text-gray-300 text-xs uppercase tracking-tighter">PAGES READ</div>
+                      </div>
+                      <button onClick={() => bumpPagesToAdd(1)} className="bg-white border-4 border-black w-14 h-14 rounded-2xl flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
+                        <Plus size={24} className="font-black" />
+                      </button>
+                   </div>
+
+                   <button 
+                     onClick={handleUpdateProgress}
+                     disabled={isUpdating || !canSaveProgress}
+                     className="w-full bg-emerald-400 border-4 border-black py-4 rounded-[1.5rem] font-black text-white uppercase tracking-widest text-xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:translate-y-2 active:shadow-none transition-all disabled:opacity-50"
+                   >
+                     {isUpdating ? "SAVING..." : "LOG PROGRESS"}
+                   </button>
+                </div>
+
+                {/* Mini Trophy */}
+                <div className="bg-rose-100 border-4 border-black rounded-[2rem] p-6 flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white border-4 border-black rounded-full flex items-center justify-center shrink-0">
+                    <Trophy className="text-orange-400" />
+                  </div>
+                  <div>
+                    <div className="font-black uppercase text-sm tracking-widest text-rose-500">Keep It Up!</div>
+                    <div className="font-bold text-xs text-rose-400 uppercase">You're doing amazing, Hero!</div>
+                  </div>
+                </div>
+
+                {/* AI Quiz Section */}
+                <div className="bg-purple-100 border-4 border-black rounded-[2rem] p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-white border-4 border-black rounded-xl flex items-center justify-center">
+                      <Sparkles className="text-purple-500" size={20} />
+                    </div>
+                    <h3 className="font-black uppercase tracking-widest text-black text-sm">Magic Quiz</h3>
+                  </div>
+
+                  {!quiz && !quizResult && (
+                    <button 
+                      onClick={handleGenerateQuiz}
+                      disabled={isGeneratingQuiz}
+                      className="w-full bg-white border-4 border-black py-3 rounded-xl font-black text-purple-600 uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-purple-50 active:translate-y-1 active:shadow-none transition-all"
                     >
-                      <ExternalLink size={18} />
-                      Open book on Google Books (new tab)
-                    </a>
-                  ) : (
-                    <p className="text-sm text-gray-600">No preview link is stored for this title — you can still log pages read below.</p>
+                      {isGeneratingQuiz ? "MAGIC IN PROGRESS..." : "GENERATE AI QUIZ"}
+                    </button>
+                  )}
+
+                  {isGeneratingQuiz && (
+                    <div className="py-4 text-center">
+                      <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                      <p className="text-[10px] font-black text-purple-600 uppercase">Gemini is thinking...</p>
+                    </div>
+                  )}
+
+                  {quiz && (
+                    <div className="space-y-6">
+                      {quiz.questions.map((q, qIdx) => (
+                        <div key={qIdx} className="space-y-3">
+                          <p className="font-black text-sm text-black uppercase leading-tight">{qIdx + 1}. {q.question}</p>
+                          <div className="grid grid-cols-1 gap-2">
+                            {q.options.map((opt, oIdx) => (
+                              <button
+                                key={oIdx}
+                                onClick={() => {
+                                  const newAns = [...quizAnswers];
+                                  newAns[qIdx] = opt;
+                                  setQuizAnswers(newAns);
+                                }}
+                                className={`text-left px-4 py-2 border-2 border-black rounded-xl text-xs font-bold transition-all ${quizAnswers[qIdx] === opt ? "bg-purple-500 text-white" : "bg-white text-gray-700 hover:bg-purple-50"}`}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        onClick={handleSubmitQuiz}
+                        disabled={isSubmittingQuiz}
+                        className="w-full bg-purple-500 border-4 border-black py-3 rounded-xl font-black text-white uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all mt-4"
+                      >
+                        {isSubmittingQuiz ? "MAGIC SUBMITTING..." : "FINISH QUIZ"}
+                      </button>
+                    </div>
+                  )}
+
+                  {quizResult && (
+                    <div className="bg-white border-4 border-black rounded-2xl p-4 text-center">
+                      <div className="flex justify-center mb-2">
+                         <Trophy className="text-amber-400" size={32} />
+                      </div>
+                      <p className="font-black text-black uppercase text-sm mb-1">Adventure Results!</p>
+                      <p className="font-bold text-purple-600 text-xs mb-3">{quizResult.correct} / {quizResult.total} CORRECT</p>
+                      <div className="bg-rose-500 text-white font-black py-1 px-3 rounded-full text-[10px] inline-block mb-3">
+                        +{quizResult.points} XP EARNED
+                      </div>
+                      <button 
+                        onClick={() => setQuizResult(null)}
+                        className="block w-full text-[10px] font-black text-gray-400 uppercase hover:text-black"
+                      >
+                        TRY ANOTHER?
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
-          ) : (
-          <div className={`${isFullscreen ? 'flex-1 flex flex-col min-h-0' : 'card mb-4'}`}>
-            {/* Viewer toolbar */}
-            <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-white rounded-t-lg gap-2 flex-wrap">
-              {isFullscreen && (
-                <button
-                  onClick={() => navigate('/child')}
-                  className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
-                >
-                  <ArrowLeft size={16} />
-                  Back
-                </button>
-              )}
-              {embedMode === 'iframe' ? (
-                <div className="flex flex-1 flex-col sm:flex-row sm:items-center gap-2 min-w-0">
-                  <span className="text-xs sm:text-sm text-gray-600">
-                    <strong className="text-gray-800">Simple embed</strong> — Nestory cannot see page turns inside this
-                    preview. Use <strong>+1 page</strong> below for each page, or try the interactive reader for
-                    automatic counting.
-                  </span>
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    {!GOOGLE_BOOKS_IFRAME_ONLY ? (
-                      <button
-                        type="button"
-                        onClick={retryInteractiveViewer}
-                        className="px-2.5 py-1.5 rounded-lg bg-nestory-600 text-white text-xs font-semibold hover:bg-nestory-700 whitespace-nowrap"
-                      >
-                        Try interactive reader
-                      </button>
-                    ) : null}
-                    {effectivePreviewUrl ? (
-                      <a
-                        href={effectivePreviewUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-nestory-700 hover:text-nestory-900"
-                      >
-                        <ExternalLink size={14} />
-                        Open in tab
-                      </a>
-                    ) : null}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handlePrevPage}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                    title="Previous page"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <span className="text-sm text-gray-600 font-medium min-w-[100px] text-center truncate px-1">
-                    {viewerPageLabel ? viewerPageLabel : 'Page …'}
-                  </span>
-                  <button
-                    onClick={handleNextPage}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                    title="Next page"
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
-              )}
-              <button
-                onClick={toggleFullscreen}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
-                title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-              >
-                {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-              </button>
-            </div>
-
-            {embedMode === 'iframe' ? (
-              <div
-                className={`bg-gray-100 overflow-hidden ${isFullscreen ? 'flex-1 flex flex-col min-h-0' : ''}`}
-                style={isFullscreen ? undefined : { height: '600px' }}
-              >
-                <iframe
-                  title={session.bookId?.title ? `${session.bookId.title} preview` : 'Book preview'}
-                  src={googleBooksEmbedIframeSrc(googleId)}
-                  className="w-full h-full min-h-[480px] border-0 bg-white"
-                  style={isFullscreen ? { minHeight: 0 } : undefined}
-                  loading="eager"
-                  referrerPolicy="origin-when-cross-origin"
-                  allowFullScreen
-                />
-              </div>
-            ) : (
-              <>
-                <div
-                  ref={viewerContainerRef}
-                  className={`bg-gray-100 ${isFullscreen ? 'flex-1 min-h-0' : ''}`}
-                  style={isFullscreen ? { minHeight: 0 } : { height: '600px' }}
-                />
-
-                {!viewerReady && (
-                  <div className="flex flex-col items-center justify-center p-8 gap-4">
-                    <div className="text-center">
-                      <div className="w-10 h-10 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-3" />
-                      <p className="text-gray-600 text-sm font-medium">Loading interactive reader…</p>
-                      <p className="text-gray-500 text-xs mt-2 max-w-md mx-auto leading-relaxed">
-                        This mode lets Nestory track pages automatically as you turn them. Stay on this screen while
-                        Google&apos;s script loads.
-                      </p>
-                    </div>
-                    {iframeFallbackOfferVisible && (
-                      <div className="w-full max-w-md rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-left text-sm text-gray-800">
-                        <p className="font-semibold text-gray-900 mb-1">Still stuck?</p>
-                        <p className="text-xs text-gray-700 mb-3 leading-relaxed">
-                          You can switch to Google&apos;s simpler embedded preview. It usually loads, but Nestory
-                          cannot detect page turns inside it — you will use <strong>+1 page</strong> below instead of
-                          automatic counting.
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => switchToIframeEmbed()}
-                            className="px-3 py-2 rounded-lg bg-nestory-600 text-white text-xs font-semibold hover:bg-nestory-700"
-                          >
-                            Use embed preview
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIframeFallbackOfferVisible(false)}
-                            className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                          >
-                            Keep waiting
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-
-            {isFullscreen && !session.completed && (
-              <div className="flex flex-wrap items-center justify-between gap-3 p-3 border-t border-gray-200 bg-white shrink-0">
-                <div className="text-sm text-gray-600">
-                  <span className="font-semibold text-gray-900">{pagesToAdd}</span> pages to log ·{' '}
-                  <span className="font-mono">{formatTime(elapsed)}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleUpdateProgress}
-                  disabled={isUpdating || !canSaveProgress}
-                  className="px-4 py-2 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUpdating ? 'Saving…' : 'Save progress'}
-                </button>
-              </div>
             )}
           </div>
-          )
-        ) : (
-          <>
-            {/* Fallback: description + preview link */}
-            {story?.description && !isFullscreen && (
-              <div className="card mb-4">
-                <h2 className="text-lg font-bold text-gray-900 mb-2">About This Book</h2>
-                <p className="text-gray-700 leading-relaxed text-sm whitespace-pre-line">
-                  {story.description}
-                </p>
-              </div>
-            )}
-
-            {effectivePreviewUrl && !isFullscreen && (
-              <div className="card mb-4 bg-nestory-50 border border-nestory-200">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-nestory-100 flex items-center justify-center shrink-0">
-                    <ExternalLink size={20} className="text-nestory-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-lg font-bold text-gray-900 mb-1">Read This Book</h2>
-                    <p className="text-sm text-gray-600 mb-3">
-                      Open the book on Google Books to read, then come back here to log your session.
-                    </p>
-                    <p className="text-sm font-medium text-gray-800 mb-3">
-                      To update your page count for today: set <strong>Pages to save</strong>, use the{' '}
-                      <strong>Reading Timer</strong>, then tap <strong>Save Progress</strong>. That updates your
-                      reading record everywhere in Nestory.
-                    </p>
-                    <a
-                      href={effectivePreviewUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-nestory-600 text-white font-semibold hover:bg-nestory-700 transition-colors"
-                    >
-                      <BookOpen size={18} />
-                      Open Book Preview
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {!story && !isFullscreen && (
-              <div className="card mb-4 text-center py-8">
-                <BookOpen size={48} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-600 mb-2">
-                  Book details could not be loaded. You can still use the timer and log pages below.
-                </p>
-                <p className="text-sm text-gray-500">
-                  If this keeps happening, ask a parent to check the story in the library.
-                </p>
-              </div>
-            )}
-
-            {story && !googleId && !isFullscreen && (
-              <div className="card mb-4 text-center py-8">
-                <BookOpen size={48} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-600 mb-2">
-                  This book has no linked Google Books preview in Nestory yet.
-                </p>
-                <p className="text-sm text-gray-500">
-                  Ask a parent to add the book from Google Books in the admin story tools, or use a physical copy while you log reading here.
-                </p>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Progress tracker */}
-        {!session.completed && !isFullscreen && (
-          <div className="card mb-4">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Log Your Reading</h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              {/* Timer */}
-              <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-                <p className="text-sm text-gray-600 mb-1">Reading Timer</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl font-mono font-bold text-gray-900">{formatTime(elapsed)}</p>
-                  <button
-                    onClick={() => setIsTimerRunning(!isTimerRunning)}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                      isTimerRunning
-                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                        : 'bg-green-100 text-green-700 hover:bg-green-200'
-                    }`}
-                  >
-                    <Clock size={14} className="inline mr-1.5" />
-                    {isTimerRunning ? 'Pause' : 'Start'}
-                  </button>
-                </div>
-                {useAutoPageTracking && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Timer starts automatically with the book viewer. Pause anytime.
-                  </p>
-                )}
-              </div>
-
-              {/* Pages: auto from Google viewer or manual */}
-              <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-                <p className="text-sm text-gray-600 mb-1">Pages to save</p>
-                {useAutoPageTracking ? (
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {pagesToAdd}
-                      <span className="text-sm font-normal text-gray-500 ml-2">
-                        / {pagesRemaining} left this book
-                      </span>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Turn pages in the viewer above — Nestory counts how far you move from where you last saved.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setManualPageOverride(true);
-                      }}
-                      className="mt-3 text-xs font-semibold text-nestory-700 hover:text-nestory-800 underline"
-                    >
-                      Adjust page count manually
-                    </button>
-                  </div>
-                ) : (embedMode === 'iframe' || embedMode === 'none') && hasGoogleBook ? (
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {pagesToAdd}
-                      <span className="text-sm font-normal text-gray-500 ml-2">
-                        / {pagesRemaining} left this session
-                      </span>
-                    </p>
-                    <p className="text-xs text-gray-600 mt-2 leading-relaxed">
-                      {embedMode === 'none'
-                        ? 'Nestory is not embedding Google here. Each time you read another page (in a paper book or in another tab), tap +1 page (or +5).'
-                        : "This preview runs on Google's site inside a secure frame, so Nestory cannot see when you turn pages. Each time you move forward a page in the book, tap +1 page (or add several with +5). We also listen for hints from Google if their viewer sends them."}
-                    </p>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      <button
-                        type="button"
-                        onClick={() => bumpPagesToAdd(-1)}
-                        disabled={pagesToAdd < 1}
-                        className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        −1
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => bumpPagesToAdd(1)}
-                        className="px-4 py-2 rounded-lg bg-nestory-600 text-white text-sm font-semibold hover:bg-nestory-700"
-                      >
-                        +1 page
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => bumpPagesToAdd(5)}
-                        disabled={pagesToAdd >= maxPages}
-                        className="px-4 py-2 rounded-lg border border-nestory-300 bg-white text-nestory-800 text-sm font-semibold hover:bg-nestory-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        +5 pages
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-3">Or type a total:</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <button
-                        type="button"
-                        onClick={() => setPagesToAdd((n) => Math.max(0, n - 1))}
-                        className="w-9 h-9 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <input
-                        type="number"
-                        min={0}
-                        max={maxPages}
-                        value={pagesToAdd}
-                        onChange={(e) =>
-                          setPagesToAdd(Math.min(maxPages, Math.max(0, Number(e.target.value) || 0)))
-                        }
-                        className="w-16 text-center text-lg font-bold border border-gray-300 rounded-lg py-1.5"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setPagesToAdd((n) => Math.min(maxPages, n + 1))}
-                        className="w-9 h-9 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-                      >
-                        <Plus size={14} />
-                      </button>
-                      <span className="text-xs text-gray-500">/ {pagesRemaining} left</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setPagesToAdd(Math.max(1, pagesToAdd - 1))}
-                      className="w-9 h-9 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <input
-                      type="number"
-                      min={1}
-                      max={maxPages}
-                      value={pagesToAdd}
-                      onChange={(e) =>
-                        setPagesToAdd(Math.min(maxPages, Math.max(1, Number(e.target.value) || 1)))
-                      }
-                      className="w-16 text-center text-lg font-bold border border-gray-300 rounded-lg py-1.5"
-                    />
-                    <button
-                      onClick={() => setPagesToAdd(Math.min(maxPages, pagesToAdd + 1))}
-                      className="w-9 h-9 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-                    >
-                      <Plus size={14} />
-                    </button>
-                    <span className="text-xs text-gray-500">/ {pagesRemaining} left</span>
-                  </div>
-                )}
-                {hasGoogleBook && embedMode === 'js' && viewerReady && manualPageOverride && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setManualPageOverride(false);
-                      viewerSegmentRef.current = viewerRef.current?.isLoaded?.()
-                        ? resetSegmentFromViewer(viewerRef.current)
-                        : createEmptySegment();
-                    }}
-                    className="mt-2 text-xs font-semibold text-nestory-700 hover:text-nestory-800 underline"
-                  >
-                    Use automatic counting again
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={handleUpdateProgress}
-              disabled={isUpdating || !canSaveProgress}
-              className="w-full py-3 rounded-lg bg-nestory-600 text-white font-semibold hover:bg-nestory-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isUpdating ? 'Saving...' : 'Save Progress'}
-            </button>
-          </div>
-        )}
-
-        {/* Session info */}
-        {!isFullscreen && (
-          <div className="card">
-            <h2 className="text-lg font-bold text-gray-900 mb-3">Session Info</h2>
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div className="p-3 rounded-lg bg-gray-50">
-                <p className="text-2xl font-bold text-gray-900">{session.timeSpent}</p>
-                <p className="text-sm text-gray-600">Minutes read</p>
-              </div>
-              <div className="p-3 rounded-lg bg-gray-50">
-                <p className="text-2xl font-bold text-gray-900">{session.pagesRead}</p>
-                <p className="text-sm text-gray-600">Pages read</p>
-              </div>
-            </div>
-          </div>
-        )}
+        </main>
       </div>
     </div>
   );
