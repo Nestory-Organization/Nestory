@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -7,110 +7,109 @@ import {
   Title,
   Tooltip,
   Legend,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-import type { ReadingActivityDayRow } from '../../types';
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
+import { ReadingActivityDayRow } from "../../types";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-const nestoryBar = 'rgba(14, 165, 233, 0.85)';
-const nestoryBarMuted = 'rgba(14, 165, 233, 0.35)';
-const pagesBar = 'rgba(99, 102, 241, 0.75)';
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export interface ReadingWeeklyBarChartProps {
-  byDay: ReadingActivityDayRow[];
+  byDay?: ReadingActivityDayRow[];
   title?: string;
+  color?: string;
 }
 
-const shortLabel = (isoDate: string) => {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  if (!y || !m || !d) return isoDate;
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-};
-
-const ReadingWeeklyBarChart: React.FC<ReadingWeeklyBarChartProps> = ({
-  byDay,
-  title = 'Reading this period',
+const ReadingWeeklyBarChart: React.FC<ReadingWeeklyBarChartProps> = ({ 
+  byDay = [], 
+  title = "Reading Activity", 
+  color = "#f43f5e" 
 }) => {
-  const chartData = useMemo(() => {
-    const labels = byDay.map((row) => shortLabel(row.date));
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Minutes',
-          data: byDay.map((row) => row.minutes),
-          backgroundColor: byDay.map((row) =>
-            row.minutes > 0 ? nestoryBar : nestoryBarMuted,
-          ),
-          borderRadius: 6,
-          maxBarThickness: 36,
-        },
-        {
-          label: 'Pages',
-          data: byDay.map((row) => row.pages),
-          backgroundColor: pagesBar,
-          borderRadius: 6,
-          maxBarThickness: 36,
-        },
-      ],
-    };
-  }, [byDay]);
+  const shortLabel = (date: string) => {
+    const d = new Date(date);
+    return d.toLocaleDateString("en-US", { weekday: "short" });
+  };
 
-  const options = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'top' as const,
-          labels: { boxWidth: 12, font: { size: 12 } },
-        },
-        title: {
+  const labels = byDay?.map((row) => shortLabel(row.date)) || [];
+  const dataPoints = byDay?.map((row) => row.minutesSpent) || [];
+
+  const data = {
+    labels,
+    datasets: [
+      {
+        label: "Minutes Spent",
+        data: dataPoints,
+        backgroundColor: color,
+        borderRadius: 12,
+        borderSkipped: false,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      title: {
+        display: false,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: {
           display: true,
-          text: title,
-          font: { size: 15, weight: '600' as const },
-          color: '#111827',
-          padding: { bottom: 8 },
+          color: "rgba(0, 0, 0, 0.05)",
         },
-        tooltip: {
-          callbacks: {
-            afterBody: (items: { dataIndex: number }[]) => {
-              const i = items[0]?.dataIndex;
-              if (i === undefined || !byDay[i]) return '';
-              const saves = byDay[i].progressSaveCount;
-              return saves ? `${saves} progress save${saves === 1 ? '' : 's'}` : '';
-            },
+        border: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            family: "Inter, sans-serif",
+            weight: "700" as const,
+            size: 10,
           },
+          color: "#9ca3af",
         },
       },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: { font: { size: 11 }, color: '#6b7280' },
+      x: {
+        grid: {
+          display: false,
         },
-        y: {
-          beginAtZero: true,
-          ticks: { precision: 0, color: '#6b7280' },
-          grid: { color: 'rgba(0,0,0,0.06)' },
+        border: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            family: "Inter, sans-serif",
+            weight: "800" as const,
+            size: 11,
+          },
+          color: "#4b5563",
         },
       },
-    }),
-    [byDay, title],
-  );
+    },
+  };
 
-  if (!byDay.length) {
+  if (!byDay || byDay.length === 0) {
     return (
-      <p className="text-sm text-gray-500 py-8 text-center">No daily breakdown yet.</p>
+      <div className="flex items-center justify-center h-full text-gray-400 font-bold uppercase text-xs tracking-widest">
+        Not enough data yet ??
+      </div>
     );
   }
 
-  return (
-    <div className="h-64 w-full min-h-[16rem]">
-      <Bar data={chartData} options={options} />
-    </div>
-  );
+  return <Bar options={options} data={data} />;
 };
 
 export default ReadingWeeklyBarChart;

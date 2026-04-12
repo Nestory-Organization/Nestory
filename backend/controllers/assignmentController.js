@@ -1,6 +1,7 @@
 const Assignment = require("../models/Assignment");
 const Child = require("../models/Child");
 const Family = require("../models/Family");
+const ReadingSession = require("../models/ReadingSession");
 const Story = require("../models/storyLibrary/Story");
 const { PAGINATION } = require("../constants");
 const {
@@ -367,14 +368,48 @@ exports.getMyAssignments = async (req, res) => {
     }
 
     const assignments = await Assignment.find({ child: child._id })
-      .populate("story", "title author ageGroup coverImage readingLevel")
-      .sort({ createdAt: -1 });
+      .populate("story", "title author ageGroup coverImage readingLevel totalPages")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // 2. Get all reading sessions to find stories started but not formally assigned
+    const sessions = await ReadingSession.find({ childId: child._id })
+      .populate("bookId", "title author ageGroup coverImage readingLevel totalPages")
+      .lean();
+
+    // 3. Create a map of story IDs from formal assignments
+    const assignedStoryIds = new Set(assignments.map(a => a.story?._id?.toString()));
+
+    // 4. Identify stories from sessions that are NOT in assignments
+    const unassignedItems = [];
+    const processedUnassignedStoryIds = new Set();
+
+    for (const session of sessions) {
+      if (!session.bookId) continue;
+      const storyId = session.bookId._id.toString();
+      
+      if (!assignedStoryIds.has(storyId) && !processedUnassignedStoryIds.has(storyId)) {
+        unassignedItems.push({
+          _id: `virtual-${storyId}`,
+          child: child._id,
+          story: session.bookId,
+          status: session.completed ? "completed" : "in_progress",
+          isVirtual: true,
+          createdAt: session.createdAt,
+          dueDate: null
+        });
+        processedUnassignedStoryIds.add(storyId);
+      }
+    }
+
+    // Combine formal and virtual assignments
+    const allItems = [...assignments, ...unassignedItems];
 
     res.status(200).json({
       success: true,
       message: "Child assignments retrieved successfully",
-      count: assignments.length,
-      data: assignments.map((assignment) => withDueMetadata(assignment)),
+      count: allItems.length,
+      data: allItems.map((assignment) => withDueMetadata(assignment)),
     });
   } catch (error) {
     console.error(error);
