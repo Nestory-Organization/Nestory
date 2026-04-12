@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Pages
+import Landing from './pages/Landing';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -84,8 +85,15 @@ const AppContent: React.FC = () => {
 
   return (
     <Routes>
-      {/* Home page redirect */}
-      <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
+      {/* Home page - Landing or redirect based on auth */}
+      <Route 
+        path="/" 
+        element={
+          isAuthenticated && hasValidRole 
+            ? <Navigate to={getDefaultRoute()} replace />
+            : <Landing />
+        } 
+      />
       
       {/* Public routes */}
       <Route
