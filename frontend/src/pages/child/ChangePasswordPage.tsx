@@ -54,7 +54,7 @@ const ChildChangePasswordPage = () => {
                     <ShieldCheck size={48} />
                  </div>
                  <h2 className="text-4xl font-black uppercase tracking-tight mb-4 leading-tight">Secret Portal Protection</h2>
-                 <p className="text-sm font-bold opacity-80 uppercase tracking-widest px-10">Choose a strong secret code that only you and your parents know! ??</p>
+                 <p className="text-sm font-bold opacity-80 uppercase tracking-widest px-10">Choose a strong secret code that only you and your parents know! 🔐</p>
               </div>
            </div>
 

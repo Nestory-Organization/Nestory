@@ -125,7 +125,7 @@ const StoryDetailPage: React.FC = () => {
                     <BookOpen size={20} className="text-nestory-600" />
                     <span className="font-bold text-gray-700">Length</span>
                   </div>
-                  <span className="text-gray-900 font-black">{story.pageCount || '??'} pgs</span>
+                  <span className="text-gray-900 font-black">{story.pageCount || '—'} pgs</span>
                 </div>
 
                 <div className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100">

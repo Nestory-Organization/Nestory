@@ -81,8 +81,16 @@ exports.getUserProgress = async (req, res) => {
     }
 
     let progress = await UserProgress.findOne(query)
-      .populate('badges.badge')
-      .populate('achievements.achievement');
+      .populate({
+        path: 'badges.badge'
+      })
+      .populate({
+        path: 'achievements.achievement'
+      })
+      .populate({
+        path: 'child',
+        select: 'name age avatar'
+      });
 
     if (!progress) {
       // Create initial progress for user
@@ -208,16 +216,40 @@ exports.awardPoints = async (req, res) => {
 // @access  Private
 exports.getLeaderboard = async (req, res) => {
   try {
-    const { limit = 10, childSpecific = false } = req.query;
+    const { limit = 10 } = req.query;
 
-    const query = childSpecific === 'true' ? { child: { $ne: null } } : {};
-
-    const leaderboard = await UserProgress.find(query)
-      .sort({ totalPoints: -1 })
-      .limit(parseInt(limit))
-      .populate('user', 'name email profilePicture displayName')
-      .populate('child', 'name age avatar displayName')
-      .select('user child totalPoints level currentStreak longestStreak badges stats');
+    // Use aggregation to explicitly join with Child collection
+    const leaderboard = await UserProgress.aggregate([
+      { $match: { child: { $ne: null } } },
+      {
+        $lookup: {
+          from: 'children',
+          localField: 'child',
+          foreignField: '_id',
+          as: 'childData'
+        }
+      },
+      { $unwind: '$childData' },
+      {
+        $project: {
+          _id: 1,
+          child: {
+            _id: '$childData._id',
+            name: '$childData.name',
+            age: '$childData.age',
+            avatar: '$childData.avatar'
+          },
+          totalPoints: 1,
+          level: 1,
+          currentStreak: 1,
+          longestStreak: 1,
+          stats: 1,
+          badges: 1
+        }
+      },
+      { $sort: { totalPoints: -1 } },
+      { $limit: parseInt(limit) }
+    ]);
 
     res.status(200).json({
       success: true,
@@ -232,6 +264,7 @@ exports.getLeaderboard = async (req, res) => {
     });
   }
 };
+
 
 // @desc    Get all badges
 // @route   GET /api/gamification/badges

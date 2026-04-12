@@ -462,7 +462,7 @@ const ReadingPage: React.FC = () => {
       chevronNetRef.current = 0;
       toast.success(
         updated?.completed
-          ? "Adventure Complete! Great reading! ??"
+          ? "Adventure Complete! Great reading! 🎉"
           : `Great work! ${savedPages} pages logged. Keep going!`
       );
     } catch (error: any) {
@@ -537,12 +537,14 @@ const ReadingPage: React.FC = () => {
   const maxPages = Math.max(pagesRemaining, 0);
   const googleId = story?.googleBookId?.trim();
   const previewUrl = story?.previewLink?.trim();
+  const pdfUrl = story?.pdfUrl?.trim();
   const fallbackGoogleBooksUrl =
     googleId && !previewUrl
       ? `https://books.google.com/books?id=${encodeURIComponent(googleId)}&printsec=frontcover`
       : "";
   const effectivePreviewUrl = previewUrl || fallbackGoogleBooksUrl;
   const hasGoogleBook = !!googleId;
+  const hasPdf = !!pdfUrl;
   const useAutoPageTracking = hasGoogleBook && embedMode === "js" && viewerReady && !manualPageOverride;
   const canSaveProgress = pagesToAdd >= 1;
 
@@ -644,12 +646,21 @@ const ReadingPage: React.FC = () => {
                         )}
                        </>
                      )
+                   ) : hasPdf ? (
+                     <div className="w-full h-full bg-white">
+                       <iframe
+                         title="PDF preview"
+                         src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                         className="w-full h-full border-0"
+                         loading="lazy"
+                       />
+                     </div>
                    ) : (
                      <div className="w-full h-full flex items-center justify-center p-12 text-center">
                         <div>
                           <BookOpen size={80} className="text-gray-300 mx-auto mb-6" />
                           <h3 className="text-2xl font-black text-gray-400 uppercase tracking-widest mb-4">No Preview Available</h3>
-                          <p className="text-gray-500 font-bold max-w-sm mx-auto uppercase">Ask a parent to check if this book has a Google Preview or use your physical copy!</p>
+                          <p className="text-gray-500 font-bold max-w-sm mx-auto uppercase">Ask a parent to check if this book has a Google Preview or upload a PDF!</p>
                         </div>
                      </div>
                    )}
