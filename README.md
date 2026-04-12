@@ -289,7 +289,7 @@ To verify both deployments are working:
 
 ### **Backend Deployment (Render)**
 
-![Backend Deployment Evidence](./docs/backend-deployment.png)
+![Backend Deployment Evidence](./docs/backend-deployment.jpeg)
 
 _Screenshot showing:_
 
@@ -303,7 +303,7 @@ _Screenshot showing:_
 
 ### **Frontend Deployment (Vercel)**
 
-![Frontend Deployment Evidence](./docs/frontend-deployment.png)
+![Frontend Deployment Evidence](./docs/frontend-deployment.jpeg)
 
 _Screenshot showing:_
 
