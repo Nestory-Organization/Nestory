@@ -387,11 +387,14 @@ class GamificationService {
    */
   static async awardPointsToUser(userId, points, source, description = '', childId = null, reference = null) {
     try {
+      console.log(`[GamificationService] Awarding ${points} pts to User:${userId} Child:${childId} from ${source}`);
+      
       const query = { user: userId };
       if (childId) query.child = childId;
 
       let progress = await UserProgress.findOne(query);
       if (!progress) {
+        console.log(`[GamificationService] No progress found, creating new for User:${userId} Child:${childId}`);
         progress = await UserProgress.create({
           user: userId,
           child: childId
@@ -399,9 +402,14 @@ class GamificationService {
       }
 
       const balanceBefore = progress.totalPoints;
-      progress.totalPoints += points;
-      progress.calculateLevel();
-      progress.updateStreak();
+      progress.totalPoints += Number(points);
+      
+      if (typeof progress.calculateLevel === 'function') {
+        progress.calculateLevel();
+      }
+      if (typeof progress.updateStreak === 'function') {
+        progress.updateStreak();
+      }
 
       // Update stats
       if (source === 'story_read') {
@@ -411,6 +419,7 @@ class GamificationService {
       }
 
       await progress.save();
+      console.log(`[GamificationService] Progress saved. New balance: ${progress.totalPoints}`);
 
       // Create transaction
       const transaction = await PointTransaction.create({
@@ -445,6 +454,7 @@ class GamificationService {
         progress
       };
     } catch (error) {
+      console.error('[GamificationService] Error awarding points:', error);
       throw new Error(`Error awarding points: ${error.message}`);
     }
   }
