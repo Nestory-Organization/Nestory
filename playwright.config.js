@@ -8,18 +8,18 @@ const repoRoot = __dirname;
 try {
   require('dotenv').config({
     path: path.join(repoRoot, 'backend', '.env'),
-    override: true,
+    override: false,
   });
 } catch (e) {
   // dotenv not required for unit tests
 }
 
-process.env.MONGO_URI =
-  process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/nestory';
-process.env.TEST_DB_URI =
-  process.env.TEST_DB_URI || 'mongodb://127.0.0.1:27017/nestory-test';
-process.env.JWT_SECRET =
-  process.env.JWT_SECRET || 'playwright-test-secret';
+// CRITICAL: Set test environment variables BEFORE backend starts
+// These MUST match what tests expect
+process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+process.env.MONGO_URI = 'mongodb://127.0.0.1:27017/nestory';
+process.env.JWT_SECRET = 'playwright-test-secret-key-for-testing-only';
+process.env.TEST_DB_URI = 'mongodb://127.0.0.1:27017/nestory-test';
 
 const backendEnv = {
   ...process.env,
