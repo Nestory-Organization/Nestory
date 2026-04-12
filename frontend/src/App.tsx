@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AssignmentDetailProvider } from './contexts/AssignmentDetailContext';
 import { Toaster } from 'react-hot-toast';
@@ -15,10 +15,12 @@ import StoriesPage from './pages/parent/StoriesPage';
 import StoryDetailPage from './pages/parent/StoryDetailPage';
 import ChildDetailPage from './pages/parent/ChildDetailPage';
 import AssignmentsPage from './pages/parent/AssignmentsPage';
-import FamilySettingsPage from './pages/parent/FamilySettingsPage';
+import ParentSettingsPage from './pages/parent/FamilySettingsPage';
 import ParentProgressPage from './pages/parent/ProgressPage';
+import ParentLayout from './components/common/ParentLayout';
 import AdminDashboard from './pages/admin/Dashboard';
-import StoryLibraryCrudPage from './pages/admin/storyLibrary/StoryLibraryCrudPage';
+import AdminLayout from './components/admin/AdminLayout';
+import StoryManagementPage from './pages/admin/storyLibrary/StoryManagementPage';
 import ChildDashboard from './pages/child/Dashboard';
 import ChildChangePasswordPage from './pages/child/ChangePasswordPage';
 import ChildAssignmentDetailPage from './pages/child/AssignmentDetailPage';
@@ -26,6 +28,7 @@ import GamificationPage from './pages/gamification/GamificationPage';
 import GamificationAdminPage from './pages/admin/gamification/GamificationAdminPage';
 import ReaderPage from './pages/child/ReaderPage';
 import GoogleBooksImportPage from './pages/admin/storyLibrary/GoogleBooksImportPage';
+import UsersPage from './pages/admin/UsersPage';
 import ReadingPage from './pages/child/ReadingPage';
 import ChildProgressPage from './pages/child/ProgressPage';
 import FamilyChatPage from './pages/chat/FamilyChatPage';
@@ -123,36 +126,35 @@ const AppContent: React.FC = () => {
 
       {/* Authenticated routes based on role */}
       {isAuthenticated && isParentRole && (
-        <Route path="/dashboard" element={<ParentDashboard />} />
-      )}
-
-      {isAuthenticated && isParentRole && (
-        <>
-          <Route path="/stories" element={<StoriesPage />} />
-          <Route path="/story/:storyId" element={<StoryDetailPage />} />
-          <Route path="/child/:childId" element={<ChildDetailPage />} />
+        <Route path="/" element={<ParentLayout />}>
+          <Route path="dashboard" element={<ParentDashboard />} />
+          <Route path="stories" element={<StoriesPage />} />
+          <Route path="story/:storyId" element={<StoryDetailPage />} />
+          <Route path="child/:childId" element={<ChildDetailPage />} />
           <Route
-            path="/assignments"
+            path="assignments"
             element={
               <AssignmentDetailProvider>
                 <AssignmentsPage />
               </AssignmentDetailProvider>
             }
           />
-          <Route path="/family-settings" element={<FamilySettingsPage />} />
-          <Route path="/progress" element={<ParentProgressPage />} />
-          <Route path="/gamification" element={<GamificationPage />} />
-          <Route path="/chat" element={<FamilyChatPage />} />
-        </>
+          <Route path="family-settings" element={<ParentSettingsPage />} />
+          <Route path="progress" element={<ParentProgressPage />} />
+          <Route path="gamification" element={<GamificationPage />} />
+          <Route path="chat" element={<FamilyChatPage />} />
+        </Route>
       )}
 
       {isAuthenticated && user?.role === 'admin' && (
-        <>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/stories" element={<StoryLibraryCrudPage />} />
-          <Route path="/admin/gamification" element={<GamificationAdminPage />} />
-          <Route path='/admin/google-import' element={<GoogleBooksImportPage />} />
-        </>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="story-management" element={<StoryManagementPage />} />
+          <Route path="story-management/import" element={<GoogleBooksImportPage />} />
+          <Route path="gamification" element={<GamificationAdminPage />} />
+          <Route path="users" element={<UsersPage />} />
+        </Route>
       )}
 
       {isAuthenticated && user?.role === 'child' && (
