@@ -4,8 +4,29 @@ const Child = require("../models/Child");
 const Story = require("../models/storyLibrary/Story");
 const ChatGroup = require("../models/ChatGroup");
 const ChatMessage = require("../models/ChatMessage");
+const User = require("../models/User");
 
 const CHAT_ROOM_PREFIX = "family-";
+
+const getAllFamilyMemberUserIds = async (family) => {
+  try {
+    const userIds = [];
+    if (family.parent) {
+      userIds.push(family.parent);
+    }
+    if (Array.isArray(family.children) && family.children.length > 0) {
+      const childUsers = await User.find({
+        childProfile: { $in: family.children },
+        role: "child",
+      }).select("_id");
+      userIds.push(...childUsers.map((u) => u._id));
+    }
+    return userIds;
+  } catch (error) {
+    console.error('[ChatService] getAllFamilyMemberUserIds failed:', error.message);
+    return [];
+  }
+};
 
 const toRole = (user) => {
   if (!user) return "";
@@ -275,4 +296,5 @@ module.exports = {
   getFamilyRoomName,
   serializeMessage,
   clearFamilyMessages,
+  getAllFamilyMemberUserIds,
 };

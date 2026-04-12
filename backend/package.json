@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "reset-password": "node scripts/resetUserPassword.js"
+    "reset-password": "node scripts/resetUserPassword.js",
+    "cleanup-transactions": "node scripts/cleanupPointTransactions.js",
+    "seed-transactions": "node scripts/seedPointTransactions.js"
   },
   "keywords": [
     "nodejs",

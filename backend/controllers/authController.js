@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const crypto = require("crypto");
+const mongoose = require("mongoose");
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -246,6 +247,14 @@ exports.getAllUsers = async (req, res) => {
 // @access  Private/Admin
 exports.deleteUser = async (req, res) => {
   try {
+    // Validate that :id is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format",
+      });
+    }
+    
     const user = await User.findById(req.params.id);
 
     if (user) {
@@ -426,6 +435,79 @@ exports.resetPassword = async (req, res) => {
       message: "Password reset successfully. You can now login with your new password.",
       data: {
         token: generateToken(user._id),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Change current user's username
+// @route   PUT /api/auth/change-username
+// @access  Private
+exports.changeUsername = async (req, res) => {
+  try {
+    const { newUsername, password } = req.body;
+
+    if (!newUsername || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide new username and password to confirm",
+      });
+    }
+
+    const user = await User.findById(req.user._id).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Verify password
+    const isPasswordMatch = await user.matchPassword(password);
+    if (!isPasswordMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Password is incorrect",
+      });
+    }
+
+    // Check if username already exists (if username field exists in schema)
+    if (user.username) {
+      const usernameExists = await User.findOne({ 
+        username: newUsername,
+        _id: { $ne: user._id } 
+      });
+
+      if (usernameExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Username already taken",
+        });
+      }
+    }
+
+    // Update username (if schema supports it) or name
+    if (user.username !== undefined) {
+      user.username = newUsername;
+    } else {
+      user.name = newUsername;
+    }
+    
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Username changed successfully",
+      data: {
+        username: user.username || user.name,
       },
     });
   } catch (error) {

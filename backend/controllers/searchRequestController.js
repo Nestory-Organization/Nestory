@@ -1,4 +1,8 @@
 const SearchRequest = require('../models/SearchRequest');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
+const { getIo } = require('../realtime/socketServer');
+const { notifyAdmins } = require('../utils/notificationHelper');
 
 exports.createSearchRequest = async (req, res) => {
   try {
@@ -28,6 +32,19 @@ exports.createSearchRequest = async (req, res) => {
       coverImage: coverImage || '',
       previewLink: previewLink || '',
       pageCount: Number(pageCount || 0),
+    });
+
+    // Create notification for admins using helper
+    await notifyAdmins({
+        sender: req.user._id,
+        type: 'search_request',
+        title: 'New Book Request',
+        message: `${req.user.name || 'A child'} has requested a new book: ${suggestedBookName || query}`,
+        data: {
+            requestId: request._id,
+            bookName: suggestedBookName || query,
+            author: author || ''
+        }
     });
 
     return res.status(201).json({

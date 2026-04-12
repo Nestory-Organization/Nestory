@@ -12,6 +12,7 @@ const {
 const {
   awardPointsForAssignmentCompletion,
 } = require("../helpers/gamificationHelper");
+const { sendNotification } = require("../utils/notificationHelper");
 
 const ensureParentOwnsFamily = async (familyId, userId) => {
   const family = await Family.findById(familyId).select("parent");
@@ -138,6 +139,20 @@ exports.createAssignment = async (req, res) => {
       { path: "story", select: "title author ageGroup coverImage" },
       { path: "assignedBy", select: "name email" },
     ]);
+
+    // Notify the child about the new assignment
+    await sendNotification({
+      recipient: child.user || childId, // Assuming Child model might have a user ref for auth
+      sender: req.user._id,
+      type: 'assignment',
+      title: 'New Story Assigned! 📖',
+      message: `${req.user.name} assigned you a new story: "${assignment.story.title}". Ready to read?`,
+      data: {
+        assignmentId: assignment._id,
+        storyId: storyId,
+        storyTitle: assignment.story.title
+      }
+    });
 
     res.status(201).json({
       success: true,
