@@ -6,6 +6,7 @@ const connectDB = require("./config/db");
 const requestLogger = require("./middleware/requestLogger");
 const errorHandler = require("./middleware/errorHandler");
 const { initSocketServer } = require("./realtime/socketServer");
+const path = require("path");
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +23,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
+
+// Static folders
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
 app.use("/api/auth", require("./routes/authRoutes"));

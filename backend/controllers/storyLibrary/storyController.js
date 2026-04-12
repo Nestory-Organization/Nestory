@@ -52,7 +52,15 @@ exports.getStoryById = async (req, res, next) => {
 //POST /api/stories (admin)
 exports.createStory = async (req, res, next) => {
     try {
-        const story = await storyService.createStory(req.body, req.user._id);
+        const payload = { ...req.body };
+        
+        // Handle file upload
+        if (req.file) {
+            // Store relative path
+            payload.pdfUrl = `/uploads/pdf/${req.file.filename}`;
+        }
+
+        const story = await storyService.createStory(payload, req.user._id);
         return successResponse(res, 201, 'Story created successfully', story);
     } catch (err) {
         next(err);
@@ -62,7 +70,14 @@ exports.createStory = async (req, res, next) => {
 //PUT /api/stories/:id (admin)
 exports.updateStory = async (req, res, next) => {
     try {
-        const story = await storyService.updateStory(req.params.id, req.body);
+        const payload = { ...req.body };
+        
+        // Handle file upload
+        if (req.file) {
+            payload.pdfUrl = `/uploads/pdf/${req.file.filename}`;
+        }
+
+        const story = await storyService.updateStory(req.params.id, payload);
         if (!story) return res.status(404).json({ success: false, message: 'Story not found' });
 
         return successResponse(res, 200, 'Story updated successfully', story);
