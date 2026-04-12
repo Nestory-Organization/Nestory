@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Award, Star, TrendingUp, Users, Zap, Search, Plus, Filter, Loader2, Edit2, Trash2, Shield, Eye, Settings } from 'lucide-react';
+import { Award, Star, Search, Plus, Filter, Loader2, Edit2, Trash2, Eye, Settings, RefreshCw, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GamificationBadge, GamificationAchievement } from '../../../types';
 import gService from '../../../services/gamificationService';
 
 const GamificationAdminPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'badges' | 'milestones' | 'levels'>('badges');
+  const [activeTab, setActiveTab] = useState<'badges' | 'milestones'>('badges');
   const [badges, setBadges] = useState<GamificationBadge[]>([]);
   const [achievements, setAchievements] = useState<GamificationAchievement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +78,7 @@ const GamificationAdminPage: React.FC = () => {
     try {
       const [badgesData, achievementsData] = await Promise.all([
         gService.getAllBadges(),
-        gService.getAllAchievements()
+        gService.getAllAchievements(),
       ]);
       setBadges(badgesData);
       setAchievements(achievementsData);
@@ -103,8 +103,6 @@ const GamificationAdminPage: React.FC = () => {
   const stats = [
     { label: 'Total Badges', value: badges.length.toString(), icon: <Award className='text-orange-500' />, change: 'System' },
     { label: 'Active Milestones', value: achievements.length.toString(), icon: <Star className='text-yellow-500' />, change: 'System' },
-    { label: 'Avg Level', value: '1.0', icon: <TrendingUp className='text-green-500' />, change: 'Default' },
-    { label: 'Total Players', value: '---', icon: <Users className='text-blue-500' />, change: 'Active' },
   ];
 
   const getTierColor = (tier: string) => {
@@ -130,7 +128,7 @@ const GamificationAdminPage: React.FC = () => {
             className='p-3 bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-all text-gray-600 shadow-sm'
             title="Refresh Data"
           >
-            <TrendingUp size={20} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
           <button className='flex items-center gap-2 px-6 py-3 bg-gray-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-lg text-xs uppercase tracking-widest'>
             <Settings size={18} /> Engine Settings
@@ -170,15 +168,6 @@ const GamificationAdminPage: React.FC = () => {
               <Star size={16} /> Reading Milestones
             </div>
             {activeTab === 'milestones' && <div className='absolute bottom-0 left-0 w-full h-1.5 bg-nestory-600 rounded-t-full shadow-[0_-2px_10px_rgba(249,115,22,0.3)]' />}
-          </button>
-          <button 
-            onClick={() => setActiveTab('levels')}
-            className={`pb-4 px-8 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === 'levels' ? 'text-nestory-600' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            <div className='flex items-center gap-2'>
-              <TrendingUp size={16} /> Progress System
-            </div>
-            {activeTab === 'levels' && <div className='absolute bottom-0 left-0 w-full h-1.5 bg-nestory-600 rounded-t-full shadow-[0_-2px_10px_rgba(249,115,22,0.3)]' />}
           </button>
         </div>
 
@@ -460,39 +449,6 @@ const GamificationAdminPage: React.FC = () => {
                         <h3 className='text-gray-400 font-black text-sm uppercase tracking-widest'>No milestones configured</h3>
                       </div>
                     )}
-                 </div>
-               )}
-
-               {activeTab === 'levels' && (
-                 <div className='bg-slate-900 rounded-[2.5rem] p-12 text-center text-white relative overflow-hidden shadow-2xl'>
-                    <div className='absolute top-0 right-0 w-96 h-96 bg-nestory-600/20 rounded-full blur-[120px]'></div>
-                    <div className='absolute bottom-0 left-0 w-80 h-80 bg-blue-600/10 rounded-full blur-[100px]'></div>
-                    
-                    <div className='relative z-10'>
-                      <Shield size={64} className='mx-auto text-nestory-500 mb-6 drop-shadow-[0_0_15px_rgba(249,115,22,0.5)]' />
-                      <h3 className='text-3xl font-black tracking-tight mb-4 uppercase'>Leveling Logic <span className='text-nestory-500 font-outline-2 text-transparent'>Active</span></h3>
-                      <p className='text-gray-400 font-bold max-w-lg mx-auto mb-10 leading-relaxed text-sm'>
-                        The progression engine automatically calculates player levels based on accumulated points and reading complexity.
-                      </p>
-                      
-                      <div className='grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto'>
-                         {[
-                           { l: 'Base XP', v: '100', d: 'Per story' },
-                           { l: 'Level Factor', v: '1.2x', d: 'Scaling' },
-                           { l: 'Quiz Bonus', v: '+50', d: 'Max' }
-                         ].map((k, i) => (
-                           <div key={i} className='p-6 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md'>
-                             <p className='text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2'>{k.l}</p>
-                             <p className='text-2xl font-black text-nestory-500'>{k.v}</p>
-                             <p className='text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1'>{k.d}</p>
-                           </div>
-                         ))}
-                      </div>
-
-                      <button className='mt-12 px-10 py-4 bg-white text-slate-900 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-nestory-500 hover:text-white transition-all shadow-xl'>
-                        Recalculate All Players
-                      </button>
-                    </div>
                  </div>
                )}
              </>

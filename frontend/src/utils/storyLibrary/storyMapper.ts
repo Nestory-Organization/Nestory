@@ -15,6 +15,7 @@ export const normalizeStory = (story: any): Story => ({
   source: story?.source || 'internal',
   googleBookId: story?.googleBookId || '',
   previewLink: story?.previewLink || '',
+  pdfUrl: story?.pdfUrl || '',
   createdBy: String(story?.createdBy || ''),
   createdAt: story?.createdAt || '',
   updatedAt: story?.updatedAt || '',

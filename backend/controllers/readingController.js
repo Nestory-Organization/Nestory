@@ -12,6 +12,7 @@ const {
   serializeMessage,
 } = require("../services/chatService");
 const { emitFamilyChatEvent } = require("../realtime/socketServer");
+const { sendNotification } = require("../utils/notificationHelper");
 
 // Normalize date to start of day (for streak: unique days with reading)
 const getDateKey = (date) => {
@@ -590,6 +591,29 @@ exports.updateSession = async (req, res) => {
         console.error("Gamification error:", gamificationError);
         // Don't fail the session update if gamification fails
       }
+
+      // Notify the parent that the child has completed a book
+      try {
+        const child = await Child.findById(session.childId).select("name parent");
+        const story = await Story.findById(session.bookId).select("title");
+        
+        if (child && child.parent && story) {
+          await sendNotification({
+            recipient: child.parent,
+            sender: userRole === 'child' ? req.user._id : null,
+            type: 'system',
+            title: 'Book Completed! 🎉',
+            message: `${child.name} has just finished reading "${story.title}"!`,
+            data: {
+              childId: child._id,
+              storyId: story._id,
+              storyTitle: story.title
+            }
+          });
+        }
+      } catch (notifyError) {
+        console.error("Parent notification error:", notifyError);
+      }
     }
 
     session.lastUpdatedAt = new Date();
@@ -646,7 +670,32 @@ exports.getMyActivitySummary = async (req, res) => {
     start.setHours(0, 0, 0, 0);
 
     const childId = req.user.childProfile;
-    const rows = await ReadingActivity.aggregate([
+    
+    // Get daily breakdown
+    const dailyRows = await ReadingActivity.aggregate([
+      {
+        $match: {
+          childId: new mongoose.Types.ObjectId(childId),
+          createdAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+          },
+          pages: { $sum: "$pagesAdded" },
+          minutes: { $sum: "$minutesAdded" },
+          entries: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    // Get totals
+    const totalRows = await ReadingActivity.aggregate([
       {
         $match: {
           childId: new mongoose.Types.ObjectId(childId),
@@ -663,7 +712,13 @@ exports.getMyActivitySummary = async (req, res) => {
       },
     ]);
 
-    const row = rows[0] || { pages: 0, minutes: 0, entries: 0 };
+    const row = totalRows[0] || { pages: 0, minutes: 0, entries: 0 };
+    const byDay = dailyRows.map((d) => ({
+      date: d._id,
+      pages: d.pages,
+      minutesSpent: d.minutes,
+      progressSaveCount: d.entries,
+    }));
 
     return res.status(200).json({
       success: true,
@@ -675,6 +730,7 @@ exports.getMyActivitySummary = async (req, res) => {
         totalPagesLogged: row.pages,
         totalMinutesLogged: row.minutes,
         progressSaveCount: row.entries,
+        byDay,
       },
     });
   } catch (error) {
@@ -723,6 +779,30 @@ exports.getFamilyActivitySummary = async (req, res) => {
       children.map((c) => [c._id.toString(), c.name || "Reader"]),
     );
 
+    // Get daily breakdown (all children combined)
+    const dailyRows = await ReadingActivity.aggregate([
+      {
+        $match: {
+          childId: { $in: childIds },
+          createdAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+          },
+          pages: { $sum: "$pagesAdded" },
+          minutes: { $sum: "$minutesAdded" },
+          entries: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    // Get by-child breakdown
     const agg = await ReadingActivity.aggregate([
       {
         $match: {
@@ -757,6 +837,13 @@ exports.getFamilyActivitySummary = async (req, res) => {
       { pages: 0, minutes: 0, entries: 0 },
     );
 
+    const byDay = dailyRows.map((d) => ({
+      date: d._id,
+      pages: d.pages,
+      minutesSpent: d.minutes,
+      progressSaveCount: d.entries,
+    }));
+
     return res.status(200).json({
       success: true,
       message: "Activity summary",
@@ -768,6 +855,7 @@ exports.getFamilyActivitySummary = async (req, res) => {
         totalMinutesLogged: totals.minutes,
         progressSaveCount: totals.entries,
         byChild,
+        byDay,
       },
     });
   } catch (error) {

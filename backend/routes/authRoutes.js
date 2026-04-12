@@ -8,6 +8,7 @@ const {
   getAllUsers,
   deleteUser,
   changePassword,
+  changeUsername,
   forgotPassword,
   resetPassword,
 } = require("../controllers/authController");
@@ -55,6 +56,11 @@ router.put(
   changePasswordValidation,
   handleValidationErrors,
   changePassword,
+);
+router.put(
+  "/change-username",
+  protect,
+  changeUsername,
 );
 
 // Admin routes

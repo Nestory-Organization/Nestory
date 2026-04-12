@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, Edit3, Trash2, ExternalLink, Book, User, Hash, Layers } from 'lucide-react';
+import { RefreshCw, Edit3, Trash2, ExternalLink, Book, User, Hash, Layers, Eye } from 'lucide-react';
 import { Story } from '../../types';
 
 interface StoryLibraryTableProps {
@@ -9,6 +9,7 @@ interface StoryLibraryTableProps {
   onEdit: (story: Story) => void;
   onDelete: (storyId: string) => void;
   onSync: (storyId: string) => void;
+  onPreview?: (story: Story) => void;
 }
 
 const StoryLibraryTable: React.FC<StoryLibraryTableProps> = ({
@@ -18,6 +19,7 @@ const StoryLibraryTable: React.FC<StoryLibraryTableProps> = ({
   onEdit,
   onDelete,
   onSync,
+  onPreview,
 }) => {
   if (isLoading) {
     return (
@@ -119,6 +121,15 @@ const StoryLibraryTable: React.FC<StoryLibraryTableProps> = ({
                 </td>
                 <td className="px-6 py-5">
                   <div className="flex items-center justify-center gap-2">
+                    {onPreview && (
+                      <button
+                        onClick={() => onPreview(story)}
+                        title="Preview Story"
+                        className="p-2.5 text-blue-500 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    )}
                     {isGoogleStory && (
                       <button
                         onClick={() => onSync(story.id)}

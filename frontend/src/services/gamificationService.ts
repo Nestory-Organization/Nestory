@@ -131,6 +131,27 @@ class GamificationService {
     return this.normalizeAchievement(response.data.data);
   }
 
+  async getSystemStats(): Promise<{ totalPlayers: number; avgLevel: number; totalXpAwarded: number }> {
+    const response = await apiClient.getInstance().get<ApiResponse<any>>(
+      '/gamification/stats/system'
+    );
+    return response.data.data;
+  }
+
+  async getLevelDistribution(): Promise<Array<{ level: number; players: number }>> {
+    const response = await apiClient.getInstance().get<ApiResponse<any>>(
+      '/gamification/stats/level-distribution'
+    );
+    return response.data.data || [];
+  }
+
+  async getXpTimeline(): Promise<Array<{ date: string; points: number; transactions: number }>> {
+    const response = await apiClient.getInstance().get<ApiResponse<any>>(
+      '/gamification/stats/xp-timeline'
+    );
+    return response.data.data || [];
+  }
+
   private normalizeProgress(raw: any): GamificationProgress {
     return {
       id: raw._id || raw.id,

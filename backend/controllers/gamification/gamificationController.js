@@ -120,6 +120,129 @@ exports.test = async (req, res) => {
   res.status(200).json({ success: true, message: 'Gamification controller is available' });
 };
 
+// @desc    Get progress system statistics (admin)
+// @route   GET /api/gamification/stats/system
+// @access  Private/Admin
+exports.getSystemStats = async (req, res) => {
+  try {
+    // Total players with progress
+    const totalPlayers = await UserProgress.countDocuments({
+      user: { $ne: null }
+    });
+
+    // Get all progress records to calculate average level and total XP
+    const allProgress = await UserProgress.find({
+      user: { $ne: null }
+    }).select('level totalPoints');
+
+    const avgLevel = totalPlayers > 0 
+      ? Math.round((allProgress.reduce((sum, p) => sum + (p.level || 1), 0) / totalPlayers) * 10) / 10
+      : 0;
+
+    const totalXpAwarded = allProgress.reduce((sum, p) => sum + (p.totalPoints || 0), 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalPlayers,
+        avgLevel,
+        totalXpAwarded
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching system stats',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get level distribution chart data (admin)
+// @route   GET /api/gamification/stats/level-distribution
+// @access  Private/Admin
+exports.getLevelDistribution = async (req, res) => {
+  try {
+    // Get distribution of players across levels
+    const distribution = await UserProgress.aggregate([
+      {
+        $match: { user: { $ne: null } }
+      },
+      {
+        $group: {
+          _id: '$level',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    const data = distribution.map(d => ({
+      level: d._id || 1,
+      players: d.count
+    }));
+
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching level distribution',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get XP progress over time (admin)
+// @route   GET /api/gamification/stats/xp-timeline
+// @access  Private/Admin
+exports.getXpTimeline = async (req, res) => {
+  try {
+    // Get XP transactions over the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const timeline = await PointTransaction.aggregate([
+      {
+        $match: { createdAt: { $gte: thirtyDaysAgo } }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+          },
+          totalPoints: { $sum: '$points' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    const data = timeline.map(t => ({
+      date: t._id,
+      points: t.totalPoints,
+      transactions: t.count
+    }));
+
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching XP timeline',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Award points to user
 // @route   POST /api/gamification/points/award
 // @access  Private

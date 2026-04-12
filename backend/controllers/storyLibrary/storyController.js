@@ -56,8 +56,8 @@ exports.createStory = async (req, res, next) => {
         
         // Handle file upload
         if (req.file) {
-            // Store relative path
-            payload.pdfUrl = `/uploads/pdf/${req.file.filename}`;
+            // Store relative path that matches API route
+            payload.pdfUrl = `/api/uploads/pdf/${req.file.filename}`;
         }
 
         const story = await storyService.createStory(payload, req.user._id);
@@ -74,7 +74,7 @@ exports.updateStory = async (req, res, next) => {
         
         // Handle file upload
         if (req.file) {
-            payload.pdfUrl = `/uploads/pdf/${req.file.filename}`;
+            payload.pdfUrl = `/api/uploads/pdf/${req.file.filename}`;
         }
 
         const story = await storyService.updateStory(req.params.id, payload);

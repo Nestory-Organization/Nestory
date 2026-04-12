@@ -17,21 +17,25 @@ import StoryDetailPage from './pages/parent/StoryDetailPage';
 import ChildDetailPage from './pages/parent/ChildDetailPage';
 import AssignmentsPage from './pages/parent/AssignmentsPage';
 import ParentSettingsPage from './pages/parent/FamilySettingsPage';
+import ParentAccountSettingsPage from './pages/parent/AccountSettingsPage';
 import ParentProgressPage from './pages/parent/ProgressPage';
 import ParentLayout from './components/common/ParentLayout';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminLayout from './components/admin/AdminLayout';
+import AdminSettingsPage from './pages/admin/SettingsPage';
 import StoryManagementPage from './pages/admin/storyLibrary/StoryManagementPage';
 import ChildDashboard from './pages/child/Dashboard';
 import ChildChangePasswordPage from './pages/child/ChangePasswordPage';
 import ChildAssignmentDetailPage from './pages/child/AssignmentDetailPage';
 import GamificationPage from './pages/gamification/GamificationPage';
 import GamificationAdminPage from './pages/admin/gamification/GamificationAdminPage';
+import AnalyticsAdminPage from './pages/admin/analytics/AnalyticsAdminPage';
 import ReaderPage from './pages/child/ReaderPage';
 import GoogleBooksImportPage from './pages/admin/storyLibrary/GoogleBooksImportPage';
 import UsersPage from './pages/admin/UsersPage';
 import ReadingPage from './pages/child/ReadingPage';
 import ChildProgressPage from './pages/child/ProgressPage';
+import ChildSettingsPage from './pages/child/SettingsPage';
 import FamilyChatPage from './pages/chat/FamilyChatPage';
 
 // Loading component
@@ -148,6 +152,7 @@ const AppContent: React.FC = () => {
             }
           />
           <Route path="family-settings" element={<ParentSettingsPage />} />
+          <Route path="account-settings" element={<ParentAccountSettingsPage />} />
           <Route path="progress" element={<ParentProgressPage />} />
           <Route path="gamification" element={<GamificationPage />} />
           <Route path="chat" element={<FamilyChatPage />} />
@@ -161,7 +166,9 @@ const AppContent: React.FC = () => {
           <Route path="story-management" element={<StoryManagementPage />} />
           <Route path="story-management/import" element={<GoogleBooksImportPage />} />
           <Route path="gamification" element={<GamificationAdminPage />} />
+          <Route path="analytics" element={<AnalyticsAdminPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
       )}
 
@@ -183,6 +190,7 @@ const AppContent: React.FC = () => {
           <Route path="/child/read/:sessionId" element={<ReadingPage />} />
           <Route path="/child/progress" element={<ChildProgressPage />} />
           <Route path="/child/chat" element={<FamilyChatPage />} />
+          <Route path="/child/settings" element={<ChildSettingsPage />} />
         </>
       )}
 

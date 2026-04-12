@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -7,8 +7,7 @@ import {
   Title,
   Tooltip,
   Legend,
-  ChartOptions,
-  Filler
+  ChartOptions
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { ReadingActivityDayRow } from "../../types";
@@ -19,8 +18,7 @@ ChartJS.register(
   BarElement,
   Title,
   Tooltip,
-  Legend,
-  Filler
+  Legend
 );
 
 export interface ReadingWeeklyBarChartProps {
@@ -41,41 +39,38 @@ const ReadingWeeklyBarChart: React.FC<ReadingWeeklyBarChartProps> = ({
     return d.toLocaleDateString("en-US", { weekday: "short" });
   };
 
-  const labels = byDay?.map((row) => shortLabel(row.date)) || [];
-  const dataPoints = byDay?.map((row) => row.minutesSpent) || [];
+  const labels = useMemo(() => byDay?.map((row) => shortLabel(row.date)) || [], [byDay]);
+  const dataPoints = useMemo(() => byDay?.map((row) => row.minutesSpent) || [], [byDay]);
 
-  const data = {
+  const barColor = isParent ? "#6366f1" : color;
+  const barHoverColor = isParent ? "#4f46e5" : "#e11d48";
+
+  const data = useMemo(() => ({
     labels,
     datasets: [
       {
         label: "Minutes Spent",
         data: dataPoints,
-        backgroundColor: (context: any) => {
-          const ctx = context.chart.ctx;
-          const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-          if (isParent) {
-            gradient.addColorStop(0, "#6366f1"); // Indigo-500
-            gradient.addColorStop(1, "rgba(99, 102, 145, 0.2)");
-          } else {
-            gradient.addColorStop(0, color);
-            gradient.addColorStop(1, "rgba(244, 63, 94, 0.1)");
-          }
-          return gradient;
-        },
+        backgroundColor: barColor,
+        borderColor: barColor,
         borderRadius: 20,
         borderSkipped: false,
         barThickness: 24,
-        hoverBackgroundColor: isParent ? "#4f46e5" : "#e11d48",
+        hoverBackgroundColor: barHoverColor,
       },
     ],
-  };
+  }), [labels, dataPoints, barColor, barHoverColor]);
 
-  const options: ChartOptions<"bar"> = {
+  const options: ChartOptions<"bar"> = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
+    indexAxis: "x" as const,
     layout: {
       padding: {
-        top: 20
+        top: 20,
+        bottom: 10,
+        left: 10,
+        right: 10
       }
     },
     plugins: {
@@ -86,27 +81,29 @@ const ReadingWeeklyBarChart: React.FC<ReadingWeeklyBarChartProps> = ({
         display: false,
       },
       tooltip: {
+        enabled: true,
         backgroundColor: "#1f2937",
         padding: 12,
         titleFont: {
           size: 14,
           weight: "bold",
           family: "Inter, sans-serif"
-        },
+        } as any,
         bodyFont: {
           size: 13,
           family: "Inter, sans-serif"
-        },
+        } as any,
         cornerRadius: 12,
         displayColors: false,
         callbacks: {
-          label: (context) => ` 📖 ${context.raw} minutes reading`
+          label: (context: any) => ` 📖 ${context.raw} minutes reading`
         }
       }
     },
     scales: {
       y: {
         beginAtZero: true,
+        max: dataPoints.length > 0 ? Math.max(...dataPoints) * 1.2 : 100,
         grid: {
           display: true,
           color: "rgba(0, 0, 0, 0.04)",
@@ -114,16 +111,16 @@ const ReadingWeeklyBarChart: React.FC<ReadingWeeklyBarChartProps> = ({
         },
         border: {
           display: false,
-        },
+        } as any,
         ticks: {
           padding: 10,
           font: {
             family: "Inter, sans-serif",
             weight: "700",
             size: 11,
-          },
+          } as any,
           color: "#9ca3af",
-        },
+        }
       },
       x: {
         grid: {
@@ -131,23 +128,23 @@ const ReadingWeeklyBarChart: React.FC<ReadingWeeklyBarChartProps> = ({
         },
         border: {
           display: false,
-        },
+        } as any,
         ticks: {
           padding: 10,
           font: {
             family: "Inter, sans-serif",
             weight: "800",
             size: 12,
-          },
+          } as any,
           color: "#4b5563",
-        },
-      },
+        }
+      }
     },
     animation: {
       duration: 2000,
       easing: "easeOutQuart"
-    }
-  };
+    } as any
+  }), [dataPoints]);
 
   if (!byDay || byDay.length === 0) {
     return (
@@ -160,7 +157,11 @@ const ReadingWeeklyBarChart: React.FC<ReadingWeeklyBarChartProps> = ({
     );
   }
 
-  return <Bar options={options} data={data} />;
+  return (
+    <div style={{ position: "relative", height: "100%", width: "100%" }}>
+      <Bar key={`chart-${byDay.length}-${isParent}`} options={options} data={data} />
+    </div>
+  );
 };
 
 export default ReadingWeeklyBarChart;

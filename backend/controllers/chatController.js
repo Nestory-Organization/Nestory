@@ -8,8 +8,10 @@ const {
   getFamilyRoomName,
   serializeMessage,
   clearFamilyMessages,
+  getAllFamilyMemberUserIds,
 } = require("../services/chatService");
 const { emitFamilyChatEvent } = require("../realtime/socketServer");
+const { sendNotificationToMultiple } = require("../utils/notificationHelper");
 
 const normalizeRole = (role) => (role === "user" ? "parent" : role);
 
@@ -147,6 +149,25 @@ exports.sendMessage = async (req, res) => {
 
     emitFamilyChatEvent(family._id, "chat:new-message", {
       message: serialized,
+    });
+
+    // Send notifications to all family members (except sender)
+    const recipientIds = await getAllFamilyMemberUserIds(family);
+    const senderName = req.user.name || (req.user.role === "user" ? "Parent" : "Child");
+    const messagePreview = content.length > 50 ? content.substring(0, 50) + "..." : content;
+
+    await sendNotificationToMultiple({
+      sender: req.user._id,
+      recipientIds,
+      type: "chat",
+      title: `New message from ${senderName}`,
+      message: messagePreview,
+      data: {
+        familyId: String(family._id),
+        messageId: String(message._id),
+        senderName,
+        senderRole: req.user.role === "user" ? "parent" : "child",
+      },
     });
 
     return res.status(201).json({

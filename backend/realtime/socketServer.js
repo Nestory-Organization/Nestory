@@ -10,6 +10,13 @@ const {
 
 let ioInstance;
 
+const getIo = () => {
+    if (!ioInstance) {
+        throw new Error("Socket.io not initialized");
+    }
+    return ioInstance;
+};
+
 const extractBearerToken = (value = "") => {
   if (!value) return "";
   if (!value.startsWith("Bearer ")) return value;
@@ -46,6 +53,10 @@ const initSocketServer = (httpServer) => {
       }
 
       socket.user = user;
+      
+      // Join a private room for the user to receive targeted notifications
+      socket.join(`user:${user._id}`);
+      
       console.log(
         "[Socket Auth] Authenticated user:",
         user._id,
@@ -174,8 +185,6 @@ const initSocketServer = (httpServer) => {
 
   return ioInstance;
 };
-
-const getIo = () => ioInstance;
 
 const emitFamilyChatEvent = (familyId, eventName, payload) => {
   if (!ioInstance || !familyId) {

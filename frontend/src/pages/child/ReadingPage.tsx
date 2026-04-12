@@ -242,6 +242,18 @@ const ReadingPage: React.FC = () => {
     load();
   }, [sessionId, searchParams, navigate]);
 
+  // Auto-start the Adventure Timer when user opens a reading session
+  useEffect(() => {
+    if (session && story && !timerAutoStartedRef.current && !isLoading) {
+      timerAutoStartedRef.current = true;
+      setIsTimerRunning(true);
+      toast.success("🎯 Adventure Timer Started! Let's read!", {
+        icon: "⏱️",
+        duration: 2000,
+      });
+    }
+  }, [session, story, isLoading]);
+
   useEffect(() => {
     viewerInitGenRef.current += 1;
     timerAutoStartedRef.current = false;
@@ -484,7 +496,7 @@ const ReadingPage: React.FC = () => {
     if (!story || !user) return;
     try {
       setIsGeneratingQuiz(true);
-      const data = await GamificationService.generateQuiz(story.id, user.id, user.role === 'child' ? user.id : undefined);
+      const data = await GamificationService.generateQuiz(story.id, user.id, user.role === 'child' ? user.childProfile : undefined);
       setQuiz(data);
       setQuizAnswers(new Array(data.questions.length).fill(""));
       setQuizResult(null);
@@ -505,7 +517,7 @@ const ReadingPage: React.FC = () => {
 
     try {
       setIsSubmittingQuiz(true);
-      const result = await GamificationService.completeQuiz(quiz._id, quizAnswers, user.id, user.role === 'child' ? user.id : undefined);
+      const result = await GamificationService.completeQuiz(quiz._id, quizAnswers, user.id, user.role === 'child' ? user.childProfile : undefined);
       setQuizResult({
         correct: result.correctCount,
         total: result.totalQuestions,
@@ -650,7 +662,7 @@ const ReadingPage: React.FC = () => {
                      <div className="w-full h-full bg-white">
                        <iframe
                          title="PDF preview"
-                         src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                         src={`${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000'}${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
                          className="w-full h-full border-0"
                          loading="lazy"
                        />
