@@ -4,16 +4,22 @@ const path = require('path');
 
 const repoRoot = __dirname;
 
-// Load backend/.env before defaults (root devDependency `dotenv` — do not rely on backend/node_modules path).
-require('dotenv').config({
-  path: path.join(repoRoot, 'backend', '.env'),
-  override: true,
-});
+// Try to load backend/.env if dotenv available, otherwise skip
+try {
+  require('dotenv').config({
+    path: path.join(repoRoot, 'backend', '.env'),
+    override: false,
+  });
+} catch (e) {
+  // dotenv not required for unit tests
+}
 
-process.env.MONGO_URI =
-  process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/nestory';
-process.env.JWT_SECRET =
-  process.env.JWT_SECRET || 'playwright-test-secret';
+// CRITICAL: Set test environment variables BEFORE backend starts
+// These MUST match what tests expect
+process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+process.env.MONGO_URI = 'mongodb://127.0.0.1:27017/nestory';
+process.env.JWT_SECRET = 'playwright-test-secret-key-for-testing-only';
+process.env.TEST_DB_URI = 'mongodb://127.0.0.1:27017/nestory-test';
 
 const backendEnv = {
   ...process.env,
@@ -33,23 +39,30 @@ const frontendEnv = {
  * @see https://playwright.dev/docs/test-configuration
  */
 module.exports = defineConfig({
-  testDir: './tests/e2e',
-  fullyParallel: true,
+  testDir: './tests',
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: 'html',
   projects: [
     {
+      name: 'component-tests',
+      testMatch: ['**/unit/**/*.spec.js', '**/integration/**/*.spec.js', '**/system/**/*.spec.js'],
+      use: {
+        baseURL: 'http://127.0.0.1:5000',
+      },
+    },
+    {
       name: 'api',
-      testMatch: ['**/reading.api.spec.js', '**/reading-analytics.unit.spec.js'],
+      testMatch: ['**/e2e/**/reading.api.spec.js', '**/e2e/**/reading-analytics.unit.spec.js'],
       use: {
         baseURL: 'http://127.0.0.1:5000',
       },
     },
     {
       name: 'chromium',
-      testMatch: '**/*.ui.spec.js',
+      testMatch: '**/e2e/**/*.ui.spec.js',
       use: {
         ...devices['Desktop Chrome'],
         baseURL: 'http://127.0.0.1:5173',
