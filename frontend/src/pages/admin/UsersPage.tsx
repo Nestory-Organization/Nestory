@@ -31,6 +31,10 @@ const UsersPage: React.FC = () => {
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleUserDeleted = (userId: string) => {
+    setUsers(prevUsers => prevUsers.filter(u => (u.id || u.email) !== userId));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -80,7 +84,7 @@ const UsersPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-[2rem] border border-orange-100 shadow-sm overflow-hidden">
-        <UsersTable users={filteredUsers} isLoading={isLoading} />
+        <UsersTable users={filteredUsers} isLoading={isLoading} onUserDeleted={handleUserDeleted} />
       </div>
     </div>
   );

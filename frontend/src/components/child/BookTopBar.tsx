@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Bell, Globe } from 'lucide-react';
+import { Search, Bell, Globe, Check, Info } from 'lucide-react';
+import { useNotifications } from '../../hooks/useNotifications';
+import { formatDistanceToNow } from 'date-fns';
 
 interface BookTopBarProps {
   searchQuery: string;
@@ -16,6 +18,8 @@ const BookTopBar: React.FC<BookTopBarProps> = ({
   isLoading 
 }) => {
   const { user } = useAuth();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const { notifications, unreadCount, markAllRead, markAsRead } = useNotifications();
   
   return (
     <div className="flex items-center justify-between h-20 mb-10 sticky top-4 z-40 bg-transparent">
@@ -77,10 +81,75 @@ const BookTopBar: React.FC<BookTopBarProps> = ({
         </div>
 
         {/* Notifications */}
-        <button className="p-3 text-gray-400 hover:text-rose-500 hover:bg-white rounded-2xl shadow-sm hover:shadow-md transition-all relative">
-          <Bell size={22} strokeWidth={2.2} />
-          <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 border-2 border-[#F5F1E9] rounded-full"></span>
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="p-3 text-gray-400 hover:text-rose-500 hover:bg-white rounded-2xl shadow-sm hover:shadow-md transition-all relative"
+          >
+            <Bell size={22} strokeWidth={2.2} />
+            {unreadCount > 0 && (
+              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 border-2 border-[#F5F1E9] rounded-full"></span>
+            )}
+          </button>
+
+          {showNotifications && (
+            <div className="absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-rose-100 divide-y divide-rose-50/50 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="p-4 flex items-center justify-between bg-rose-50/30">
+                <h3 className="text-sm font-black text-rose-900 uppercase tracking-widest">News & Alerts</h3>
+                {unreadCount > 0 && (
+                  <button 
+                    onClick={markAllRead}
+                    className="text-[10px] font-bold text-rose-500 hover:text-rose-600 bg-white px-2 py-1 rounded-xl transition-colors shadow-sm"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+              <div className="max-h-[400px] overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center bg-white">
+                    <div className="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Bell size={24} className="text-rose-200" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-400 italic">"No magic messages yet..."</p>
+                  </div>
+                ) : (
+                  notifications.map((n) => (
+                    <div 
+                      key={n._id} 
+                      onClick={() => markAsRead(n._id)}
+                      className={`p-4 hover:bg-rose-50/50 transition-colors cursor-pointer relative group ${!n.isRead ? 'bg-rose-50/20' : ''}`}
+                    >
+                      <div className="flex gap-4">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
+                          n.type === 'search_request' ? 'bg-indigo-50 text-indigo-500' : 
+                          n.type === 'badge' ? 'bg-amber-50 text-amber-500' : 'bg-rose-50 text-rose-500'
+                        }`}>
+                          {n.type === 'search_request' ? <Info size={18} /> : <Check size={18} />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[13px] font-black text-slate-800 mb-1 leading-tight group-hover:text-rose-600 transition-colors">{n.title}</p>
+                          <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed font-medium">{n.message}</p>
+                          <span className="text-[9px] font-bold text-rose-300 mt-2 block uppercase tracking-widest">
+                            {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                          </span>
+                        </div>
+                      </div>
+                      {!n.isRead && (
+                        <div className="absolute top-4 right-4 w-2 h-2 bg-rose-500 rounded-full border-2 border-white shadow-sm"></div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="p-3 bg-white text-center">
+                <button className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] hover:text-rose-400 transition-colors">
+                  View History
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

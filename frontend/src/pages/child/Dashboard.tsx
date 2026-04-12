@@ -13,6 +13,7 @@ import { MessageCircle, Sparkles, TrendingUp, Trophy, BookOpen, Clock, ChevronRi
 import ChildSidebar from "../../components/common/ChildSidebar";
 import BookTopBar from "../../components/child/BookTopBar";
 import PlayfulStoryCard from "../../components/child/PlayfulStoryCard";
+import GoogleBookSearchCard from "../../components/child/GoogleBookSearchCard";
 
 const FALLBACK_COVER = "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80";
 
@@ -118,12 +119,32 @@ const ChildDashboard = () => {
         author: b.author || "Unknown",
         coverImage: normalizeCoverImage(b.coverImage),
         source: "google",
-        previewLink: b.previewLink
+        previewLink: b.previewLink,
+        googleBookId: b.googleBookId,
+        pageCount: b.pageCount || 0,
       })));
     } catch (e) {
       toast.error("Search failed");
     } finally {
       setIsSearchingExternal(false);
+    }
+  };
+
+  const handleRequestBook = async (book: any) => {
+    try {
+      await SearchRequestService.createRequest({
+        query: book.title || "",
+        suggestedBookName: book.title || "",
+        googleBookId: book.googleBookId || "",
+        author: book.author || "",
+        coverImage: book.coverImage || "",
+        previewLink: book.previewLink || "",
+        pageCount: book.pageCount || 0,
+      });
+      toast.success("Request sent! Admins will review this book.");
+    } catch (e: any) {
+      const message = e?.response?.data?.message || "Failed to send request";
+      toast.error(message);
     }
   };
 
@@ -147,12 +168,33 @@ const ChildDashboard = () => {
               <section>
                 <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase mb-6">Google results</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-6">
-                  {externalResults.map(s => <PlayfulStoryCard key={s.id} story={s} onSelect={() => s.previewLink ? window.open(s.previewLink, "_blank") : null} />)}
+                  {externalResults.map(s => (
+                    <GoogleBookSearchCard 
+                      key={s.id} 
+                      book={s} 
+                      onRequest={handleRequestBook}
+                      isLoading={isSearchingExternal}
+                    />
+                  ))}
                 </div>
               </section>
             )}
           </div>
         )}
+
+        <section className="mb-12">
+          <div className="flex items-end gap-3 mb-6 px-2">
+            <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase">Latest</h2>
+            <button className="text-[10px] font-bold text-gray-400 hover:text-rose-500 underline uppercase tracking-widest decoration-2 underline-offset-4">(view all)</button>
+          </div>
+          <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide px-2">
+            {stories.slice(0, 10).map(s => (
+              <div key={s.id||s._id} className="min-w-[160px] w-[180px] shrink-0">
+                <PlayfulStoryCard story={s} onSelect={() => beginReadByStoryId(s.id||s._id, "s-"+s.id)} />
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* Assigned Stories Section */}
         {assignedStories.length > 0 && (
@@ -273,20 +315,6 @@ const ChildDashboard = () => {
             )}
           </section>
         )}
-
-        <section className="mb-12">
-          <div className="flex items-end gap-3 mb-6 px-2">
-            <h2 className="text-xl font-black text-gray-800 tracking-tight uppercase">Latest</h2>
-            <button className="text-[10px] font-bold text-gray-400 hover:text-rose-500 underline uppercase tracking-widest decoration-2 underline-offset-4">(view all)</button>
-          </div>
-          <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide px-2">
-            {stories.slice(0, 10).map(s => (
-              <div key={s.id||s._id} className="min-w-[160px] w-[180px] shrink-0">
-                <PlayfulStoryCard story={s} onSelect={() => beginReadByStoryId(s.id||s._id, "s-"+s.id)} />
-              </div>
-            ))}
-          </div>
-        </section>
 
         <section className="mb-12">
           <div className="flex items-end gap-3 mb-8 px-2">

@@ -39,6 +39,7 @@ const ParentSidebar: React.FC<SidebarProps> = ({ onAddChild, onNewAssignment, un
     { to: '/gamification', icon: <Gamepad2 size={20} />, label: 'Gamification' },
     { to: '/chat', icon: <MessageCircle size={20} />, label: 'Family Chat', badge: unreadMessages },
     { to: '/family-settings', icon: <Users size={20} />, label: 'Family Settings' },
+    { to: '/account-settings', icon: <Settings size={20} />, label: 'Account Settings' },
   ];
 
   const quickActions = [
@@ -178,6 +179,13 @@ const ParentSidebar: React.FC<SidebarProps> = ({ onAddChild, onNewAssignment, un
               <p className="text-[10px] text-gray-500 font-medium truncate uppercase tracking-tight">Family Guardian</p>
             </div>
           </div>
+          <button
+            onClick={() => navigate('/account-settings')}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 text-gray-500 hover:text-blue-600 transition-all duration-200 w-full font-semibold text-sm group mb-2"
+          >
+            <Settings size={18} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
+            Account Settings
+          </button>
           <button
             onClick={logout}
             className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 text-gray-500 hover:text-red-600 transition-all duration-200 w-full font-semibold text-sm group"

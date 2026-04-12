@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { LogOut, Menu, X, Bell, User as UserIcon, Sparkles } from 'lucide-react';
+import { LogOut, Menu, X, Bell, User as UserIcon, Sparkles, Check, Info } from 'lucide-react';
+import { useNotifications } from '../../hooks/useNotifications';
+import { formatDistanceToNow } from 'date-fns';
 
 interface NavbarProps {
   title?: string;
@@ -10,6 +12,8 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ title = 'Nestory', onMenuClick }) => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const { notifications, unreadCount, markAllRead, markAsRead } = useNotifications();
 
   const handleLogout = () => {
     logout();
@@ -41,12 +45,72 @@ const Navbar: React.FC<NavbarProps> = ({ title = 'Nestory', onMenuClick }) => {
         </div>
 
         {/* Right: Premium User Actions */}
-        <div className="flex items-center gap-2 sm:gap-4 bg-white/50 p-1.5 rounded-[1.25rem] border border-white/80 shadow-sm backdrop-blur-sm">
-          {/* Notifications Placeholder */}
-          <button className="hidden sm:flex p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all group relative">
-            <Bell size={20} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full border-2 border-white ring-1 ring-orange-500/20"></span>
-          </button>
+        <div className="flex items-center gap-2 sm:gap-4 bg-white/50 p-1.5 rounded-[1.25rem] border border-white/80 shadow-sm backdrop-blur-sm relative">
+          {/* Notifications */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="hidden sm:flex p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all group relative"
+            >
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-orange-500 rounded-full border-2 border-white ring-1 ring-orange-500/20"></span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 divide-y divide-slate-50 z-[200] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="p-4 flex items-center justify-between bg-slate-50/50">
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <button 
+                      onClick={markAllRead}
+                      className="text-[10px] font-bold text-amber-600 hover:text-amber-700 bg-amber-50 px-2 py-1 rounded-lg transition-colors"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-[400px] overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Bell size={20} className="text-slate-300" />
+                      </div>
+                      <p className="text-xs font-medium text-slate-500">No notifications yet</p>
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div 
+                        key={n._id} 
+                        onClick={() => markAsRead(n._id)}
+                        className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer relative group ${!n.isRead ? 'bg-amber-50/30' : ''}`}
+                      >
+                        <div className="flex gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            n.type === 'search_request' ? 'bg-blue-100 text-blue-600' : 
+                            n.type === 'badge' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {n.type === 'search_request' ? <Info size={16} /> : <Check size={16} />}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 mb-0.5">{n.title}</p>
+                            <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">{n.message}</p>
+                            <span className="text-[9px] font-medium text-slate-400 mt-2 block uppercase tracking-tight">
+                              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                            </span>
+                          </div>
+                        </div>
+                        {!n.isRead && (
+                          <div className="absolute top-4 right-4 w-1.5 h-1.5 bg-orange-500 rounded-full"></div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="h-8 w-[1px] bg-slate-100 hidden sm:block mx-1"></div>
 

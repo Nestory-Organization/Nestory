@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import AdminSearchRequestPopup from "../../components/storyLibrary/AdminSearchRequestPopup";
-import { Users, BookOpen, Activity, ArrowUpRight, TrendingUp, UserCheck, ShieldAlert } from "lucide-react";
+import { Users, BookOpen, Activity, ArrowUpRight, TrendingUp, UserCheck, ShieldAlert, Settings } from "lucide-react";
 import toast from "react-hot-toast";
 import apiClient from "../../services/apiClient";
 import StoryService from "../../services/storyService";
@@ -98,9 +98,6 @@ const AdminDashboard: React.FC = () => {
               Add New Story
               <ArrowUpRight size={18} />
             </button>
-            <button className="px-6 py-3 bg-nestory-700/30 backdrop-blur-sm border border-white/30 text-white font-bold rounded-xl hover:bg-white/10 transition-colors">
-              View Audit Logs
-            </button>
           </div>
         </div>
         
@@ -183,13 +180,26 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white p-6 rounded-3xl border border-orange-100 shadow-sm">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Tools</h3>
             <div className="grid grid-cols-2 gap-4">
-              <button className="flex flex-col items-center justify-center p-4 bg-orange-50 rounded-2xl border border-orange-100 text-nestory-700 hover:bg-orange-100 transition-colors gap-2">
+              <button 
+                onClick={() => navigate("/admin/story-management")}
+                className="flex flex-col items-center justify-center p-4 bg-orange-50 rounded-2xl border border-orange-100 text-nestory-700 hover:bg-orange-100 transition-colors gap-2"
+              >
                 <BookOpen size={20} />
-                <span className="text-xs font-bold">Library</span>
+                <span className="text-xs font-bold">Collection</span>
               </button>
-              <button className="flex flex-col items-center justify-center p-4 bg-nestory-50 rounded-2xl border border-nestory-100 text-nestory-700 hover:bg-nestory-100 transition-colors gap-2">
+              <button 
+                onClick={() => navigate("/admin/users")}
+                className="flex flex-col items-center justify-center p-4 bg-nestory-50 rounded-2xl border border-nestory-100 text-nestory-700 hover:bg-nestory-100 transition-colors gap-2"
+              >
                 <Users size={20} />
                 <span className="text-xs font-bold">Users</span>
+              </button>
+              <button 
+                onClick={() => navigate("/admin/settings")}
+                className="flex flex-col items-center justify-center p-4 bg-blue-50 rounded-2xl border border-blue-100 text-blue-700 hover:bg-blue-100 transition-colors gap-2"
+              >
+                <Settings size={20} />
+                <span className="text-xs font-bold">Settings</span>
               </button>
             </div>
           </div>

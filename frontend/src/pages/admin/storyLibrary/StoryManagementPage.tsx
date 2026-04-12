@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { X, BookOpen, ExternalLink } from 'lucide-react';
 import StoryLibraryTable from '../../../components/storyLibrary/StoryLibraryTable';
 import StoryFormModal, {
   StoryFormValues,
@@ -8,6 +9,82 @@ import StoryFormModal, {
 import StoryService from '../../../services/storyService';
 import { Story } from '../../../types';
 import { Plus, RotateCcw, Search, BookDown } from 'lucide-react';
+
+const PDFPreviewModal: React.FC<{ url: string; title: string; onClose: () => void }> = ({ url, title, onClose }) => {
+  const isGoogle = url?.includes('google.com/books');
+  const embedUrl = isGoogle ? url : `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}${url}`;
+  const hasValidUrl = url && url.trim().length > 0;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-gray-900/80 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white w-full max-w-6xl h-full max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col relative border-4 border-nestory-100 animate-in zoom-in-95 duration-300">
+        
+        {/* Header */}
+        <div className="px-8 py-5 border-b border-orange-100 flex items-center justify-between bg-white relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-nestory-100 rounded-2xl flex items-center justify-center text-nestory-600 shadow-inner">
+              <BookOpen size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-gray-900 leading-tight">{title}</h3>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-nestory-400"></span>
+                Admin Preview Mode
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {hasValidUrl && (
+              <a 
+                href={embedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden md:flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-600 font-bold text-sm rounded-xl hover:bg-orange-100 transition-all border border-transparent hover:border-orange-200"
+              >
+                <ExternalLink size={16} />
+                Open External
+              </a>
+            )}
+            <button 
+              onClick={onClose}
+              className="p-3 bg-gray-50 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all border border-transparent hover:border-rose-100"
+            >
+              <X size={24} />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 bg-gray-100 relative">
+          {hasValidUrl ? (
+            <iframe 
+              src={embedUrl} 
+              className="w-full h-full border-none bg-white"
+              title={title}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="text-center">
+                <BookOpen size={80} className="text-gray-300 mx-auto mb-6" />
+                <h3 className="text-2xl font-black text-gray-400 uppercase tracking-widest mb-4">No Preview Available</h3>
+                <p className="text-gray-500 font-bold max-w-sm mx-auto uppercase">This story does not have a PDF or preview link. Upload a PDF file to enable preview.</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer info for admin */}
+        {!isGoogle && hasValidUrl && (
+           <div className="px-6 py-3 bg-orange-50/50 border-t border-orange-100 text-center">
+             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+               Displaying internal PDF asset from secure backend storage
+             </p>
+           </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const defaultForm: StoryFormValues = {
   title: '',
@@ -32,6 +109,8 @@ const StoryManagementPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<StoryFormValues>(defaultForm);
+
+  const [previewStory, setPreviewStory] = useState<Story | null>(null);
 
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
@@ -226,6 +305,15 @@ const StoryManagementPage: React.FC = () => {
     }
   };
 
+  const handlePreview = (story: Story) => {
+    const url = story.source === 'google' ? story.previewLink : (story as any).pdfUrl;
+    if (!url) {
+      toast.error('No preview or PDF available for this story');
+      return;
+    }
+    setPreviewStory(story);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -306,6 +394,7 @@ const StoryManagementPage: React.FC = () => {
           onEdit={openEdit}
           onDelete={handleDelete}
           onSync={syncGoogleContent}
+          onPreview={handlePreview}
           syncingStoryId={syncingStoryId}
         />
         
@@ -343,6 +432,14 @@ const StoryManagementPage: React.FC = () => {
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
           onChange={handleFormChange}
+        />
+      )}
+
+      {previewStory && (
+        <PDFPreviewModal 
+          url={previewStory.source === 'google' ? (previewStory.previewLink || `https://books.google.com/books?id=${previewStory.googleBookId}&printsec=frontcover`) : (previewStory as any).pdfUrl} 
+          title={previewStory.title} 
+          onClose={() => setPreviewStory(null)} 
         />
       )}
     </div>

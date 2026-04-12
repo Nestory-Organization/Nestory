@@ -92,18 +92,18 @@ const ChildProgressPage = () => {
                        </div>
                     </div>
 
-                    {weekActivity.byDay && weekActivity.byDay.length > 0 && (
-                      <div className="h-[350px] w-full bg-white/70 rounded-[2.5rem] p-8 border border-white shadow-inner">
-                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em]">Reading Pulse</span>
-                            <div className="flex gap-2">
-                               <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
-                               <div className="w-2 h-2 rounded-full bg-rose-200"></div>
-                            </div>
-                         </div>
-                         <ReadingWeeklyBarChart byDay={weekActivity.byDay} title="Reading Status" />
-                      </div>
-                    )}
+                    <div className="flex flex-col rounded-[2.5rem] p-8 border border-white shadow-inner bg-white/70" style={{ height: "400px" }}>
+                       <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                          <span className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em]">Reading Pulse</span>
+                          <div className="flex gap-2">
+                             <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+                             <div className="w-2 h-2 rounded-full bg-rose-200"></div>
+                          </div>
+                       </div>
+                       <div className="flex-1 min-h-0 w-full">
+                         <ReadingWeeklyBarChart byDay={weekActivity.byDay || []} title="Reading Status" />
+                       </div>
+                    </div>
                  </section>
               )}
 

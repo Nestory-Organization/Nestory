@@ -1,13 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User } from '../../types';
-import { Mail, Shield, User as UserIcon, Calendar, MoreHorizontal, CheckCircle2, XCircle } from 'lucide-react';
+import { Mail, Shield, User as UserIcon, Calendar, Trash2, Edit2, Eye, CheckCircle2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import apiClient from '../../services/apiClient';
 
 interface UsersTableProps {
   users: User[];
   isLoading: boolean;
+  onUserDeleted?: (userId: string) => void;
 }
 
-const UsersTable: React.FC<UsersTableProps> = ({ users, isLoading }) => {
+const UsersTable: React.FC<UsersTableProps> = ({ users, isLoading, onUserDeleted }) => {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (userId: string, userName: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${userName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingId(userId);
+      await apiClient.getInstance().delete(`/auth/users/${userId}`);
+      toast.success(`User "${userName}" deleted successfully`);
+      if (onUserDeleted) {
+        onUserDeleted(userId);
+      }
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to delete user');
+    } finally {
+      setDeletingId(null);
+    }
+  };
   if (isLoading) {
     return (
       <div className="p-8 space-y-4 animate-pulse">
@@ -88,9 +111,28 @@ const UsersTable: React.FC<UsersTableProps> = ({ users, isLoading }) => {
                 </div>
               </td>
               <td className="px-6 py-5 text-center">
-                <button className="p-2 text-gray-400 hover:text-nestory-600 hover:bg-white border-transparent hover:border-orange-100 border rounded-xl transition-all">
-                  <MoreHorizontal size={18} />
-                </button>
+                <div className="flex items-center justify-center gap-2">
+                  <button 
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100 rounded-xl transition-all"
+                    title="View details"
+                  >
+                    <Eye size={16} />
+                  </button>
+                  <button 
+                    className="p-2 text-gray-400 hover:text-nestory-600 hover:bg-orange-50 border border-transparent hover:border-orange-100 rounded-xl transition-all"
+                    title="Edit user"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(user.id || user.email || '', user.name || 'User')}
+                    disabled={deletingId === (user.id || user.email)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Delete user"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

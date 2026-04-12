@@ -149,24 +149,24 @@ const ParentProgressPage: React.FC = () => {
                 </div>
               </div>
 
-              {weekActivity.byDay && weekActivity.byDay.length > 0 && (
-                <div className="mt-10 h-[400px] w-full bg-gray-50/30 rounded-[2.5rem] p-10 border border-gray-100 shadow-inner group">
-                  <div className="flex items-center justify-between mb-6">
-                     <span className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em]">Minutes per day</span>
-                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                           <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
-                           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reading Time</span>
-                        </div>
-                     </div>
-                  </div>
+              <div className="mt-10 flex flex-col bg-gray-50/30 rounded-[2.5rem] p-10 border border-gray-100 shadow-inner group" style={{ height: "450px" }}>
+                <div className="flex items-center justify-between mb-6 flex-shrink-0">
+                   <span className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em]">Minutes per day</span>
+                   <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                         <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
+                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reading Time</span>
+                      </div>
+                   </div>
+                </div>
+                <div className="flex-1 min-h-0 w-full">
                   <ReadingWeeklyBarChart
-                    byDay={weekActivity.byDay}
+                    byDay={weekActivity?.byDay || []}
                     isParent={true}
                     title="Family Reading Activity"
                   />
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}
