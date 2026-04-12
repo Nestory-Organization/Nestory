@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   BookOpen,
@@ -72,6 +72,7 @@ function initialGoogleBookEmbedMode(): GoogleBookEmbedMode {
 const ReadingPage: React.FC = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId: string }>();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
   const [session, setSession] = useState<SessionListItem | null>(null);
@@ -180,8 +181,35 @@ const ReadingPage: React.FC = () => {
         navigate("/child");
         return;
       }
+
       try {
         setIsLoading(true);
+
+        // Handle special case where sessionId is "new" - need to create/resume session
+        if (sessionId === "new") {
+          const storyId = searchParams.get("storyId");
+          // Check for null, empty, or the string 'null'/'undefined'
+          if (!storyId || storyId === 'null' || storyId === 'undefined') {
+            toast.error("Story ID is required to start a session");
+            navigate("/child");
+            return;
+          }
+
+          // Create or resume a session for this story
+          try {
+            const result = await ReadingService.startMySession({ storyId });
+            // Navigate to the actual session page
+            navigate(`/child/read/${result._id}`, { replace: true });
+            return;
+          } catch (error: any) {
+            toast.error(
+              error?.response?.data?.message || "Failed to start reading session"
+            );
+            navigate("/child");
+            return;
+          }
+        }
+
         const sessions = await ReadingService.getMySessions();
         const found = sessions.find((s) => s._id === sessionId);
         if (!found) {
@@ -212,7 +240,7 @@ const ReadingPage: React.FC = () => {
       }
     };
     load();
-  }, [sessionId, navigate]);
+  }, [sessionId, searchParams, navigate]);
 
   useEffect(() => {
     viewerInitGenRef.current += 1;

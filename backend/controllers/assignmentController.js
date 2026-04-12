@@ -9,7 +9,9 @@ const {
   normalizeAssignmentStats,
   getId,
 } = require("../utils/contractTransformers");
-const { awardPointsForAssignmentCompletion } = require('../helpers/gamificationHelper');
+const {
+  awardPointsForAssignmentCompletion,
+} = require("../helpers/gamificationHelper");
 
 const ensureParentOwnsFamily = async (familyId, userId) => {
   const family = await Family.findById(familyId).select("parent");
@@ -367,18 +369,41 @@ exports.getMyAssignments = async (req, res) => {
       });
     }
 
+    console.log(
+      "[assignmentController] getMyAssignments - childId:",
+      req.user.childProfile,
+    );
+
     const assignments = await Assignment.find({ child: child._id })
-      .populate("story", "title author ageGroup coverImage readingLevel totalPages")
+      .populate(
+        "story",
+        "title author ageGroup coverImage readingLevel totalPages",
+      )
       .sort({ createdAt: -1 })
       .lean();
 
+    console.log(
+      "[assignmentController] getMyAssignments - found assignments:",
+      assignments.length,
+    );
+
     // 2. Get all reading sessions to find stories started but not formally assigned
     const sessions = await ReadingSession.find({ childId: child._id })
-      .populate("bookId", "title author ageGroup coverImage readingLevel totalPages")
+      .populate(
+        "bookId",
+        "title author ageGroup coverImage readingLevel totalPages",
+      )
       .lean();
 
+    console.log(
+      "[assignmentController] getMyAssignments - found sessions:",
+      sessions.length,
+    );
+
     // 3. Create a map of story IDs from formal assignments
-    const assignedStoryIds = new Set(assignments.map(a => a.story?._id?.toString()));
+    const assignedStoryIds = new Set(
+      assignments.map((a) => a.story?._id?.toString()),
+    );
 
     // 4. Identify stories from sessions that are NOT in assignments
     const unassignedItems = [];
@@ -387,8 +412,11 @@ exports.getMyAssignments = async (req, res) => {
     for (const session of sessions) {
       if (!session.bookId) continue;
       const storyId = session.bookId._id.toString();
-      
-      if (!assignedStoryIds.has(storyId) && !processedUnassignedStoryIds.has(storyId)) {
+
+      if (
+        !assignedStoryIds.has(storyId) &&
+        !processedUnassignedStoryIds.has(storyId)
+      ) {
         unassignedItems.push({
           _id: `virtual-${storyId}`,
           child: child._id,
@@ -396,7 +424,7 @@ exports.getMyAssignments = async (req, res) => {
           status: session.completed ? "completed" : "in_progress",
           isVirtual: true,
           createdAt: session.createdAt,
-          dueDate: null
+          dueDate: null,
         });
         processedUnassignedStoryIds.add(storyId);
       }
@@ -405,6 +433,11 @@ exports.getMyAssignments = async (req, res) => {
     // Combine formal and virtual assignments
     const allItems = [...assignments, ...unassignedItems];
 
+    console.log(
+      "[assignmentController] getMyAssignments - returning total items:",
+      allItems.length,
+    );
+
     res.status(200).json({
       success: true,
       message: "Child assignments retrieved successfully",
@@ -412,7 +445,7 @@ exports.getMyAssignments = async (req, res) => {
       data: allItems.map((assignment) => withDueMetadata(assignment)),
     });
   } catch (error) {
-    console.error(error);
+    console.error("[assignmentController] getMyAssignments error:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -775,12 +808,15 @@ exports.updateAssignmentStatus = async (req, res) => {
         const gamificationResult = await awardPointsForAssignmentCompletion(
           assignment.assignedBy,
           assignment._id,
-          assignment.child
+          assignment.child,
         );
 
-        console.log('Gamification awarded for assignment completion:', gamificationResult);
+        console.log(
+          "Gamification awarded for assignment completion:",
+          gamificationResult,
+        );
       } catch (gamificationError) {
-        console.error('Gamification error:', gamificationError);
+        console.error("Gamification error:", gamificationError);
         // Don't fail the assignment update if gamification fails
       }
     } else {
@@ -844,12 +880,20 @@ exports.bulkUpdateAssignmentStatus = async (req, res) => {
             const gamificationResult = await awardPointsForAssignmentCompletion(
               assignment.assignedBy,
               assignment._id,
-              assignment.child
+              assignment.child,
             );
 
-            console.log('Gamification awarded for assignment completion:', gamificationResult);
+            console.log(
+              "Gamification awarded for assignment completion:",
+              gamificationResult,
+            );
           } catch (gamificationError) {
-            console.error('Gamification error for assignment', assignment._id, ':', gamificationError);
+            console.error(
+              "Gamification error for assignment",
+              assignment._id,
+              ":",
+              gamificationError,
+            );
             // Don't fail the assignment update if gamification fails
           }
         }

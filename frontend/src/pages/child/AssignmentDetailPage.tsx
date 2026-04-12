@@ -140,7 +140,7 @@ const ChildAssignmentDetailPage = () => {
                  </div>
 
                  <div className="flex flex-col gap-4">
-                    {!isFinished && (
+                    {!isFinished && storyOid && (
                        <button 
                           onClick={() => navigate(`/child/read/new?storyId=${storyOid}`)}
                           className="w-full py-6 bg-rose-500 text-white text-lg font-black uppercase tracking-[0.2em] rounded-[2rem] shadow-xl shadow-rose-200 hover:bg-rose-600 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-4 group"

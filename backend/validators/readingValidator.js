@@ -1,10 +1,7 @@
 const { body, param } = require("express-validator");
 
 exports.startSessionValidation = [
-  body("childId")
-    .optional()
-    .isMongoId()
-    .withMessage("Invalid childId format"),
+  body("childId").optional().isMongoId().withMessage("Invalid childId format"),
 
   body("storyId").optional().isMongoId().withMessage("Invalid storyId format"),
 
@@ -49,13 +46,42 @@ exports.updateSessionValidation = [
 ];
 
 exports.startMySessionValidation = [
-  body("storyId").optional().isMongoId().withMessage("Invalid storyId format"),
+  body("storyId")
+    .optional()
+    .trim()
+    .custom((value) => {
+      if (value === "undefined" || value === "null") {
+        throw new Error("storyId cannot be 'undefined' or 'null'");
+      }
+      return true;
+    }),
 
-  body("bookId").optional().isMongoId().withMessage("Invalid bookId format"),
+  body("bookId")
+    .optional()
+    .trim()
+    .custom((value) => {
+      if (value === "undefined" || value === "null") {
+        throw new Error("bookId cannot be 'undefined' or 'null'");
+      }
+      return true;
+    }),
 
   body().custom((value) => {
-    if (!value.storyId && !value.bookId) {
-      throw new Error("Either storyId or bookId is required");
+    console.log("[readingValidator] startMySessionValidation - body:", value);
+    const hasStoryId =
+      value &&
+      value.storyId &&
+      value.storyId !== "undefined" &&
+      value.storyId !== "null";
+    const hasBookId =
+      value &&
+      value.bookId &&
+      value.bookId !== "undefined" &&
+      value.bookId !== "null";
+    if (!hasStoryId && !hasBookId) {
+      throw new Error(
+        "Either storyId or bookId is required (cannot be 'undefined' or 'null')",
+      );
     }
     return true;
   }),

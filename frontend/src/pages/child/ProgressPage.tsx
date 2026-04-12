@@ -140,7 +140,7 @@ const ChildProgressPage = () => {
                             {row.status !== "completed" && (
                               <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
                                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Target for today: <span className="text-gray-800">{row.deadlinePace?.pagesDesiredDaily || "..."} pages</span></span>
-                                  <button onClick={() => navigate(`/child/read/new?storyId=${row.storyId}`)} className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-widest underline underline-offset-4">Continue Reading</button>
+                                  {row.storyId && <button onClick={() => navigate(`/child/read/new?storyId=${row.storyId}`)} className="text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-widest underline underline-offset-4">Continue Reading</button>}
                                </div>
                             )}
                         </div>

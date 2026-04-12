@@ -28,14 +28,18 @@ const computeAnalyticsForAssignment = (
   const status = assignmentPlain.status;
   const dueDateRaw = assignmentPlain.dueDate;
   const completedAtRaw = assignmentPlain.completedAt;
-  const createdAt = assignmentPlain.createdAt ? new Date(assignmentPlain.createdAt) : now;
+  const createdAt = assignmentPlain.createdAt
+    ? new Date(assignmentPlain.createdAt)
+    : now;
 
   const pagesRead = session ? Number(session.pagesRead) || 0 : 0;
   const timeSpentMinutes = session ? Number(session.timeSpent) || 0 : 0;
   const sessionTotalPages = session ? Number(session.totalPages) || 0 : 0;
   const totalPages = Math.max(sessionTotalPages || totalPagesFromStory || 1, 1);
   const pagesRemaining = Math.max(0, totalPages - pagesRead);
-  const sessionStartedAt = session?.startedAt ? new Date(session.startedAt) : null;
+  const sessionStartedAt = session?.startedAt
+    ? new Date(session.startedAt)
+    : null;
 
   const readingStart = sessionStartedAt || createdAt;
   const elapsedMs = Math.max(0, now.getTime() - readingStart.getTime());
@@ -47,7 +51,9 @@ const computeAnalyticsForAssignment = (
   let projectedCompletionDate = null;
   if (status !== "completed" && pagesRemaining > 0 && pagesPerDayActual > 0) {
     const daysLeft = pagesRemaining / pagesPerDayActual;
-    projectedCompletionDate = new Date(now.getTime() + daysLeft * MS_PER_DAY).toISOString();
+    projectedCompletionDate = new Date(
+      now.getTime() + daysLeft * MS_PER_DAY,
+    ).toISOString();
   }
 
   const hasDeadline = !!dueDateRaw;
@@ -73,7 +79,9 @@ const computeAnalyticsForAssignment = (
     } else {
       pagesPerDayNeeded = round1(pagesRemaining / daysLeftForPace);
       if (avgMinutesPerPage != null) {
-        minutesPerDayNeeded = round0((pagesRemaining * avgMinutesPerPage) / daysLeftForPace);
+        minutesPerDayNeeded = round0(
+          (pagesRemaining * avgMinutesPerPage) / daysLeftForPace,
+        );
       }
     }
   }
@@ -86,14 +94,17 @@ const computeAnalyticsForAssignment = (
     dueDate
   ) {
     onTrack =
-      new Date(projectedCompletionDate).getTime() <= endOfDueDay(dueDate).getTime();
+      new Date(projectedCompletionDate).getTime() <=
+      endOfDueDay(dueDate).getTime();
   }
 
   let deadlineVsCompletion = null;
   if (status === "completed" && completedAtRaw && dueDateRaw) {
     const completedDay = startOfDay(completedAtRaw);
     const dueD = startOfDay(dueDateRaw);
-    const diffDays = Math.round((dueD.getTime() - completedDay.getTime()) / MS_PER_DAY);
+    const diffDays = Math.round(
+      (dueD.getTime() - completedDay.getTime()) / MS_PER_DAY,
+    );
     if (diffDays > 0) {
       deadlineVsCompletion = {
         outcome: "early",
@@ -136,9 +147,13 @@ const computeAnalyticsForAssignment = (
       totalPages,
       pagesRead,
       pagesRemaining,
-      progressPercent: totalPages ? round1(Math.min(100, (pagesRead / totalPages) * 100)) : 0,
+      progressPercent: totalPages
+        ? round1(Math.min(100, (pagesRead / totalPages) * 100))
+        : 0,
       timeSpentMinutes,
-      sessionStartedAt: sessionStartedAt ? sessionStartedAt.toISOString() : null,
+      sessionStartedAt: sessionStartedAt
+        ? sessionStartedAt.toISOString()
+        : null,
     },
     pace: {
       pagesPerDayActual: pagesRead > 0 ? round1(pagesPerDayActual) : 0,
@@ -193,6 +208,7 @@ const enrichAssignmentsWithSessions = async (assignments) => {
     return {
       childId: childIdStr,
       childName,
+      storyId: storyId?.toString?.() || String(storyId),
       ...computeAnalyticsForAssignment(
         plain,
         storyTitle,

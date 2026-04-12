@@ -3,7 +3,10 @@ const ReadingSession = require("../models/ReadingSession");
 const ReadingActivity = require("../models/ReadingActivity");
 const Story = require("../models/storyLibrary/Story");
 const Child = require("../models/Child");
-const { awardPointsForStoryRead, updateReadingProgressMidSession } = require('../helpers/gamificationHelper');
+const {
+  awardPointsForStoryRead,
+  updateReadingProgressMidSession,
+} = require("../helpers/gamificationHelper");
 const {
   createReadingStartedMessage,
   serializeMessage,
@@ -53,6 +56,16 @@ const postReadingStartedChatNotification = async ({
   sessionId,
 }) => {
   try {
+    console.log(
+      "[readingController] postReadingStartedChatNotification called with:",
+      {
+        childId,
+        storyId,
+        startedByUserId,
+        sessionId,
+      },
+    );
+
     const message = await createReadingStartedMessage({
       childId,
       storyId,
@@ -60,14 +73,35 @@ const postReadingStartedChatNotification = async ({
       sessionId,
     });
 
-    if (!message) return;
+    console.log(
+      "[readingController] createReadingStartedMessage result:",
+      message,
+    );
+
+    if (!message) {
+      console.log("[readingController] Message is null, returning early");
+      return;
+    }
 
     const serialized = serializeMessage(message.toObject());
+    console.log("[readingController] Serialized message:", serialized);
+
     emitFamilyChatEvent(serialized.family, "chat:new-message", {
       message: serialized,
     });
+    console.log("[readingController] Chat event emitted successfully");
   } catch (error) {
-    console.error("Failed to post reading-started chat notification", error);
+    console.error(
+      "[readingController] Failed to post reading-started chat notification:",
+      {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        childId,
+        storyId,
+        startedByUserId,
+        sessionId,
+      },
+    );
   }
 };
 
@@ -96,10 +130,15 @@ exports.startMySession = async (req, res) => {
     const { storyId, bookId, totalPages } = req.body;
     const effectiveStoryId = storyId || bookId;
 
-    if (!effectiveStoryId) {
+    // Validate storyId/bookId are not the string literals 'undefined' or 'null'
+    if (
+      !effectiveStoryId ||
+      effectiveStoryId === "undefined" ||
+      effectiveStoryId === "null"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "storyId or bookId is required",
+        message: "Valid storyId or bookId is required",
       });
     }
 
@@ -127,16 +166,34 @@ exports.startMySession = async (req, res) => {
       });
     }
 
+    // Ensure childId is an ObjectId
+    let childIdValue;
+    try {
+      childIdValue = mongoose.Types.ObjectId.isValid(childId)
+        ? new mongoose.Types.ObjectId(childId)
+        : childId;
+    } catch (e) {
+      childIdValue = childId;
+    }
+
+    // Convert to ObjectId if it's a valid format, otherwise use as string
+    let bookIdValue;
+    try {
+      bookIdValue = new mongoose.Types.ObjectId(effectiveStoryId);
+    } catch (e) {
+      bookIdValue = effectiveStoryId;
+    }
+
     let existing = await ReadingSession.findOne({
-      childId,
-      bookId: effectiveStoryId,
+      childId: childIdValue,
+      bookId: bookIdValue,
       completed: false,
     }).sort({ lastUpdatedAt: -1 });
 
     if (!existing) {
       existing = await ReadingSession.findOne({
-        childId,
-        bookId: effectiveStoryId,
+        childId: childIdValue,
+        bookId: bookIdValue,
       }).sort({ lastUpdatedAt: -1 });
     }
 
@@ -151,16 +208,32 @@ exports.startMySession = async (req, res) => {
     }
 
     const session = await ReadingSession.create({
-      childId: new mongoose.Types.ObjectId(childId),
-      bookId: new mongoose.Types.ObjectId(effectiveStoryId),
+      childId: childIdValue,
+      bookId: bookIdValue,
       totalPages: effectiveTotalPages,
       pagesRead: 0,
       timeSpent: 0,
       completed: false,
     });
 
+    console.log("[readingController] ReadingSession created:", {
+      sessionId: session._id,
+      childId: childIdValue,
+      bookId: bookIdValue,
+    });
+
+    console.log(
+      "[readingController] About to call postReadingStartedChatNotification with:",
+      {
+        childId: childIdValue,
+        storyId: effectiveStoryId,
+        startedByUserId: req.user._id,
+        sessionId: session._id,
+      },
+    );
+
     await postReadingStartedChatNotification({
-      childId,
+      childId: childIdValue,
       storyId: effectiveStoryId,
       startedByUserId: req.user._id,
       sessionId: session._id,
@@ -480,10 +553,10 @@ exports.updateSession = async (req, res) => {
         await updateReadingProgressMidSession(
           userRole === "child" ? req.user.parentAccount : req.user._id,
           userRole === "child" ? session.childId : null,
-          progress
+          progress,
         );
       } catch (progressError) {
-        console.error('Error updating mid-session progress:', progressError);
+        console.error("Error updating mid-session progress:", progressError);
         // Don't fail the session update if progress update fails
       }
     }
@@ -494,8 +567,11 @@ exports.updateSession = async (req, res) => {
 
       // Award gamification points for completing a story
       try {
-        const story = await Story.findById(session.bookId).select('genres category');
-        const storyCategory = story?.category || story?.genres?.[0] || 'General';
+        const story = await Story.findById(session.bookId).select(
+          "genres category",
+        );
+        const storyCategory =
+          story?.category || story?.genres?.[0] || "General";
         const readingTime = Math.ceil(session.timeSpent / 60);
 
         const gamificationResult = await awardPointsForStoryRead(
@@ -503,12 +579,15 @@ exports.updateSession = async (req, res) => {
           session.bookId,
           userRole === "child" ? session.childId : null,
           storyCategory,
-          readingTime
+          readingTime,
         );
 
-        console.log('Gamification awarded for story completion:', gamificationResult);
+        console.log(
+          "Gamification awarded for story completion:",
+          gamificationResult,
+        );
       } catch (gamificationError) {
-        console.error('Gamification error:', gamificationError);
+        console.error("Gamification error:", gamificationError);
         // Don't fail the session update if gamification fails
       }
     }
