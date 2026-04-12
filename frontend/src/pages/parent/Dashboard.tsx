@@ -1,47 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  Plus, LayoutDashboard, Book, CheckCircle2, TrendingUp, MessageCircle, 
+  Settings, Award, Flame, Clock, AlertCircle, Home, LogOut, Key, 
+  Trash2, Edit2, Clipboard, X, MessageSquare, ArrowRight, ChevronRight
+} from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import Navbar from '../../components/common/Navbar';
+
+
+
+
 import FamilyService from '../../services/familyService';
 import ChildService from '../../services/childService';
 import DashboardService from '../../services/dashboardService';
 import ReadingService from '../../services/readingService';
 import chatService from '../../services/chatService';
-import toast from 'react-hot-toast';
-import {
-  Book,
-  CheckCircle2,
-  TrendingUp,
-  Award,
-  Clock,
-  Flame,
-  Plus,
-  AlertCircle,
-  Home,
-  Pencil,
-  Trash2,
-  RefreshCw,
-  Copy,
-  Eye,
-  EyeOff,
-  X,
-  MessageCircle,
-} from 'lucide-react';
-import {
-  Container,
-  Section,
-  Grid,
-  Card,
-  StatCard,
-  ActivityItem,
-  NavItem,
-} from '../../components/common/StitchComponents';
-import Navbar from '../../components/common/Navbar';
-import { Family, Child, ChildAccountCredentials } from '../../types';
+import { Child, Family } from '../../types';
+import { Container, Section, Grid, Card } from '../../components/common/StitchComponents';
+import { toast } from 'react-hot-toast';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------------
 interface RecentAssignmentRow {
   id: string;
-  childId?: string;
+  childId: string;
   childAvatar?: string;
   childName: string;
   storyTitle: string;
@@ -52,7 +34,7 @@ interface RecentAssignmentRow {
 
 interface RecentCompletionRow {
   id: string;
-  childId?: string;
+  childId: string;
   childAvatar?: string;
   childName: string;
   storyTitle: string;
@@ -74,383 +56,328 @@ interface ChildPerformanceRow {
   };
 }
 
-// ─── Sidebar Nav ─────────────────────────────────────────────────────────────
-const Sidebar: React.FC<{
-  activeTab: string;
-  onNavigate: (route: string) => void;
-  unreadMessages: number;
-}> = ({ activeTab, onNavigate, unreadMessages }) => {
-  const navItems = [
-    { icon: 'home', label: 'Home', route: '/' },
-    { icon: 'library_books', label: 'Library', route: '/stories' },
-    { icon: 'science', label: 'Lab (Assignments)', route: '/assignments' },
-    { icon: 'group', label: 'Family', route: '/family-settings' },
-    { icon: 'archive', label: 'Progress', route: '/progress' },
-    { icon: 'military_tech', label: 'Rewards', route: '/gamification' },
-    { icon: 'chat', label: 'Chat', route: '/chat', badge: unreadMessages },
+import { ChildAccountCredentials as AddChildCredentials } from '../../types';
+/*
+interface AddChildCredentials {
+  username: string;
+  password?: string;
+}*/
+
+// -- Helper Components ---------------------------------------------------------
+
+const Sidebar = ({ activeTab, onNavigate, unreadMessages }: any) => {
+  const tabs = [
+    { id: "/", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
+    { id: "/stories", icon: <Book size={20} />, label: "Library" },
+    { id: "/assignments", icon: <CheckCircle2 size={20} />, label: "Assignments" },
+    { id: "/progress", icon: <TrendingUp size={20} />, label: "Progress" },
+    { id: "/chat", icon: <MessageCircle size={20} />, label: "Family Chat", badge: unreadMessages },
+    { id: "/gamification", icon: <Award size={20} />, label: "Rewards" },
+    { id: "/family-settings", icon: <Settings size={20} />, label: "Settings" },
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-surface-container-low p-4 gap-1 flex-shrink-0">
-      <div className="px-4 py-6 mb-2">
-        <span className="text-xl font-bold serif-text text-primary tracking-tight">The Sanctuary</span>
+    <aside className="w-64 bg-surface-container-low border-r border-outline-variant/30 hidden md:flex flex-col py-6 px-4">
+      <div className="space-y-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => onNavigate(tab.id)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
+              activeTab === tab.id 
+                ? "bg-primary text-on-primary shadow-lg shadow-primary/20" 
+                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className={activeTab === tab.id ? "text-on-primary" : "text-primary group-hover:scale-110 transition-transform"}>
+                {tab.icon}
+              </span>
+              <span className="font-semibold text-sm">{tab.label}</span>
+            </div>
+            {tab.badge > 0 && (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                activeTab === tab.id ? "bg-on-primary text-primary" : "bg-error text-white"
+              }`}>
+                {tab.badge}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
-      {navItems.map((item) => (
-        <NavItem
-          key={item.route}
-          icon={item.icon}
-          label={item.label}
-          active={activeTab === item.route}
-          onClick={() => onNavigate(item.route)}
-          badge={item.badge}
-        />
-      ))}
+      
+      <div className="mt-auto pt-6 border-t border-outline-variant/20">
+        <div className="bg-primary/5 rounded-2xl p-4">
+          <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Sanctuary Pro</p>
+          <p className="text-[11px] text-on-surface-variant leading-relaxed">
+            Unlock advanced analytics and unlimited story generations.
+          </p>
+          <button className="w-full mt-3 py-2 bg-on-surface text-surface text-xs font-bold rounded-lg hover:bg-on-surface/90 transition-colors">
+            Upgrade Now
+          </button>
+        </div>
+      </div>
     </aside>
   );
 };
 
-// ─── Quick Action Card ────────────────────────────────────────────────────────
-const QuickActionCard: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  color: string;
-  onClick: () => void;
-}> = ({ icon, label, color, onClick }) => (
-  <Card interactive onClick={onClick} className="flex flex-col items-center justify-center gap-3 py-8 text-center cursor-pointer">
-    <div
-      className="w-16 h-16 rounded-2xl flex items-center justify-center"
-      style={{ backgroundColor: color + '30', color: color }}
-    >
-      {icon}
+const StatCard = ({ label, value, icon, trend, trendValue }: any) => (
+  <Card className="relative overflow-hidden group hover:shadow-xl transition-all duration-300 border-b-4 border-b-primary/10 hover:border-b-primary">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">{label}</p>
+        <h3 className="text-3xl font-bold serif-text text-on-surface group-hover:text-primary transition-colors">{value}</h3>
+        {trend && (
+          <div className={`flex items-center gap-1 mt-2 ${trend === 'up' ? 'text-success' : 'text-error'}`}>
+            <span className="material-symbols-outlined text-sm">{trend === 'up' ? 'trending_up' : 'trending_down'}</span>
+            <span className="text-[10px] font-bold uppercase tracking-tighter">{trendValue || (trend === 'up' ? '+12% growth' : '-4% change')}</span>
+          </div>
+        )}
+      </div>
+      <div className="w-14 h-14 rounded-2xl bg-surface-container-high flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+        {icon}
+      </div>
     </div>
-    <span className="font-semibold text-sm text-on-surface">{label}</span>
   </Card>
 );
 
-// ─── Child Card (in dashboard) ────────────────────────────────────────────────
-const ChildCard: React.FC<{
-  child: Child;
-  performance?: ChildPerformanceRow;
-  isDeleting: boolean;
-  isResetting: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-  onResetPassword: () => void;
-  onViewProgress: () => void;
-}> = ({ child, performance, isDeleting, isResetting, onEdit, onDelete, onResetPassword, onViewProgress }) => {
-  const rate = performance?.assignments.completionRate ?? 0;
-  const completed = performance?.assignments.completed ?? 0;
-  const total = performance?.assignments.total ?? 0;
+const QuickActionCard = ({ icon, label, color, onClick }: any) => (
+  <button 
+    onClick={onClick}
+    className="flex flex-col items-center justify-center p-6 bg-surface-container-low rounded-3xl border border-outline-variant/30 hover:bg-surface-container-high hover:shadow-lg transition-all duration-300 group"
+  >
+    <div 
+      className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 group-active:scale-95 shadow-md"
+      style={{ backgroundColor: `${color}15`, color: color }}
+    >
+      {icon}
+    </div>
+    <span className="text-sm font-bold text-on-surface text-center leading-tight">{label}</span>
+  </button>
+);
 
-  return (
-    <Card className="flex flex-col gap-3">
-      {/* Avatar + name */}
-      <div className="flex items-center gap-3">
-        <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-3xl flex-shrink-0 overflow-hidden">
-          {child.avatar?.startsWith('http') ? (
-            <img src={child.avatar} alt={child.name} className="w-full h-full object-cover" />
-          ) : (
-            <span>{child.avatar || '🧒'}</span>
-          )}
+const ChildCard = ({ child, performance, isDeleting, isResetting, onEdit, onDelete, onResetPassword, onViewProgress }: any) => (
+  <Card className="group relative overflow-hidden flex flex-col h-full border-t-8 border-t-primary/20 hover:border-t-primary transition-all duration-500">
+    <div className="flex items-start justify-between mb-6">
+      <div className="flex items-center gap-4">
+        <div className="relative">
+          <div className="w-20 h-20 rounded-3xl bg-surface-container-high flex items-center justify-center text-4xl shadow-inner group-hover:scale-105 transition-transform">
+            {child.avatar && child.avatar.startsWith('http') ? (
+              <img src={child.avatar} alt={child.name} className="w-full h-full object-cover rounded-3xl" />
+            ) : (
+              child.avatar || '??'
+            )}
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary text-on-primary rounded-xl flex items-center justify-center border-2 border-surface shadow-md">
+            <span className="text-[10px] font-bold">{child.age}</span>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-bold text-on-surface truncate">{child.name}</p>
-          <p className="text-xs text-on-surface-variant capitalize">
-            Age {child.age} · {child.readingLevel || 'Beginner'}
-          </p>
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      <div>
-        <div className="flex justify-between text-xs text-on-surface-variant mb-1">
-          <span>Assignment progress</span>
-          <span>{completed}/{total} done</span>
-        </div>
-        <div className="h-2 rounded-full bg-surface-container-high overflow-hidden">
-          <div
-            className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${Math.min(100, rate)}%` }}
-          />
+        <div>
+          <h3 className="serif-text text-2xl font-bold text-on-surface group-hover:text-primary transition-colors">{child.name}</h3>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="px-2 py-0.5 rounded-lg bg-secondary/10 text-secondary text-[10px] font-bold uppercase tracking-wider">
+              {child.readingLevel || 'Beginner'}
+            </span>
+            <span className="text-xs text-on-surface-variant font-medium">Lvl {Math.floor((performance?.assignments?.completed || 0) / 5) + 1}</span>
+          </div>
         </div>
       </div>
-
-      {/* Action row */}
-      <div className="flex gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={onViewProgress}
-          className="flex-1 btn-primary text-xs py-2"
-        >
-          Progress
+      
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={onEdit} className="p-2 rounded-xl hover:bg-surface-container-high text-on-surface-variant" title="Edit Profile">
+          <Edit2 size={16} />
         </button>
-        <button
-          type="button"
-          onClick={onEdit}
-          title="Edit child"
-          className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant"
-        >
-          <Pencil size={14} />
+        <button onClick={onResetPassword} disabled={isResetting} className="p-2 rounded-xl hover:bg-surface-container-high text-on-surface-variant" title="Reset Credentials">
+          <Key size={16} />
         </button>
-        <button
-          type="button"
-          onClick={onResetPassword}
-          disabled={isResetting}
-          title="Reset password"
-          className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={isResetting ? 'animate-spin' : ''} />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={isDeleting}
-          title="Delete child"
-          className="p-2 rounded-lg bg-error/10 hover:bg-error/20 transition-colors text-error disabled:opacity-50"
-        >
-          <Trash2 size={14} className={isDeleting ? 'animate-pulse' : ''} />
+        <button onClick={onDelete} disabled={isDeleting} className="p-2 rounded-xl hover:bg-error/10 text-error" title="Remove reader">
+          <Trash2 size={16} />
         </button>
       </div>
-    </Card>
-  );
-};
+    </div>
 
-// ─── Input Field helper ───────────────────────────────────────────────────────
-const InputField: React.FC<{
-  label: string;
-  name: string;
-  value: string | number;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string;
-  type?: string;
-  error?: string;
-  min?: number;
-  max?: number;
-}> = ({ label, name, value, onChange, placeholder, type = 'text', error, min, max }) => (
-  <div>
-    <label htmlFor={name} className="block text-sm font-semibold text-on-surface mb-1">{label}</label>
-    <input
-      id={name}
-      name={name}
-      type={type}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      min={min}
-      max={max}
-      className={`w-full px-4 py-3 rounded-xl bg-surface-container border-0 text-on-surface placeholder-outline focus:ring-2 focus:ring-primary/40 outline-none transition ${error ? 'ring-2 ring-error' : ''}`}
-    />
-    {error && <p className="text-xs text-error mt-1">{error}</p>}
+    {/* Performance stats */}
+    <div className="bg-surface-container/30 rounded-2xl p-4 mb-6 grid grid-cols-2 gap-4">
+      <div className="text-center border-r border-outline-variant/30">
+        <p className="text-[10px] uppercase font-bold text-outline tracking-widest mb-1">Completed</p>
+        <p className="text-xl font-bold text-on-surface">{performance?.assignments?.completed || 0}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-[10px] uppercase font-bold text-outline tracking-widest mb-1">Pass Rate</p>
+        <p className="text-xl font-bold text-on-surface">{Math.round(performance?.assignments?.completionRate || 0)}%</p>
+      </div>
+    </div>
+
+    <div className="mt-auto space-y-3">
+      <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-primary transition-all duration-1000 ease-out"
+          style={{ width: `${performance?.assignments?.completionRate || 0}%` }}
+        />
+      </div>
+      <button 
+        onClick={onViewProgress}
+        className="w-full py-3 rounded-2xl bg-on-surface text-surface text-sm font-bold hover:bg-on-surface/90 transition-all flex items-center justify-center gap-2 group/btn"
+      >
+        View Journey <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
+      </button>
+    </div>
+  </Card>
+);
+
+const ActivityItem = ({ icon, title, subtitle, time }: any) => (
+  <div className="py-3 flex items-start gap-3 group px-1">
+    <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center flex-shrink-0 group-hover:bg-primary/10 transition-colors">
+      <span className="material-symbols-outlined text-lg text-primary">{icon}</span>
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="text-xs font-bold text-on-surface truncate group-hover:text-primary transition-colors leading-snug">{title}</p>
+      <div className="flex items-center justify-between mt-0.5">
+        <p className="text-[10px] text-on-surface-variant">{subtitle}</p>
+        <p className="text-[10px] text-outline italic">{time}</p>
+      </div>
+    </div>
   </div>
 );
 
-// ─── Add/Edit Child Modal ─────────────────────────────────────────────────────
-const AddChildModal: React.FC<{
-  editingChild: Child | null;
-  formData: { name: string; age: number; avatar: string; readingLevel: string };
-  formErrors: Record<string, string>;
-  isSaving: boolean;
-  onChange: (field: string, value: string | number) => void;
-  onSave: () => void;
-  onClose: () => void;
-}> = ({ editingChild, formData, formErrors, isSaving, onChange, onSave, onClose }) => {
-  const avatarEmojis = ['👧', '👦', '🧒', '👨', '👩', '🤓', '😊', '🎒'];
-  const readingLevels = [
-    { value: 'beginner', label: 'Beginner' },
-    { value: 'intermediate', label: 'Intermediate' },
-    { value: 'advanced', label: 'Advanced' },
-  ];
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-md p-6 animate-scale-in">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="serif-text text-xl font-bold text-on-surface">
-            {editingChild ? 'Edit Reader' : 'Add a Reader'}
+const AddChildModal = ({ editingChild, formData, formErrors, isSaving, onChange, onSave, onClose }: any) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-surface/80 backdrop-blur-md" onClick={onClose} />
+    <Card className="w-full max-w-lg z-10 animate-scale-up relative border border-outline-variant shadow-2xl">
+      <button onClick={onClose} className="absolute top-4 right-4 p-2 text-outline-variant hover:text-on-surface transition-colors">
+        <X size={20} />
+      </button>
+      
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+          <Plus className="text-primary" size={24} />
+        </div>
+        <div>
+          <h2 className="serif-text text-2xl font-bold text-on-surface">
+            {editingChild ? "Edit Reader Profile" : "Add a New Reader"}
           </h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container transition-colors">
-            <X size={20} className="text-on-surface-variant" />
-          </button>
+          <p className="text-sm text-on-surface-variant">Configure your child's personal reading sanctuary</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Display Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => onChange('name', e.target.value)}
+              className={`modern-input ${formErrors.name ? 'ring-2 ring-error/50' : ''}`}
+              placeholder="e.g. Leo Silva"
+            />
+            {formErrors.name && <p className="text-[10px] text-error mt-1.5 font-bold uppercase tracking-tight">{formErrors.name}</p>}
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Age</label>
+            <input
+              type="number"
+              min="1"
+              max="18"
+              value={formData.age}
+              onChange={(e) => onChange('age', parseInt(e.target.value))}
+              className={`modern-input ${formErrors.age ? 'ring-2 ring-error/50' : ''}`}
+            />
+          </div>
         </div>
 
         <div className="space-y-4">
-          <InputField
-            label="Child's Name"
-            name="name"
-            value={formData.name}
-            onChange={(e) => onChange('name', e.target.value)}
-            placeholder="e.g., Sophie"
-            error={formErrors.name}
-          />
-
-          <InputField
-            label="Age"
-            name="age"
-            type="number"
-            value={formData.age}
-            onChange={(e) => onChange('age', parseInt(e.target.value, 10))}
-            min={1}
-            max={18}
-            error={formErrors.age}
-          />
-
-          {/* Avatar picker */}
           <div>
-            <p className="text-sm font-semibold text-on-surface mb-2">Avatar</p>
-            <div className="flex flex-wrap gap-2">
-              {avatarEmojis.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => onChange('avatar', emoji)}
-                  className={`w-10 h-10 rounded-xl text-xl transition-all ${
-                    formData.avatar === emoji
-                      ? 'bg-primary text-white ring-2 ring-primary ring-offset-2'
-                      : 'bg-surface-container hover:bg-surface-container-high'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
+            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Icon or Avatar</label>
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.avatar}
+                onChange={(e) => onChange('avatar', e.target.value)}
+                className={`modern-input pl-14 ${formErrors.avatar ? 'ring-2 ring-error/50' : ''}`}
+                placeholder="Emoji or URL"
+              />
+              <div className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-xl shadow-inner">
+                {formData.avatar ? (formData.avatar.startsWith('http') ? '???' : formData.avatar) : '??'}
+              </div>
             </div>
-            <input
-              type="text"
-              value={formData.avatar}
-              onChange={(e) => onChange('avatar', e.target.value)}
-              placeholder="Or enter emoji / image URL"
-              className="mt-2 w-full px-3 py-2 rounded-xl bg-surface-container text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/40"
-            />
-            {formErrors.avatar && <p className="text-xs text-error mt-1">{formErrors.avatar}</p>}
+            {formErrors.avatar && <p className="text-[10px] text-error mt-1.5 font-bold uppercase tracking-tight">{formErrors.avatar}</p>}
           </div>
-
-          {/* Reading level */}
           <div>
-            <p className="text-sm font-semibold text-on-surface mb-2">Reading Level</p>
-            <div className="flex gap-2">
-              {readingLevels.map((level) => (
-                <button
-                  key={level.value}
-                  type="button"
-                  onClick={() => onChange('readingLevel', level.value)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    formData.readingLevel === level.value
-                      ? 'bg-primary text-on-primary'
-                      : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
-                  }`}
-                >
-                  {level.label}
-                </button>
-              ))}
-            </div>
+            <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Reading Level</label>
+            <select
+              value={formData.readingLevel}
+              onChange={(e) => onChange('readingLevel', e.target.value as 'beginner' | 'intermediate' | 'advanced')}
+              className="modern-input appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M5%207.5L10%2012.5L15%207.5%22%20stroke%3D%22%237D4E3A%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat pr-10"
+            >
+              <option value="beginner">Beginner (Age 5-7)</option>
+              <option value="intermediate">Explorer (Age 8-10)</option>
+              <option value="advanced">Scholar (Age 11+)</option>
+            </select>
           </div>
-        </div>
-
-        <div className="flex gap-3 mt-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-3 rounded-2xl border border-outline-variant text-on-surface font-semibold hover:bg-surface-container transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={isSaving}
-            className="flex-1 py-3 rounded-2xl bg-primary text-on-primary font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
-          >
-            {isSaving ? 'Saving…' : editingChild ? 'Update' : 'Add Reader'}
-          </button>
         </div>
       </div>
-    </div>
-  );
-};
 
-// ─── Credentials Modal ────────────────────────────────────────────────────────
-const CredentialsModal: React.FC<{
-  credentials: AddChildCredentials;
-  onClose: () => void;
-  onCopy: (value: string, label: string) => void;
-}> = ({ credentials, onClose, onCopy }) => {
-  const [showPw, setShowPw] = useState(false);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-md p-6 animate-scale-in">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="serif-text text-xl font-bold text-on-surface">Reader Credentials</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-container transition-colors">
-            <X size={20} className="text-on-surface-variant" />
-          </button>
-        </div>
-
-        <p className="text-sm text-on-surface-variant mb-5">
-          Share these with your child. They must change their password on first login.
-        </p>
-
-        <div className="space-y-3">
-          {/* Email */}
-          <div className="flex items-center justify-between bg-surface-container rounded-2xl px-4 py-3">
-            <div>
-              <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-widest mb-0.5">Login Email</p>
-              <p className="text-sm font-mono text-on-surface break-all">{credentials.email || '—'}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => onCopy(credentials.email, 'Email')}
-              className="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
-            >
-              <Copy size={16} />
-            </button>
-          </div>
-
-          {/* Password */}
-          <div className="flex items-center justify-between bg-surface-container rounded-2xl px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-widest mb-0.5">Temporary Password</p>
-              <p className="text-sm font-mono text-on-surface break-all">
-                {showPw ? credentials.temporaryPassword : '••••••••'}
-              </p>
-            </div>
-            <div className="flex gap-1 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
-              >
-                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-              <button
-                type="button"
-                onClick={() => onCopy(credentials.temporaryPassword, 'Password')}
-                className="p-2 rounded-lg hover:bg-surface-container-high transition-colors text-on-surface-variant"
-              >
-                <Copy size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 p-4 bg-primary-container/20 rounded-2xl">
-          <p className="text-xs text-on-surface-variant">
-            ⚠️ This password is temporary. Your child will be asked to set a new one on their first login.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full mt-5 py-3 rounded-2xl bg-primary text-on-primary font-semibold hover:bg-primary/90 transition-colors"
-        >
-          Done
+      <div className="flex gap-3 mt-10">
+        <button onClick={onClose} className="flex-1 py-4 rounded-2xl bg-surface-container-high text-on-surface font-bold hover:bg-surface-container-highest transition-colors">
+          Cancel
+        </button>
+        <button onClick={onSave} disabled={isSaving} className="flex-[2] py-4 rounded-2xl bg-primary text-on-primary font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center justify-center gap-2">
+          {isSaving ? (
+            <div className="w-5 h-5 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
+          ) : (
+            <>Save Reader Profile</>
+          )}
         </button>
       </div>
-    </div>
-  );
-};
+    </Card>
+  </div>
+);
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+const CredentialsModal = ({ credentials, onClose, onCopy }: any) => (
+  <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-surface/90 backdrop-blur-xl" />
+    <Card className="w-full max-w-md z-10 animate-scale-up border-2 border-primary/20 shadow-2xl overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-secondary to-tertiary" />
+      <div className="p-2 text-center">
+        <div className="w-20 h-20 rounded-3xl bg-primary shadow-lg shadow-primary/30 flex items-center justify-center mx-auto mb-6 mt-4">
+          <Key size={36} className="text-on-primary" />
+        </div>
+        <h2 className="serif-text text-3xl font-bold text-on-surface mb-2">Access Granted</h2>
+        <p className="text-sm text-on-surface-variant font-medium leading-relaxed px-4">
+          Please provide these credentials to your reader. For security, these won't be shown again.
+        </p>
+      </div>
+
+      <div className="mt-8 space-y-4 px-2">
+        <div className="bg-surface-container p-5 rounded-3xl border border-outline-variant/50 group hover:border-primary transition-colors cursor-copy" onClick={() => onCopy(credentials.username, 'Username')}>
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[10px] font-bold text-outline uppercase tracking-widest">Username</span>
+            <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"><Clipboard size={14} /></span>
+          </div>
+          <p className="text-xl font-bold text-on-surface font-mono">{credentials.username}</p>
+        </div>
+
+        {credentials.password && (
+          <div className="bg-surface-container p-5 rounded-3xl border border-outline-variant/50 group hover:border-primary transition-colors cursor-copy" onClick={() => onCopy(credentials.password, 'Password')}>
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-[10px] font-bold text-outline uppercase tracking-widest">Temporary Password</span>
+              <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"><Clipboard size={14} /></span>
+            </div>
+            <p className="text-xl font-bold text-on-surface font-mono">{credentials.password}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8 p-1">
+        <button onClick={onClose} className="w-full py-5 rounded-3xl bg-on-surface text-surface font-bold text-base hover:bg-on-surface/90 shadow-xl transition-all">
+          I've saved these credentials
+        </button>
+      </div>
+    </Card>
+  </div>
+);
+
 const ParentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -696,7 +623,7 @@ const ParentDashboard: React.FC = () => {
         name: formData.name.trim(),
         age: formData.age,
         avatar: formData.avatar.trim(),
-        readingLevel: formData.readingLevel,
+        readingLevel: formData.readingLevel as 'beginner' | 'intermediate' | 'advanced',
       };
 
       if (editingChild) {
@@ -1159,7 +1086,7 @@ const ParentDashboard: React.FC = () => {
           formData={formData}
           formErrors={formErrors}
           isSaving={isSavingChild}
-          onChange={(field, value) => setFormData(prev => ({ ...prev, [field]: value }))}
+          onChange={(field: string, value: any) => setFormData(prev => ({ ...prev, [field]: value }))}
           onSave={handleAddChild}
           onClose={handleCloseModal}
         />

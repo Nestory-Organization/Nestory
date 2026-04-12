@@ -15,6 +15,7 @@ interface InputFieldProps {
   min?: string | number;
   max?: string | number;
   step?: string | number;
+  className?: string; // Added className prop for custom styling
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -31,17 +32,22 @@ const InputField: React.FC<InputFieldProps> = ({
   min,
   max,
   step,
+  className = '',
 }) => {
   return (
-    <div className="w-full">
+    <div className={`w-full ${className}`}>
       {label && (
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2 px-1">
           {label}
-          {required && <span className="text-red-600 ml-1">*</span>}
+          {required && <span className="text-error ml-1">*</span>}
         </label>
       )}
       <div className="relative">
-        {Icon && <Icon className="absolute left-3 top-3 text-gray-400" size={20} />}
+        {Icon && (
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-outline">
+            <Icon size={20} />
+          </div>
+        )}
         <input
           type={type}
           name={name}
@@ -52,12 +58,14 @@ const InputField: React.FC<InputFieldProps> = ({
           min={min}
           max={max}
           step={step}
-          className={`input-base ${Icon ? 'pl-10' : ''} ${
-            error ? 'border-red-500 focus:ring-red-500' : ''
-          } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+          className={`w-full ${Icon ? 'pl-12' : 'px-4'} pr-4 py-4 bg-surface-container-low border-b-2 transition-all outline-none text-on-surface rounded-t-lg focus:ring-0 ${
+            error 
+              ? 'border-error focus:border-error text-error' 
+              : 'border-outline-variant focus:border-primary'
+          } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         />
       </div>
-      {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+      {error && <p className="text-error text-xs font-medium px-1 mt-1">{error}</p>}
     </div>
   );
 };

@@ -1,40 +1,75 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  Search, 
+  RotateCcw, 
+  BookOpen, 
+  LayoutDashboard, 
+  CheckCircle2, 
+  TrendingUp, 
+  MessageCircle, 
+  Home, 
+  Filter,
+  ArrowLeft,
+  ArrowRight,
+  Sparkles
+} from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import StoryCard from '../../components/common/StoryCard';
 import SelectField from '../../components/common/SelectField';
 import StoryService from '../../services/storyService';
 import toast from 'react-hot-toast';
-import { BookOpen, RotateCcw, Search, SlidersHorizontal } from 'lucide-react';
 import { Story } from '../../types';
+import { Container, Section, Card, Grid } from '../../components/common/StitchComponents';
 
-const DETAIL_ROUTE_BASE = '/story';
-
-const normalizeText = (value?: string) =>
-  (value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+const Sidebar = ({ activeTab, onNavigate }: any) => {
+  const tabs = [
+    { id: "/parent", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
+    { id: "/parent/stories", icon: <BookOpen size={20} />, label: "Library" },
+    { id: "/parent/assignments", icon: <CheckCircle2 size={20} />, label: "Assignments" },
+    { id: "/parent/progress", icon: <TrendingUp size={20} />, label: "Analytics" },
+    { id: "/parent/chat", icon: <MessageCircle size={20} />, label: "Messages" },
+    { id: "/parent/family-settings", icon: <Home size={20} />, label: "Family Home" },
+  ];
+  return (
+    <aside className="w-64 bg-surface-container-low border-r border-outline-variant/30 hidden md:flex flex-col py-6 px-4">
+      <div className="px-4 py-4 mb-4">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-outline">Exploration</span>
+      </div>
+      <div className="space-y-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => onNavigate(tab.id)}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+              activeTab === tab.id ? "bg-primary text-on-primary shadow-lg shadow-primary/20" : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+            }`}
+          >
+            <span className={activeTab === tab.id ? "text-on-primary" : "text-primary group-hover:scale-110 transition-transform"}>{tab.icon}</span>
+            <span className="font-semibold text-sm">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+    </aside>
+  );
+};
 
 const StoriesPage: React.FC = () => {
   const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
-  const [filteredStories, setFilteredStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgeGroup, setSelectedAgeGroup] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalStories, setTotalStories] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
   const ageGroupOptions = [
-    { value: '', label: 'All Age Groups' },
-    { value: 'toddler', label: '👶 Toddler' },
-    { value: 'early-reader', label: '👧 Early Reader' },
-    { value: 'middle-grade', label: '🧒 Middle Grade' },
-    { value: 'young-adult', label: '👦 Young Adult' },
+    { value: '', label: 'All Ages' },
+    { value: 'toddler', label: 'Toddler' },
+    { value: 'early-reader', label: 'Early Reader' },
+    { value: 'middle-grade', label: 'Middle Grade' },
+    { value: 'young-adult', label: 'Young Adult' },
   ];
 
   const levelOptions = [
@@ -53,265 +88,129 @@ const StoriesPage: React.FC = () => {
           readingLevel: selectedLevel,
         });
         setStories(response.stories || []);
-        setTotalStories(response.total || 0);
         setTotalPages(response.pages || 1);
       } catch (error) {
-        toast.error('Failed to load stories');
-        console.error(error);
+        toast.error('Failed to retrieve catalog');
       } finally {
         setIsLoading(false);
       }
     };
-
     loadStories();
   }, [currentPage, selectedAgeGroup, selectedLevel]);
 
-  useEffect(() => {
-    const filtered = stories.filter(
-      (story) =>
-        story.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        story.author?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setFilteredStories(filtered);
-  }, [searchQuery, stories]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedAgeGroup, selectedLevel]);
-
-  const hasActiveFilters = Boolean(
-    searchQuery.trim() || selectedAgeGroup || selectedLevel
+  const filteredStories = stories.filter(s => 
+    s.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    s.author?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const clearFilters = () => {
-    setSearchQuery('');
-    setSelectedAgeGroup('');
-    setSelectedLevel('');
-    setCurrentPage(1);
-  };
-
-  const findGooglePreviewForManualStory = async (
-    story: Partial<Story>
-  ): Promise<string | null> => {
-    const title = normalizeText(story.title);
-    const author = normalizeText(story.author);
-
-    const searchTerms = [
-      `${story.title || ''} ${story.author || ''}`.trim(),
-      `${story.title || ''}`.trim(),
-    ].filter(Boolean);
-
-    for (const term of searchTerms) {
-      const results = await StoryService.searchGoogle(term);
-
-      if (!Array.isArray(results) || results.length === 0) {
-        continue;
-      }
-
-      const exactMatch = results.find((item: any) => {
-        const itemTitle = normalizeText(item?.title);
-        const itemAuthor = normalizeText(item?.author);
-        return itemTitle === title && (!author || itemAuthor.includes(author));
-      });
-
-      if (exactMatch?.previewLink) {
-        return exactMatch.previewLink;
-      }
-
-      const strongMatch = results.find((item: any) => {
-        const itemTitle = normalizeText(item?.title);
-        const itemAuthor = normalizeText(item?.author);
-
-        const titleLooksClose =
-          itemTitle.includes(title) ||
-          title.includes(itemTitle) ||
-          itemTitle.split(' ').some((word: string) => title.includes(word));
-
-        const authorLooksClose =
-          !author || itemAuthor.includes(author) || author.includes(itemAuthor);
-
-        return titleLooksClose && authorLooksClose && item?.previewLink;
-      });
-
-      if (strongMatch?.previewLink) {
-        return strongMatch.previewLink;
-      }
-
-      const firstWithPreview = results.find((item: any) => item?.previewLink);
-      if (firstWithPreview?.previewLink && title.length > 0) {
-        return firstWithPreview.previewLink;
-      }
-    }
-
-    return null;
-  };
-
-  const handleStoryOpen = async (selectedStory: Partial<Story>) => {
-    try {
-      if (!selectedStory?.id) {
-        toast.error('Story id is missing');
-        return;
-      }
-
-      if (selectedStory.previewLink) {
-        window.location.href = selectedStory.previewLink;
-        return;
-      }
-
-      if (selectedStory.source === 'internal') {
-        try {
-          const matchedPreview = await findGooglePreviewForManualStory(selectedStory);
-
-          if (matchedPreview) {
-            window.location.href = matchedPreview;
-            return;
-          }
-        } catch (error) {
-          console.error('Preview lookup failed:', error);
-        }
-      }
-
-      navigate(`${DETAIL_ROUTE_BASE}/${selectedStory.id}`);
-    } catch (error) {
-      console.error(error);
-      toast.error('Unable to open this story');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar title="Story Library" />
-
-      <div className="container-responsive py-8">
-        <div className="mb-8 animate-fade-in flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Story Library</h1>
-            <p className="text-gray-600">
-              Discover stories for your family by age and reading level
-            </p>
-          </div>
-          <p className="text-sm text-gray-500">
-            {filteredStories.length} visible • {totalStories} total matches
-          </p>
-        </div>
-
-        <div className="card mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <SlidersHorizontal size={18} />
-              Search & Filters
-            </h2>
-            <button
-              className="btn-secondary flex items-center gap-2"
-              onClick={clearFilters}
-              disabled={!hasActiveFilters}
-            >
-              <RotateCcw size={14} />
-              Reset Filters
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search by title or author..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-base pl-10"
-              />
-            </div>
-
-            <SelectField
-              name="ageGroup"
-              value={selectedAgeGroup}
-              onChange={(e) => setSelectedAgeGroup(e.target.value)}
-              options={ageGroupOptions}
-            />
-
-            <SelectField
-              name="level"
-              value={selectedLevel}
-              onChange={(e) => setSelectedLevel(e.target.value)}
-              options={levelOptions}
-            />
-          </div>
-
-          {hasActiveFilters && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {selectedAgeGroup && (
-                <span className="badge bg-blue-100 text-blue-800">
-                  Age: {selectedAgeGroup}
-                </span>
-              )}
-              {selectedLevel && (
-                <span className="badge bg-purple-100 text-purple-800">
-                  Level: {selectedLevel}
-                </span>
-              )}
-              {searchQuery.trim() && (
-                <span className="badge bg-gray-100 text-gray-800">
-                  Search: {searchQuery.trim()}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 border-4 border-nestory-200 border-t-nestory-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading stories...</p>
-          </div>
-        ) : filteredStories.length === 0 ? (
-          <div className="card text-center py-12">
-            <BookOpen className="mx-auto mb-3 text-gray-400" size={28} />
-            <p className="text-gray-700 font-semibold mb-1">
-              No stories found with your filters
-            </p>
-            <p className="text-sm text-gray-600 mb-4">
-              Try broadening age range or reading level filters.
-            </p>
-            <button onClick={clearFilters} className="btn-primary">
-              Clear Filters
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 mb-8">
-            {filteredStories.map((story) => (
-              <div key={story.id} className="animate-slide-up">
-                <StoryCard
-                  story={story}
-                  onSelect={handleStoryOpen}
-                  clickable
-                />
+    <div className="min-h-screen bg-surface flex flex-col">
+      <Navbar title="Curated Collection" />
+      <div className="flex flex-1">
+        <Sidebar activeTab="/parent/stories" onNavigate={navigate} />
+        <main className="flex-1 min-w-0 overflow-y-auto">
+          <Container className="py-8">
+            <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="animate-slide-up">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest mb-4">
+                  <Sparkles size={12} /> Literary Discovery
+                </div>
+                <h1 className="text-4xl serif-text font-bold text-primary tracking-tight italic">Story Catalog</h1>
+                <p className="mt-2 text-on-surface-variant font-medium">Curating the finest adventures for your domain.</p>
               </div>
-            ))}
-          </div>
-        )}
 
-        {!isLoading && filteredStories.length > 0 && (
-          <div className="flex items-center justify-center gap-2 py-8">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="text-gray-600 px-2">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage((p) => p + 1)}
-              disabled={currentPage >= totalPages}
-              className="btn-secondary"
-            >
-              Next
-            </button>
-          </div>
-        )}
+              <div className="flex flex-wrap items-center gap-3 bg-surface-container-low p-2 rounded-2xl border border-outline-variant/30">
+                <div className="relative min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Identify title or author..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-transparent text-sm border-none focus:ring-0 text-on-surface"
+                  />
+                </div>
+                <div className="h-4 w-[1px] bg-outline-variant/40 hidden sm:block" />
+                <div className="min-w-[140px]">
+                  <SelectField
+                    name="ageGroup"
+                    options={ageGroupOptions}
+                    value={selectedAgeGroup}
+                    onChange={(e) => setSelectedAgeGroup(e.target.value)}
+                  />
+                </div>
+                <div className="h-4 w-[1px] bg-outline-variant/40 hidden sm:block" />
+                <div className="min-w-[140px]">
+                  <SelectField
+                    name="level"
+                    options={levelOptions}
+                    value={selectedLevel}
+                    onChange={(e) => setSelectedLevel(e.target.value)}
+                  />
+                </div>
+                 { (searchQuery || selectedAgeGroup || selectedLevel) && (
+                  <button 
+                    onClick={() => { setSearchQuery(''); setSelectedAgeGroup(''); setSelectedLevel(''); }}
+                    className="p-2 hover:bg-surface-container-high rounded-lg text-primary transition-colors"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <Section title={searchQuery ? "Search Results" : "Registry of Adventures"}>
+              {isLoading ? (
+                <Grid columns={4} gap="md">
+                  {[...Array(8)].map((_, i) => (
+                    <div key={i} className="aspect-[3/4] rounded-2xl bg-surface-container-high animate-pulse" />
+                  ))}
+                </Grid>
+              ) : filteredStories.length === 0 ? (
+                <Card className="py-20 text-center flex flex-col items-center">
+                  <BookOpen size={48} className="text-outline-variant mb-4 opacity-50" />
+                  <p className="serif-text text-xl text-on-surface-variant">No volumes found in this classification.</p>
+                  <button onClick={() => { setSearchQuery(''); setSelectedAgeGroup(''); setSelectedLevel(''); }} className="mt-6 btn-outline text-xs">Reset Chronometer</button>
+                </Card>
+              ) : (
+                <>
+                  <Grid columns={4} gap="md">
+                    {filteredStories.map((story) => (
+                      <StoryCard
+                        key={story.id}
+                        story={story}
+                        onSelect={() => navigate(`/parent/stories/${story.id}`)}
+                      />
+                    ))}
+                  </Grid>
+
+                  <div className="mt-12 flex items-center justify-center gap-4">
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(p => p - 1)}
+                      className="p-2.5 rounded-full border border-outline-variant text-primary disabled:opacity-30 hover:bg-surface-container-low transition-colors shadow-sm"
+                    >
+                      <ArrowLeft size={18} />
+                    </button>
+                    <div className="bg-surface-container-high px-6 py-2 rounded-full shadow-inner">
+                      <span className="text-xs font-bold text-on-surface tracking-widest">PAGE {currentPage} <span className="text-outline mx-1">OF</span> {totalPages}</span>
+                    </div>
+                    <button
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(p => p + 1)}
+                      className="p-2.5 rounded-full border border-outline-variant text-primary disabled:opacity-30 hover:bg-surface-container-low transition-colors shadow-sm"
+                    >
+                      <ArrowRight size={18} />
+                    </button>
+                  </div>
+                </>
+              )}
+            </Section>
+          </Container>
+          <footer className="py-8 text-center text-[10px] font-bold text-outline uppercase tracking-widest border-t border-outline-variant/30 bg-surface-container-low mt-12 italic">
+            Expanding the horizons of your domain catalog.
+          </footer>
+        </main>
       </div>
     </div>
   );
