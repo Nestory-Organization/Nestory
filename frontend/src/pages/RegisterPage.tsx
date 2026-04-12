@@ -81,10 +81,10 @@ const RegisterPage: React.FC = () => {
                   <InputField label="Email" type="email" name="email" placeholder="guardian@sanctuary.com" value={formData.email} onChange={(e) => {setFormData({...formData, email: e.target.value}); setErrors({...errors, email: ''});}} error={errors.email} />
                 </div>
                 <div>
-                  <InputField label="Sanctuary Key" type="password" name="password" placeholder="••••••••" value={formData.password} onChange={(e) => {setFormData({...formData, password: e.target.value}); setErrors({...errors, password: ''});}} error={errors.password} />
+                  <InputField label="Sanctuary Key" type="password" name="password" placeholder="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" value={formData.password} onChange={(e) => {setFormData({...formData, password: e.target.value}); setErrors({...errors, password: ''});}} error={errors.password} />
                 </div>
                 <div>
-                  <InputField label="Confirm Key" type="password" name="confirmPassword" placeholder="••••••••" value={formData.confirmPassword} onChange={(e) => {setFormData({...formData, confirmPassword: e.target.value}); setErrors({...errors, confirmPassword: ''});}} error={errors.confirmPassword} />
+                  <InputField label="Confirm Key" type="password" name="confirmPassword" placeholder="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" value={formData.confirmPassword} onChange={(e) => {setFormData({...formData, confirmPassword: e.target.value}); setErrors({...errors, confirmPassword: ''});}} error={errors.confirmPassword} />
                 </div>
                 <div className="md:col-span-2 pt-6">
                   <button type="submit" disabled={isLoading} className="w-full py-4 bg-primary text-on-primary rounded-2xl font-bold uppercase tracking-widest hover:bg-primary/90 transition-all flex items-center justify-center gap-3 active:scale-95 shadow-lg shadow-primary/20">

@@ -121,7 +121,7 @@ const LoginPage: React.FC = () => {
                     <InputField
                       type="password"
                       name="password"
-                      placeholder="••••••••••••"
+                      placeholder="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       icon={Lock}
@@ -172,7 +172,7 @@ const LoginPage: React.FC = () => {
 
               <p className="mt-12 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-on-surface-variant opacity-60 max-w-[280px] mx-auto leading-relaxed">
                 Protected by the Sanctuary <br/> 
-                <a className="text-primary hover:underline" href="#">Terms</a> · <a className="text-primary hover:underline" href="#">Privacy</a>
+                <a className="text-primary hover:underline" href="#">Terms</a> ï¿½ <a className="text-primary hover:underline" href="#">Privacy</a>
               </p>
             </div>
           </div>
@@ -180,7 +180,7 @@ const LoginPage: React.FC = () => {
       </main>
 
       <footer className="w-full py-8 px-12 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-bold text-outline uppercase tracking-[0.2em] opacity-80 z-20">
-        <div>© 2024 Nestory · The Curated Sanctuary</div>
+        <div>ï¿½ 2024 Nestory ï¿½ The Curated Sanctuary</div>
         <div className="flex gap-8">
           <a className="hover:text-primary transition-colors" href="#">Support</a>
           <a className="hover:text-primary transition-colors" href="#">Security</a>
