@@ -18,7 +18,10 @@ const {
   updateTodayChallengeProgress,
   generateQuiz,
   completeQuiz,
-  test
+  test,
+  getSystemStats,
+  getLevelDistribution,
+  getXpTimeline
 } = require('../../controllers/gamification/gamificationController');
 const { protect } = require('../../middleware/authMiddleware');
 const { admin } = require('../../middleware/authMiddleware');
@@ -54,5 +57,10 @@ router.post('/challenges/progress', protect, updateTodayChallengeProgress);
 // AI Quiz routes
 router.post('/quizzes/generate', protect, generateQuiz);
 router.post('/quizzes/complete', protect, completeQuiz);
+
+// Admin statistics routes
+router.get('/stats/system', protect, admin, getSystemStats);
+router.get('/stats/level-distribution', protect, admin, getLevelDistribution);
+router.get('/stats/xp-timeline', protect, admin, getXpTimeline);
 
 module.exports = router;

@@ -7,11 +7,8 @@
 const UserProgress = require('../models/gamification/UserProgress');
 const PointTransaction = require('../models/gamification/PointTransaction');
 const GamificationService = require('../services/gamification/gamificationService');
+const { sendNotification } = require('../utils/notificationHelper');
 
-/**
- * Award points when a story is read
- * Call this in your story controller after a story is successfully read
- */
 /**
  * Award points when a story is read
  * Call this in your story controller after a story is successfully read
@@ -21,36 +18,88 @@ async function awardPointsForStoryRead(userId, storyId, childId = null, storyCat
     const query = { user: userId };
     if (childId) query.child = childId;
 
+    console.log(`[awardPointsForStoryRead] Starting for User:${userId} Child:${childId}`);
+
+    // Find or create progress record
     let progress = await UserProgress.findOne(query);
     if (!progress) {
+      console.log(`[awardPointsForStoryRead] Creating new progress for User:${userId} Child:${childId}`);
       progress = await UserProgress.create({
         user: userId,
         child: childId
       });
     }
 
-    // Update reading stats
+    // Update reading stats (only once)
     progress.updateReadingStats(storyCategory, readingTime);
-    await progress.save();
-
-    const result = await GamificationService.awardPointsToUser(
-      userId,
-      20, // Points for reading a story
-      'story_read',
-      'Completed reading a story',
-      childId,
-      { model: 'Story', id: storyId }
-    );
     
+    // Award points in a single operation
+    const balanceBefore = progress.totalPoints;
+    progress.totalPoints += 20; // Points for reading a story
+    progress.stats.storiesRead += 1;
+    
+    // Update level and streak
+    if (typeof progress.calculateLevel === 'function') {
+      progress.calculateLevel();
+    }
+    if (typeof progress.updateStreak === 'function') {
+      progress.updateStreak();
+    }
+
+    // Single save operation
+    await progress.save();
+    console.log(`[awardPointsForStoryRead] Progress saved. Points: ${balanceBefore} -> ${progress.totalPoints}, Level: ${progress.level}`);
+
+    // Create transaction record
+    const transaction = await PointTransaction.create({
+      user: userId,
+      child: childId || null,
+      points: 20,
+      type: 'earn',
+      source: 'story_read',
+      description: 'Completed reading a story',
+      reference: { model: 'Story', id: storyId },
+      balanceBefore,
+      balanceAfter: progress.totalPoints
+    });
+
+    // Notify user about points earned
+    try {
+      if (childId || userId) {
+        await sendNotification({
+          recipient: childId || userId,
+          type: 'badge', 
+          title: 'Points Earned! ⭐',
+          message: `You've earned 20 points for reading a story! Keep it up!`,
+          data: {
+            points: 20,
+            activity: 'story_read',
+            newBalance: progress.totalPoints
+          }
+        });
+      }
+    } catch (notifyErr) {
+      console.warn('[awardPointsForStoryRead] Notification failed:', notifyErr.message);
+    }
+
+    // Check for badges and achievements
+    await GamificationService.checkAndAwardBadges(progress);
+    await GamificationService.checkAndAwardAchievements(progress, 'story_read', {
+      isEarlyMorning: new Date().getHours() < 8,
+      isLateNight: new Date().getHours() >= 22,
+      reference: { model: 'Story', id: storyId }
+    });
+
     return {
       success: true,
       pointsEarned: 20,
-      newBalance: result.progress.totalPoints,
-      level: result.progress.level,
-      streak: result.progress.currentStreak
+      newBalance: progress.totalPoints,
+      level: progress.level,
+      streak: progress.currentStreak,
+      transaction
     };
   } catch (error) {
-    console.error('Error awarding points for story read:', error);
+    console.error('[awardPointsForStoryRead] Error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -61,24 +110,69 @@ async function awardPointsForStoryRead(userId, storyId, childId = null, storyCat
  */
 async function awardPointsForAssignmentCompletion(userId, assignmentId, childId = null) {
   try {
-    const result = await GamificationService.awardPointsToUser(
-      userId,
-      30, // Points for completing an assignment
-      'assignment_completed',
-      'Completed an assignment',
-      childId,
-      { model: 'Assignment', id: assignmentId }
-    );
+    const query = { user: userId };
+    if (childId) query.child = childId;
+
+    console.log(`[awardPointsForAssignmentCompletion] Starting for User:${userId} Child:${childId}`);
+
+    // Find or create progress record
+    let progress = await UserProgress.findOne(query);
+    if (!progress) {
+      console.log(`[awardPointsForAssignmentCompletion] Creating new progress for User:${userId} Child:${childId}`);
+      progress = await UserProgress.create({
+        user: userId,
+        child: childId
+      });
+    }
+
+    // Award points in a single operation
+    const balanceBefore = progress.totalPoints;
+    progress.totalPoints += 30; // Points for completing an assignment
+    progress.stats.assignmentsCompleted += 1;
     
+    // Update level and streak
+    if (typeof progress.calculateLevel === 'function') {
+      progress.calculateLevel();
+    }
+    if (typeof progress.updateStreak === 'function') {
+      progress.updateStreak();
+    }
+
+    // Single save operation
+    await progress.save();
+    console.log(`[awardPointsForAssignmentCompletion] Progress saved. Points: ${balanceBefore} -> ${progress.totalPoints}, Level: ${progress.level}`);
+
+    // Create transaction record
+    const transaction = await PointTransaction.create({
+      user: userId,
+      child: childId || null,
+      points: 30,
+      type: 'earn',
+      source: 'assignment_completed',
+      description: 'Completed an assignment',
+      reference: { model: 'Assignment', id: assignmentId },
+      balanceBefore,
+      balanceAfter: progress.totalPoints
+    });
+
+    // Check for badges and achievements
+    await GamificationService.checkAndAwardBadges(progress);
+    await GamificationService.checkAndAwardAchievements(progress, 'assignment_completed', {
+      isEarlyMorning: new Date().getHours() < 8,
+      isLateNight: new Date().getHours() >= 22,
+      reference: { model: 'Assignment', id: assignmentId }
+    });
+
     return {
       success: true,
       pointsEarned: 30,
-      newBalance: result.progress.totalPoints,
-      level: result.progress.level,
-      streak: result.progress.currentStreak
+      newBalance: progress.totalPoints,
+      level: progress.level,
+      streak: progress.currentStreak,
+      transaction
     };
   } catch (error) {
-    console.error('Error awarding points for assignment:', error);
+    console.error('[awardPointsForAssignmentCompletion] Error:', error);
     return { success: false, error: error.message };
   }
 }

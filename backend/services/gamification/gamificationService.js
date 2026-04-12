@@ -2,6 +2,7 @@ const UserProgress = require('../../models/gamification/UserProgress');
 const Badge = require('../../models/gamification/Badge');
 const Achievement = require('../../models/gamification/Achievement');
 const PointTransaction = require('../../models/gamification/PointTransaction');
+const { sendNotification } = require('../../utils/notificationHelper');
 
 /**
  * Service for handling gamification logic
@@ -509,6 +510,23 @@ class GamificationService {
             balanceBefore: progress.totalPoints - badge.points,
             balanceAfter: progress.totalPoints
           });
+
+          // Notify the user (Child/Parent) about the new badge
+          try {
+            await sendNotification({
+              recipient: progress.child || progress.user,
+              type: 'badge',
+              title: `New Badge: ${badge.name} ${badge.icon || '🏅'}`,
+              message: `Congratulations! You've earned the "${badge.name}" badge and ${badge.points} bonus points!`,
+              data: {
+                badgeId: badge._id,
+                badgeName: badge.name,
+                points: badge.points
+              }
+            });
+          } catch (notifyErr) {
+            console.warn('[checkAndAwardBadges] Notification failed:', notifyErr.message);
+          }
         }
       }
 
