@@ -15,6 +15,25 @@ const mockFamilySystem = {
   chatGroups: [],
   assignments: [],
   chatMessages: [],
+  _idCounter: 0, // Counter for unique IDs
+
+  /**
+   * Reset system state (useful for test isolation)
+   */
+  reset() {
+    this.families = [];
+    this.chatGroups = [];
+    this.assignments = [];
+    this.chatMessages = [];
+    this._idCounter = 0;
+  },
+
+  /**
+   * Generate unique ID (combines timestamp and counter to prevent collisions)
+   */
+  _generateId(prefix) {
+    return `${prefix}_${Date.now()}_${++this._idCounter}`;
+  },
 
   /**
    * Workflow 1: Parent creates family and automatic chat is provisioned
@@ -26,7 +45,7 @@ const mockFamilySystem = {
     }
 
     const newFamily = {
-      _id: `family_${Date.now()}`,
+      _id: this._generateId("family"),
       name: familyName,
       parentId,
       members: [parentId],
@@ -36,7 +55,7 @@ const mockFamilySystem = {
 
     // Automatically provision chat via third-party API
     const chatGroup = {
-      _id: `chat_${Date.now()}`,
+      _id: this._generateId("chat"),
       name: `${familyName} Chat`,
       familyId: newFamily._id,
       members: [parentId],
@@ -131,7 +150,7 @@ const mockFamilySystem = {
     }
 
     const assignment = {
-      _id: `assignment_${Date.now()}`,
+      _id: this._generateId("assignment"),
       familyId,
       parentId,
       childId,
@@ -194,7 +213,7 @@ const mockFamilySystem = {
     }
 
     const newMessage = {
-      _id: `msg_${Date.now()}`,
+      _id: this._generateId("msg"),
       chatGroupId: family.chatGroupId,
       senderId: parentId,
       senderName: "Parent",
@@ -220,7 +239,7 @@ const mockFamilySystem = {
     }
 
     const reply = {
-      _id: `msg_${Date.now()}`,
+      _id: this._generateId("msg"),
       chatGroupId,
       senderId: childId,
       senderName: "Child",
@@ -353,6 +372,9 @@ const mockFamilySystem = {
 
 async function runFamilySystemTests() {
   const report = new TestReport("Family System Tests");
+  
+  // Reset mock system state for test isolation
+  mockFamilySystem.reset();
 
   try {
     // Test 1: Parent creates family with automatic chat
@@ -419,7 +441,7 @@ async function runFamilySystemTests() {
       );
       report.logAssertion(
         "Child auto-added to family chat",
-        joinResult.chat.members.includes("child123")
+        joinResult.chat && joinResult.chat.members && joinResult.chat.members.includes("child123")
       );
     } catch (error) {
       report.logAssertion("Child auto-added to family chat", false);

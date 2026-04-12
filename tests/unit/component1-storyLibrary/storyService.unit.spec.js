@@ -152,10 +152,60 @@ const mockStoryService = {
 
 async function runStoryServiceUnitTests() {
   const report = new TestReport("Story Service Unit Tests");
+  
+  // Use fresh stories with correct reading levels (fix mutation issue from integration tests)
+  const stories = [
+    {
+      _id: "60d5ec49f1c1b0001f5a0001",
+      title: "The Cat in the Moon",
+      author: "John Smith",
+      description: "A magical tale of a curious cat",
+      ageGroup: ["4-6", "7-9"],
+      genres: ["fantasy", "adventure"],
+      readingLevel: "beginner",
+      coverImage: "https://example.com/cover1.jpg",
+      content: "Once upon a time, there was a cat...",
+      pageCount: 45,
+      source: "internal",
+      createdAt: new Date("2024-01-01"),
+      updatedAt: new Date("2024-01-01"),
+    },
+    {
+      _id: "60d5ec49f1c1b0001f5a0002",
+      title: "Adventure in the Enchanted Forest",
+      author: "Sarah Johnson",
+      description: "Kids explore a magical forest",
+      ageGroup: ["7-9", "10-12"],
+      genres: ["science-fiction", "adventure"],
+      readingLevel: "intermediate",
+      coverImage: "https://example.com/cover2.jpg",
+      content: "Three friends entered the forest...",
+      pageCount: 125,
+      source: "google-books",
+      googleBooksId: "gb123456",
+      createdAt: new Date("2024-01-15"),
+      updatedAt: new Date("2024-01-15"),
+    },
+    {
+      _id: "60d5ec49f1c1b0001f5a0003",
+      title: "The Space Adventure",
+      author: "Tom Wilson",
+      description: "A journey through the galaxy",
+      ageGroup: ["10-12", "13-15"],
+      genres: ["fantasy", "mystery"],
+      readingLevel: "advanced",
+      coverImage: "https://example.com/cover3.jpg",
+      content: "Captain Nova launched into space...",
+      pageCount: 200,
+      source: "internal",
+      createdAt: new Date("2024-02-01"),
+      updatedAt: new Date("2024-02-01"),
+    },
+  ];
 
   // Test 1: Filter by Age Group
   try {
-    const result = mockStoryService.filterByAgeGroup(dummyStories, "7-9");
+    const result = mockStoryService.filterByAgeGroup(stories, "7-9");
     report.logAssertion("Filter stories by age group", result.length === 2);
   } catch (error) {
     report.logAssertion("Filter stories by age group", false);
@@ -163,7 +213,7 @@ async function runStoryServiceUnitTests() {
 
   // Test 2: Filter by Genre
   try {
-    const result = mockStoryService.filterByGenre(dummyStories, "fantasy");
+    const result = mockStoryService.filterByGenre(stories, "fantasy");
     report.logAssertion("Filter stories by genre", result.length === 2);
   } catch (error) {
     report.logAssertion("Filter stories by genre", false);
@@ -171,7 +221,7 @@ async function runStoryServiceUnitTests() {
 
   // Test 3: Filter by Reading Level
   try {
-    const result = mockStoryService.filterByReadingLevel(dummyStories, "intermediate");
+    const result = mockStoryService.filterByReadingLevel(stories, "intermediate");
     report.logAssertion("Filter stories by reading level", result.length === 1);
   } catch (error) {
     report.logAssertion("Filter stories by reading level", false);
@@ -179,7 +229,7 @@ async function runStoryServiceUnitTests() {
 
   // Test 4: Search Stories
   try {
-    const result = mockStoryService.searchStories(dummyStories, "Cat");
+    const result = mockStoryService.searchStories(stories, "Cat");
     report.logAssertion(
       "Search stories by title",
       result.length === 1 && result[0].title.includes("Cat")
@@ -190,7 +240,7 @@ async function runStoryServiceUnitTests() {
 
   // Test 5: Search Stories by Author
   try {
-    const result = mockStoryService.searchStories(dummyStories, "John");
+    const result = mockStoryService.searchStories(stories, "John");
     report.logAssertion(
       "Search stories by author",
       result.length > 0 && result[0].author.includes("John")
@@ -272,7 +322,7 @@ async function runStoryServiceUnitTests() {
       author: "John Smith",
       description: "Different description",
     };
-    const isDuplicate = mockStoryService.checkDuplicate(dummyStories, newDuplicate);
+    const isDuplicate = mockStoryService.checkDuplicate(stories, newDuplicate);
     report.logAssertion("Detect duplicate story", isDuplicate === true);
   } catch (error) {
     report.logAssertion("Detect duplicate story", false);
@@ -285,7 +335,7 @@ async function runStoryServiceUnitTests() {
       author: "Unique Author",
       description: "This is unique",
     };
-    const isDuplicate = mockStoryService.checkDuplicate(dummyStories, newUnique);
+    const isDuplicate = mockStoryService.checkDuplicate(stories, newUnique);
     report.logAssertion("Allow unique story", isDuplicate === false);
   } catch (error) {
     report.logAssertion("Allow unique story", false);
@@ -293,7 +343,7 @@ async function runStoryServiceUnitTests() {
 
   // Test 12: Sort Stories by Title (Ascending)
   try {
-    const sorted = mockStoryService.sortStories(dummyStories, "title", "asc");
+    const sorted = mockStoryService.sortStories(stories, "title", "asc");
     report.logAssertion(
       "Sort stories by title (ascending)",
       sorted[0].title < sorted[1].title
@@ -304,7 +354,7 @@ async function runStoryServiceUnitTests() {
 
   // Test 13: Sort Stories by Title (Descending)
   try {
-    const sorted = mockStoryService.sortStories(dummyStories, "title", "desc");
+    const sorted = mockStoryService.sortStories(stories, "title", "desc");
     report.logAssertion(
       "Sort stories by title (descending)",
       sorted[0].title > sorted[1].title
@@ -315,7 +365,7 @@ async function runStoryServiceUnitTests() {
 
   // Test 14: Paginate Stories
   try {
-    const paginated = mockStoryService.paginateStories(dummyStories, 1, 2);
+    const paginated = mockStoryService.paginateStories(stories, 1, 2);
     report.logAssertion(
       "Paginate stories correctly",
       paginated.data.length === 2 && paginated.total === 3 && paginated.pages === 2
@@ -326,7 +376,7 @@ async function runStoryServiceUnitTests() {
 
   // Test 15: Paginate Stories - Second Page
   try {
-    const paginated = mockStoryService.paginateStories(dummyStories, 2, 2);
+    const paginated = mockStoryService.paginateStories(stories, 2, 2);
     report.logAssertion(
       "Paginate second page",
       paginated.data.length === 1 && paginated.page === 2
@@ -345,7 +395,7 @@ async function runStoryServiceUnitTests() {
 
   // Test 17: Search with Empty Query
   try {
-    mockStoryService.searchStories(dummyStories, "");
+    mockStoryService.searchStories(stories, "");
     report.logAssertion("Reject empty search query", false);
   } catch (error) {
     report.logAssertion("Reject empty search query", error instanceof Error);
@@ -353,7 +403,7 @@ async function runStoryServiceUnitTests() {
 
   // Test 18: Chained Filters (Age Group + Genre)
   try {
-    let filtered = mockStoryService.filterByAgeGroup(dummyStories, "7-9");
+    let filtered = mockStoryService.filterByAgeGroup(stories, "7-9");
     filtered = mockStoryService.filterByGenre(filtered, "fantasy");
     report.logAssertion(
       "Apply chained filters",

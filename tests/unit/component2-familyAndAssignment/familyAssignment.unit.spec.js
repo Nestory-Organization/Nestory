@@ -245,6 +245,32 @@ const mockAssignmentService = {
 async function runFamilyAssignmentUnitTests() {
   const report = new TestReport("Family & Assignment Unit Tests");
 
+  // Create fresh assignment data to avoid fixture mutations from other tests
+  const freshAssignments = [
+    {
+      _id: "60d5ec49f1c1b0001f5a0501",
+      storyId: "60d5ec49f1c1b0001f5a0001",
+      childId: "60d5ec49f1c1b0001f5a0201",
+      parentId: "60d5ec49f1c1b0001f5a0101",
+      familyId: "60d5ec49f1c1b0001f5a0301",
+      status: "assigned",
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      _id: "60d5ec49f1c1b0001f5a0502",
+      storyId: "60d5ec49f1c1b0001f5a0002",
+      childId: "60d5ec49f1c1b0001f5a0201",
+      parentId: "60d5ec49f1c1b0001f5a0101",
+      familyId: "60d5ec49f1c1b0001f5a0301",
+      status: "in-progress",
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(),
+    },
+  ];
+
   // ========== FAMILY TESTS ==========
 
   // Test 1: Validate valid family data
@@ -349,7 +375,16 @@ async function runFamilyAssignmentUnitTests() {
 
   // Test 7: Prevent duplicate member addition
   try {
-    const family = JSON.parse(JSON.stringify(dummyFamilies[0]));
+    // Create a fresh family with proper member IDs matching dummyFamilies[0]
+    const family = {
+      _id: dummyFamilies[0]._id,
+      name: dummyFamilies[0].name,
+      parentId: dummyFamilies[0].parentId,
+      members: [...dummyFamilies[0].members],
+      chatGroupId: dummyFamilies[0].chatGroupId,
+      createdAt: dummyFamilies[0].createdAt,
+      updatedAt: dummyFamilies[0].updatedAt,
+    };
     mockFamilyService.addMember(family, dummyChildren[0]._id);
     report.logAssertion("Prevent duplicate member addition", false);
   } catch (error) {
@@ -358,7 +393,16 @@ async function runFamilyAssignmentUnitTests() {
 
   // Test 8: Remove member from family
   try {
-    const family = JSON.parse(JSON.stringify(dummyFamilies[0]));
+    // Create a fresh family with proper member IDs
+    const family = {
+      _id: dummyFamilies[0]._id,
+      name: dummyFamilies[0].name,
+      parentId: dummyFamilies[0].parentId,
+      members: [...dummyFamilies[0].members],
+      chatGroupId: dummyFamilies[0].chatGroupId,
+      createdAt: dummyFamilies[0].createdAt,
+      updatedAt: dummyFamilies[0].updatedAt,
+    };
     const memberToRemove = dummyChildren[0]._id;
     const updated = mockFamilyService.removeMember(family, memberToRemove);
     report.logAssertion(
@@ -476,8 +520,8 @@ async function runFamilyAssignmentUnitTests() {
 
   // Test 16: Get assignment status
   try {
-    const assigned = mockAssignmentService.getAssignmentStatus(dummyAssignments[0]);
-    const inProgress = mockAssignmentService.getAssignmentStatus(dummyAssignments[1]);
+    const assigned = mockAssignmentService.getAssignmentStatus(freshAssignments[0]);
+    const inProgress = mockAssignmentService.getAssignmentStatus(freshAssignments[1]);
     report.logAssertion(
       "Get assignment status",
       assigned === "assigned" && inProgress === "in-progress"
@@ -499,7 +543,18 @@ async function runFamilyAssignmentUnitTests() {
 
   // Test 18: Start assignment
   try {
-    const assignment = JSON.parse(JSON.stringify(dummyAssignments[0]));
+    // Use fresh assignment to avoid mutation issues
+    const assignment = {
+      _id: freshAssignments[0]._id,
+      storyId: freshAssignments[0].storyId,
+      childId: freshAssignments[0].childId,
+      parentId: freshAssignments[0].parentId,
+      familyId: freshAssignments[0].familyId,
+      status: freshAssignments[0].status,
+      dueDate: freshAssignments[0].dueDate,
+      createdAt: freshAssignments[0].createdAt,
+      updatedAt: freshAssignments[0].updatedAt,
+    };
     const started = mockAssignmentService.startAssignment(assignment);
     report.logAssertion(
       "Start assignment",

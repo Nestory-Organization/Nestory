@@ -1220,3 +1220,115 @@ exports.getAchievements = async (req, res) => {
     });
   }
 };
+
+// @desc    End a reading session
+// @route   POST /api/sessions/:id/end
+// @access  Private
+exports.endReadingSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid session ID",
+      });
+    }
+
+    const session = await ReadingSession.findById(id);
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: "Session not found",
+      });
+    }
+
+    // Set end time and mark as completed or paused
+    session.endTime = new Date();
+    session.status = "completed";
+    session.lastUpdatedAt = new Date();
+
+    await session.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Reading session ended successfully",
+      data: session,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Compare reading progress between multiple children
+// @route   GET /api/analytics/compare
+// @access  Private
+exports.compareChildrenProgress = async (req, res) => {
+  try {
+    const { familyId, childrenIds } = req.query;
+
+    if (!familyId) {
+      return res.status(400).json({
+        success: false,
+        message: "Family ID is required",
+      });
+    }
+
+    let childIds = childrenIds;
+    if (typeof childIds === "string") {
+      childIds = childIds.split(",");
+    }
+
+    if (!Array.isArray(childIds) || childIds.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: "At least 2 children are required for comparison",
+      });
+    }
+
+    const comparison = {};
+
+    for (const childId of childIds) {
+      if (!mongoose.Types.ObjectId.isValid(childId)) {
+        continue;
+      }
+
+      const sessions = await ReadingSession.find({
+        childId: new mongoose.Types.ObjectId(childId),
+      });
+
+      const storiesCompleted = sessions.filter(
+        (s) => s.currentPage >= s.totalPages
+      ).length;
+      const totalTimeSpent = sessions.reduce(
+        (sum, s) => sum + (s.timeSpent || 0),
+        0
+      );
+
+      comparison[childId] = {
+        storiesCompleted,
+        sessionsCount: sessions.length,
+        totalTimeSpent,
+      };
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Children progress compared successfully",
+      data: comparison,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};

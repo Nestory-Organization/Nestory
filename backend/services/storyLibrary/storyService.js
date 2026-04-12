@@ -136,3 +136,47 @@ exports.syncGoogleMetadata = async (storyId) => {
     const updated = await story.save();
     return updated;
 };
+
+// ========================
+// FILTERING UTILITIES
+// ========================
+
+/**
+ * Filter stories by reading level
+ */
+exports.filterByReadingLevel = (stories, level) => {
+    if (!Array.isArray(stories)) return [];
+    if (!level) return stories;
+    return stories.filter(story => story.readingLevel === level);
+};
+
+/**
+ * Filter stories by age group
+ */
+exports.filterByAgeGroup = (stories, ageGroup) => {
+    if (!Array.isArray(stories)) return [];
+    if (!ageGroup) return stories;
+    return stories.filter(story => 
+        story.ageGroup && (story.ageGroup.includes(ageGroup) || Array.isArray(story.ageGroup) && story.ageGroup.includes(ageGroup))
+    );
+};
+
+/**
+ * Filter stories by genre
+ */
+exports.filterByGenre = (stories, genre) => {
+    if (!Array.isArray(stories)) return [];
+    if (!genre) return stories;
+    return stories.filter(story => 
+        Array.isArray(story.genres) && story.genres.includes(genre)
+    );
+};
+
+/**
+ * Filter stories by source
+ */
+exports.filterBySource = (stories, source) => {
+    if (!Array.isArray(stories)) return [];
+    if (!source) return stories;
+    return stories.filter(story => story.source === source);
+};

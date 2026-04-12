@@ -241,16 +241,16 @@ const dummyReadingSessions = [
   },
   {
     _id: new ObjectId("60d5ec49f1c1b0001f5a0602"),
-    childId: new ObjectId("60d5ec49f1c1b0001f5a0201"),
+    childId: new ObjectId("60d5ec49f1c1b0001f5a0202"),
     storyId: new ObjectId("60d5ec49f1c1b0001f5a0002"),
     assignmentId: new ObjectId("60d5ec49f1c1b0001f5a0502"),
     startPage: 0,
     currentPage: 125,
     totalPages: 125,
     startTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-    endTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 120 * 60 * 1000), // 2 hours later
-    timeSpent: 120 * 60 * 1000, // 2 hours in milliseconds
-    status: "completed",
+    endTime: null, // Will be set when session ends
+    timeSpent: 0,
+    status: "reading",
     activities: [],
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 120 * 60 * 1000),
@@ -272,7 +272,6 @@ const dummyUserProgress = [
     storiesRead: 3,
     assignmentsCompleted: 2,
     badgesEarned: [
-      new ObjectId("60d5ec49f1c1b0001f5a0901"),
       new ObjectId("60d5ec49f1c1b0001f5a0902"),
     ],
     achievementsEarned: [

@@ -65,6 +65,11 @@ const mockReadingSessionController = {
     session.currentPage = currentPage;
     session.updatedAt = new Date();
 
+      // Initialize activities array if it doesn't exist
+      if (!session.activities) {
+        session.activities = [];
+      }
+
     const activity = {
       _id: `activity_${Date.now()}`,
       type: "page_read",
@@ -560,8 +565,32 @@ async function runReadingAnalyticsIntegrationTests() {
     // Test 15: Multiple progress updates in one session
     try {
       const sessionId = dummyReadingSessions[0]._id;
+      // Reset session state for fresh test (endReadingSession test modified it)
+      dummyReadingSessions[0].endTime = null;
+      dummyReadingSessions[0].status = "reading";
+      dummyReadingSessions[0].activities = [
+        {
+          _id: "activity_initial",
+          type: "page_read",
+          page: 5,
+          timestamp: new Date(Date.now() - 25 * 60 * 1000),
+        },
+      ];
+      dummyReadingSessions[0].currentPage = 15;
+      
+      // Make first update
       await mockReadingSessionController.updateReadingProgress(sessionId, 10);
-      const response2 = await mockReadingSessionController.updateReadingProgress(sessionId, 20);
+      
+      // Make second update and capture response (with cloned data to avoid reference issues)
+      const response2Raw = await mockReadingSessionController.updateReadingProgress(sessionId, 20);
+      const response2 = {
+        data: {
+          currentPage: response2Raw.data.currentPage,
+          activities: [...response2Raw.data.activities]
+        }
+      };
+      
+      // Make third update
       await mockReadingSessionController.updateReadingProgress(sessionId, 30);
 
       report.logAssertion(
@@ -570,6 +599,7 @@ async function runReadingAnalyticsIntegrationTests() {
           response2.data.activities.length > 0
       );
     } catch (error) {
+      console.log("ERROR in Multiple progress updates:", error.message);
       report.logAssertion("Multiple progress updates in session", false);
     }
 

@@ -168,7 +168,10 @@ const mockFamilyController = {
     return {
       success: true,
       message: "Family chat fetched",
-      data: chat,
+      data: {
+        chatGroupId: chat._id,
+        ...chat
+      },
     };
   },
 };

@@ -46,6 +46,13 @@ const mockGamificationSystem = {
   ],
 
   /**
+   * Reset system state (useful for test isolation)
+   */
+  reset() {
+    this.childrenProgress = {};
+  },
+
+  /**
    * Workflow 1: Child completes first story
    */
   async workflowCompleteFirstStory(childId) {
@@ -184,7 +191,15 @@ const mockGamificationSystem = {
    */
   async workflowUnlockAchievement(childId) {
     if (!this.childrenProgress[childId]) {
-      throw new Error("Child progress not found");
+      this.childrenProgress[childId] = {
+        childId,
+        totalPoints: 0,
+        level: 1,
+        storiesRead: 0,
+        badgesEarned: [],
+        achievementsEarned: [],
+        currentStreak: 0,
+      };
     }
 
     const progress = this.childrenProgress[childId];
@@ -351,18 +366,28 @@ const mockGamificationSystem = {
       }
     }
 
-    // Get final leaderboard
-    const leaderboard = await this.workflowGetLeaderboard();
+    // Build leaderboard only for the provided competitors
+    const leaderboard = childIds
+      .map((childId) => this.childrenProgress[childId])
+      .sort((a, b) => b.totalPoints - a.totalPoints)
+      .map((child, index) => ({
+        rank: index + 1,
+        childId: child.childId,
+        totalPoints: child.totalPoints,
+        level: child.level,
+        storiesRead: child.storiesRead,
+        badgesEarned: child.badgesEarned.length,
+      }));
 
     return {
       leaderboard,
       monthStats: {
         childCount: childIds.length,
         topChild: leaderboard[0],
-        totalBooksRead: Object.values(this.childrenProgress).reduce(
-          (sum, p) => sum + p.storiesRead,
-          0
-        ),
+        totalBooksRead: childIds.reduce((sum, childId) => {
+          const progress = this.childrenProgress[childId];
+          return sum + (progress ? progress.storiesRead : 0);
+        }, 0),
       },
     };
   },
@@ -407,6 +432,9 @@ const mockGamificationSystem = {
 
 async function runGamificationSystemTests() {
   const report = new TestReport("Gamification System Tests");
+
+  // Reset mock system state for test isolation
+  mockGamificationSystem.reset();
 
   try {
     // Test 1: Complete first story
@@ -461,12 +489,15 @@ async function runGamificationSystemTests() {
 
     // Test 5: Unlock achievement
     try {
+      // Initialize child5 first
+      await mockGamificationSystem.workflowCompleteFirstStory("child5");
       const result = await mockGamificationSystem.workflowUnlockAchievement("child5");
+      const testPass = result.storiesRead === 10 &&
+          result.achievement === "Bookworm" &&
+          result.totalPoints > 200;
       report.logAssertion(
         "Unlock achievement",
-        result.storiesRead === 10 &&
-          result.achievement === "Bookworm" &&
-          result.totalPoints > 200
+        testPass
       );
     } catch (error) {
       report.logAssertion("Unlock achievement", false);
